@@ -1,20 +1,6 @@
 import { relations, sql } from 'drizzle-orm';
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 
-// Import new tables to establish relations
-import {
-	userExtension,
-	businessProfile,
-	chartOfAccount,
-	category,
-	transaction,
-	transactionPhoto,
-	debt,
-	debtPayment,
-	taxRecord,
-	backup
-} from './schema';
-
 export const user = sqliteTable('user', {
 	id: text('id').primaryKey(),
 	name: text('name').notNull(),
@@ -101,18 +87,7 @@ export const verification = sqliteTable(
 
 export const userRelations = relations(user, ({ many }) => ({
 	sessions: many(session),
-	accounts: many(account),
-	// New table relations
-	extension: many(userExtension),
-	businessProfiles: many(businessProfile),
-	chartOfAccounts: many(chartOfAccount),
-	categories: many(category),
-	transactions: many(transaction),
-	transactionPhotos: many(transactionPhoto),
-	debts: many(debt),
-	debtPayments: many(debtPayment),
-	taxRecords: many(taxRecord),
-	backups: many(backup)
+	accounts: many(account)
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

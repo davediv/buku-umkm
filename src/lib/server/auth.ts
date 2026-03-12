@@ -5,7 +5,7 @@ import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { getDb } from '$lib/server/db';
 
-export function getAuth() {
+function createAuth() {
 	return betterAuth({
 		baseURL: env.ORIGIN,
 		secret: env.BETTER_AUTH_SECRET,
@@ -13,4 +13,14 @@ export function getAuth() {
 		emailAndPassword: { enabled: true },
 		plugins: [sveltekitCookies(getRequestEvent)]
 	});
+}
+
+// Lazy initialization singleton for better-auth
+let authInstance: ReturnType<typeof betterAuth> | null = null;
+
+export function getAuth() {
+	if (!authInstance) {
+		authInstance = createAuth();
+	}
+	return authInstance;
 }

@@ -1,11 +1,28 @@
 import { relations, sql } from 'drizzle-orm';
 import { integer, sqliteTable, text, index } from 'drizzle-orm/sqlite-core';
 
-// Import user from auth schema first
-import { user } from './auth.schema';
+// Import auth tables to define cross-cutting relations
+import { user, session, account } from './auth.schema';
 
 // Re-export auth schema
 export * from './auth.schema';
+
+// Add relations to auth user table for business tables
+export const userRelations = relations(user, ({ many }) => ({
+	sessions: many(session),
+	accounts: many(account),
+	// Business table relations
+	extension: many(userExtension),
+	businessProfiles: many(businessProfile),
+	chartOfAccounts: many(chartOfAccount),
+	categories: many(category),
+	transactions: many(transaction),
+	transactionPhotos: many(transactionPhoto),
+	debts: many(debt),
+	debtPayments: many(debtPayment),
+	taxRecords: many(taxRecord),
+	backups: many(backup)
+}));
 
 // ============================================================================
 // Timestamp Helpers - Match auth.schema.ts pattern
