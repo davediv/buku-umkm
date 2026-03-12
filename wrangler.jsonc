@@ -30,31 +30,5 @@
 			"binding": "KV",
 			"id": "<YOUR_KV_NAMESPACE_ID>"
 		}
-	],
-	"rules": [
-		{
-			"id": "rate_limit_auth",
-			"phase": "http_request",
-			"expression": "http.request.uri.path matches \"^/api/auth/\"",
-			"action": "rate_limit",
-			"config": {
-				"characteristics": ["ip.src"],
-				"period": 60,
-				"requests_per_period": 5,
-				"action": "block"
-			}
-		},
-		{
-			"id": "rate_limit_api",
-			"phase": "http_request",
-			"expression": "http.request.uri.path matches \"^/api/\" and not http.request.uri.path matches \"^/api/auth/\"",
-			"action": "rate_limit",
-			"config": {
-				"characteristics": ["ip.src"],
-				"period": 60,
-				"requests_per_period": 60,
-				"action": "block"
-			}
-		}
 	]
 }
