@@ -570,7 +570,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Verify all data matches tax calculation
   - **Dependencies**: API-P2-008, UI-P2-011
 
-- [ ] **FEAT-P2-002**: Implement monthly tax payment reminders (in-app)
+- [x] **FEAT-P2-002**: Implement monthly tax payment reminders (in-app)
   - **Success Criteria**:
     - In-app notification/banner appears starting 1st of the month for previous month's tax
     - Visual prominence increases as 15th approaches (color change, larger banner)
@@ -581,7 +581,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 ### Transfer Between Accounts
 
-- [ ] **API-P2-009**: Implement account-to-account transfer API
+- [x] **API-P2-009**: Implement account-to-account transfer API
   - **Success Criteria**:
     - `POST /api/transfers` creates paired transactions (out from source, in to destination)
     - Both transactions linked via a `transfer_id` or reference
@@ -590,7 +590,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Transfer appears in transaction list with "Transfer" category
   - **Dependencies**: API-P2-003, API-P2-001
 
-- [ ] **UI-P2-013**: Implement transfer between accounts UI
+- [x] **UI-P2-013**: Implement transfer between accounts UI
   - **Success Criteria**:
     - Transfer form accessible from accounts page or transaction entry
     - Source account and destination account dropdowns
@@ -613,7 +613,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 ### SAK EMKM Financial Reports (F-010)
 
-- [ ] **FEAT-P3-001**: Implement Laporan Laba Rugi (Income Statement) generator
+- [x] **FEAT-P3-001**: Implement Laporan Laba Rugi (Income Statement) generator
   - **Success Criteria**:
     - Calculates revenue, expenses by SAK EMKM category, and net income for selected period
     - Period options: monthly, quarterly, annually

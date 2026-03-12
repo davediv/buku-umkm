@@ -14,7 +14,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	// Parse period parameter (default: monthly)
 	const periodParam = url.searchParams.get('period');
-	const period = ['daily', 'weekly', 'monthly', 'yearly'].includes(periodParam ?? '')
+	const period = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'].includes(periodParam ?? '')
 		? periodParam
 		: 'monthly';
 
@@ -26,12 +26,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			dashboardQueries.getProfitLossByCategory(
 				db,
 				userId,
-				period as 'daily' | 'weekly' | 'monthly' | 'yearly'
+				period as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'
 			),
 			dashboardQueries.getPreviousPeriodStats(
 				db,
 				userId,
-				period as 'daily' | 'weekly' | 'monthly' | 'yearly'
+				period as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'
 			),
 			chartOfAccountQueries.findAll(db, userId)
 		]);
@@ -71,10 +71,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 		// Format period label
 		const getPeriodLabel = (p: string) => {
+			const now = new Date();
+			const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
+
 			const labels: Record<string, string> = {
 				daily: 'Hari Ini',
 				weekly: 'Minggu Ini',
 				monthly: 'Bulan Ini',
+				quarterly: `Q${currentQuarter} ${now.getFullYear()}`,
 				yearly: 'Tahun Ini'
 			};
 			return labels[p] || 'Bulan Ini';
@@ -103,6 +107,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				now.getMonth() === 11
 					? `${now.getFullYear() + 1}-01-01`
 					: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
+		} else if (period === 'quarterly') {
+			// Calculate current quarter
+			const currentQuarter = Math.floor(now.getMonth() / 3);
+			const quarterStartMonth = currentQuarter * 3 + 1;
+			const quarterEndMonth = quarterStartMonth + 3;
+			startDate = `${now.getFullYear()}-${String(quarterStartMonth).padStart(2, '0')}-01`;
+			endDate =
+				quarterEndMonth > 12
+					? `${now.getFullYear() + 1}-01-01`
+					: `${now.getFullYear()}-${String(quarterEndMonth).padStart(2, '0')}-01`;
 		} else {
 			startDate = `${now.getFullYear()}-01-01`;
 			endDate = `${now.getFullYear() + 1}-01-01`;
