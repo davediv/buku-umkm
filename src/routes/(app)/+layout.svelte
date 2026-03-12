@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { Home, Receipt, CreditCard, Calculator, Menu, Wallet } from '@lucide/svelte';
+	import { Home, Receipt, CreditCard, Calculator, Menu, Wallet, Plus } from '@lucide/svelte';
 
 	let { children } = $props();
 
@@ -19,6 +19,12 @@
 		}
 		return pathname.startsWith(href);
 	}
+
+	// Check if current page is a transaction form (hide FAB there)
+	let hideFab = $derived(
+		$page.url.pathname === '/transaksi/tambah' ||
+			$page.url.pathname.match(/^\/transaksi\/[\w-]+$/) !== null
+	);
 </script>
 
 <div class="flex flex-col min-h-screen bg-background">
@@ -26,6 +32,17 @@
 	<main class="flex-1 overflow-y-auto pb-20 md:pb-0 md:pl-20">
 		{@render children()}
 	</main>
+
+	<!-- Floating Action Button (FAB) for adding transaction -->
+	{#if !hideFab}
+		<a
+			href="/transaksi/tambah"
+			class="fixed right-4 bottom-20 md:bottom-4 md:right-4 z-40 flex items-center justify-center w-14 h-14 md:w-12 md:h-12 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-all hover:scale-105 active:scale-95"
+			aria-label="Tambah transaksi baru"
+		>
+			<Plus class="w-6 h-6" />
+		</a>
+	{/if}
 
 	<!-- Bottom Navigation Bar - Mobile -->
 	<nav

@@ -273,9 +273,15 @@ export const transactionQueries = {
 			type?: 'income' | 'expense' | 'transfer';
 			startDate?: string;
 			endDate?: string;
+			includeInactive?: boolean;
 		}
 	) {
 		const conditions = [eq(transaction.userId, userId)];
+
+		// Default to only active transactions
+		if (!options?.includeInactive) {
+			conditions.push(eq(transaction.isActive, true));
+		}
 
 		if (options?.accountId) {
 			conditions.push(eq(transaction.accountId, options.accountId));
@@ -300,7 +306,8 @@ export const transactionQueries = {
 			offset: options?.offset ?? 0,
 			with: {
 				account: true,
-				category: true
+				category: true,
+				toAccount: true
 			}
 		});
 	},
@@ -308,10 +315,14 @@ export const transactionQueries = {
 	/**
 	 * Get transaction by ID
 	 */
-	findById(db: SQLiteDb, userId: string, transactionId: string) {
+	findById(db: SQLiteDb, userId: string, transactionId: string, includeInactive = false) {
 		return db.query.transaction.findFirst({
-			where: (transactions, { eq }) =>
-				and(eq(transactions.userId, userId), eq(transactions.id, transactionId)),
+			where: (transactions, { eq, and }) =>
+				and(
+					eq(transactions.userId, userId),
+					eq(transactions.id, transactionId),
+					includeInactive ? undefined : eq(transactions.isActive, true)
+				),
 			with: {
 				account: true,
 				category: true,

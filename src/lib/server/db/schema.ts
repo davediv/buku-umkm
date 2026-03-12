@@ -200,6 +200,7 @@ export const transaction = sqliteTable(
 		taxAmount: integer('tax_amount').default(0).notNull(), // Tax amount in Rupiah
 		referenceNumber: text('reference_number'), // Invoice/receipt number
 		notes: text('notes'),
+		isActive: integer('is_active', { mode: 'boolean' }).default(true).notNull(), // Soft delete
 		...timestampColumns
 	},
 	(table) => [
@@ -208,7 +209,8 @@ export const transaction = sqliteTable(
 		index('transaction_type_idx').on(table.type),
 		index('transaction_accountId_idx').on(table.accountId),
 		index('transaction_toAccountId_idx').on(table.toAccountId),
-		index('transaction_categoryId_idx').on(table.categoryId)
+		index('transaction_categoryId_idx').on(table.categoryId),
+		index('transaction_isActive_idx').on(table.isActive)
 	]
 );
 
