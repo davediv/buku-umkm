@@ -1,6 +1,11 @@
 import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import { transactionQueries, categoryQueries, chartOfAccountQueries } from '$lib/server/db/queries';
+import {
+	transactionQueries,
+	categoryQueries,
+	chartOfAccountQueries,
+	transactionPhotoQueries
+} from '$lib/server/db/queries';
 import { redirect } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
@@ -21,9 +26,12 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			return { error: 'Transaksi tidak ditemukan' };
 		}
 
-		// Get all categories and accounts for editing
-		const allCategories = await categoryQueries.findAll(db, userId);
-		const allAccounts = await chartOfAccountQueries.findAll(db, userId);
+		// Run remaining queries in parallel
+		const [allCategories, allAccounts, photos] = await Promise.all([
+			categoryQueries.findAll(db, userId),
+			chartOfAccountQueries.findAll(db, userId),
+			transactionPhotoQueries.findByTransactionId(db, userId, transactionId)
+		]);
 
 		const categories = {
 			income: allCategories.filter((c) => c.type === 'income' && c.isActive),
@@ -35,7 +43,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		return {
 			transaction,
 			categories,
-			accounts
+			accounts,
+			photos
 		};
 	} catch (error) {
 		console.error('Error loading transaction:', error);

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { ArrowLeft, Check, X, Trash2 } from '@lucide/svelte';
-	import { formatIdr } from '$lib/utils';
+	import { ArrowLeft, Check, X, Trash2, Camera, Image } from '@lucide/svelte';
+	import { formatIdr, compressImage } from '$lib/utils';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -25,6 +25,120 @@
 	let showCategoryPicker = $state(false);
 	let showAccountPicker = $state(false);
 	let showDeleteConfirm = $state(false);
+
+	// Photo state
+	let photos = $state(data.photos || []);
+	let showPhotoSourceMenu = $state(false);
+	let fileInputRef = $state<HTMLInputElement | null>(null);
+	let showPhotoViewer = $state(false);
+	let selectedPhotoIndex = $state(0);
+	let showRemovePhotoConfirm = $state(false);
+	let photoToRemove = $state<string | null>(null);
+
+	const MAX_PHOTOS = 3;
+
+	// Derived
+	let photoCount = $derived(photos.length);
+	let canAddPhoto = $derived(photos.length < MAX_PHOTOS);
+
+	// Handle file selection
+	async function handleFileSelect(e: Event) {
+		const input = e.target as HTMLInputElement;
+		if (!input.files || input.files.length === 0) return;
+
+		const file = input.files[0];
+
+		if (!['image/jpeg', 'image/png'].includes(file.type)) {
+			alert('Format file harus JPEG atau PNG');
+			return;
+		}
+
+		if (file.size > 5 * 1024 * 1024) {
+			alert('Ukuran file maksimal adalah 5MB');
+			return;
+		}
+
+		try {
+			const compressed = await compressImage(file);
+			const formData = new FormData();
+			formData.append('file', compressed);
+
+			const response = await fetch(`/api/transactions/${data.transaction?.id}/photos`, {
+				method: 'POST',
+				body: formData
+			});
+
+			if (response.ok) {
+				const result = (await response.json()) as { photo?: { id: string; r2Url: string } };
+				if (result.photo) {
+					photos = [...photos, result.photo] as typeof photos;
+				}
+			} else {
+				const result = (await response.json()) as { error?: string };
+				alert(result.error || 'Gagal mengunggah foto');
+			}
+		} catch (error) {
+			console.error('Error uploading photo:', error);
+			alert('Terjadi kesalahan server');
+		} finally {
+			showPhotoSourceMenu = false;
+			input.value = '';
+		}
+	}
+
+	// Open camera
+	function openCamera() {
+		if (fileInputRef) {
+			fileInputRef.setAttribute('capture', 'environment');
+			fileInputRef.click();
+		}
+	}
+
+	// Open gallery
+	function openGallery() {
+		if (fileInputRef) {
+			fileInputRef.removeAttribute('capture');
+			fileInputRef.click();
+		}
+	}
+
+	// View photo
+	function viewPhoto(index: number) {
+		selectedPhotoIndex = index;
+		showPhotoViewer = true;
+	}
+
+	// Remove photo
+	async function confirmRemovePhoto(photoId: string) {
+		photoToRemove = photoId;
+		showRemovePhotoConfirm = true;
+	}
+
+	async function removePhoto() {
+		if (!photoToRemove) return;
+
+		try {
+			const response = await fetch(
+				`/api/transactions/${data.transaction?.id}/photos/${photoToRemove}`,
+				{
+					method: 'DELETE'
+				}
+			);
+
+			if (response.ok) {
+				photos = photos.filter((p) => p.id !== photoToRemove);
+			} else {
+				const result = (await response.json()) as { error?: string };
+				alert(result.error || 'Gagal menghapus foto');
+			}
+		} catch (error) {
+			console.error('Error removing photo:', error);
+			alert('Terjadi kesalahan server');
+		} finally {
+			showRemovePhotoConfirm = false;
+			photoToRemove = null;
+		}
+	}
 
 	// Derived
 	let categories = $derived(
@@ -332,6 +446,71 @@
 				></textarea>
 			</div>
 
+			<!-- Photos -->
+			<div class="space-y-2">
+				<div class="flex items-center justify-between">
+					<label class="text-sm font-medium text-muted-foreground">Foto Nota</label>
+					{#if canAddPhoto}
+						<button
+							type="button"
+							onclick={() => (showPhotoSourceMenu = true)}
+							class="text-sm text-primary hover:underline flex items-center gap-1"
+						>
+							<Camera class="w-4 h-4" />
+							Tambah
+						</button>
+					{/if}
+				</div>
+
+				{#if photos.length > 0}
+					<div class="text-xs text-muted-foreground mb-2">
+						{photoCount}/{MAX_PHOTOS} foto
+					</div>
+					<div class="flex gap-2 flex-wrap">
+						{#each photos as photo, index (photo.id)}
+							<div class="relative group">
+								<button type="button" onclick={() => viewPhoto(index)}>
+									<img
+										src={photo.r2Url}
+										alt="Foto nota"
+										class="w-20 h-20 object-cover rounded-lg border"
+									/>
+								</button>
+								<button
+									type="button"
+									onclick={(e) => {
+										e.stopPropagation();
+										confirmRemovePhoto(photo.id);
+									}}
+									class="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+									aria-label="Hapus foto"
+								>
+									<Trash2 class="w-3 h-3" />
+								</button>
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<button
+						type="button"
+						onclick={() => (showPhotoSourceMenu = true)}
+						class="w-full flex items-center justify-center gap-2 p-4 border border-dashed rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
+					>
+						<Image class="w-5 h-5" />
+						<span>Tambah foto nota</span>
+					</button>
+				{/if}
+
+				<!-- Hidden file input -->
+				<input
+					bind:this={fileInputRef}
+					type="file"
+					accept="image/jpeg,image/png"
+					onchange={handleFileSelect}
+					class="hidden"
+				/>
+			</div>
+
 			<!-- Spacer -->
 			<div class="flex-1"></div>
 
@@ -444,6 +623,121 @@
 					<a href="/akun" class="text-primary hover:underline">Tambah akun</a>
 				</div>
 			{/if}
+		</div>
+	</div>
+{/if}
+
+<!-- Photo Source Menu -->
+{#if showPhotoSourceMenu}
+	<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+		<div class="bg-background border rounded-lg shadow-lg w-full max-w-sm p-6">
+			<h2 class="text-lg font-semibold mb-4">Pilih Sumber Foto</h2>
+			<div class="space-y-3">
+				<button
+					type="button"
+					onclick={openCamera}
+					class="w-full flex items-center gap-3 p-4 border rounded-lg hover:bg-secondary transition-colors"
+				>
+					<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+						<Camera class="w-5 h-5 text-primary" />
+					</div>
+					<div class="text-left">
+						<div class="font-medium">Kamera</div>
+						<div class="text-xs text-muted-foreground">Ambil foto langsung</div>
+					</div>
+				</button>
+				<button
+					type="button"
+					onclick={openGallery}
+					class="w-full flex items-center gap-3 p-4 border rounded-lg hover:bg-secondary transition-colors"
+				>
+					<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+						<Image class="w-5 h-5 text-primary" />
+					</div>
+					<div class="text-left">
+						<div class="font-medium">Galeri</div>
+						<div class="text-xs text-muted-foreground">Pilih dari galeri</div>
+					</div>
+				</button>
+			</div>
+			<button
+				type="button"
+				onclick={() => (showPhotoSourceMenu = false)}
+				class="w-full mt-4 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+			>
+				Batal
+			</button>
+		</div>
+	</div>
+{/if}
+
+<!-- Photo Viewer -->
+{#if showPhotoViewer}
+	<div
+		class="fixed inset-0 z-50 bg-black flex items-center justify-center"
+		role="dialog"
+		aria-modal="true"
+	>
+		<button
+			onclick={() => (showPhotoViewer = false)}
+			class="absolute top-4 right-4 p-2 text-white hover:bg-white/10 rounded-full z-10"
+			aria-label="Tutup"
+		>
+			<X class="w-6 h-6" />
+		</button>
+
+		{#if photos.length > 1}
+			<button
+				onclick={() =>
+					(selectedPhotoIndex = (selectedPhotoIndex - 1 + photos.length) % photos.length)}
+				class="absolute left-4 p-2 text-white hover:bg-white/10 rounded-full"
+				aria-label="Foto sebelumnya"
+			>
+				<ArrowLeft class="w-6 h-6" />
+			</button>
+			<button
+				onclick={() => (selectedPhotoIndex = (selectedPhotoIndex + 1) % photos.length)}
+				class="absolute right-4 p-2 text-white hover:bg-white/10 rounded-full"
+				aria-label="Foto berikutnya"
+			>
+				<ArrowLeft class="w-6 h-6 rotate-180" />
+			</button>
+		{/if}
+
+		<img
+			src={photos[selectedPhotoIndex]?.r2Url}
+			alt="Foto nota"
+			class="max-w-full max-h-full object-contain"
+		/>
+
+		<div class="absolute bottom-4 text-white text-sm">
+			{selectedPhotoIndex + 1} / {photos.length}
+		</div>
+	</div>
+{/if}
+
+<!-- Remove Photo Confirmation -->
+{#if showRemovePhotoConfirm}
+	<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+		<div class="bg-background border rounded-lg shadow-lg w-full max-w-md p-6">
+			<h2 class="text-lg font-semibold mb-2">Hapus Foto?</h2>
+			<p class="text-sm text-muted-foreground mb-6">
+				Foto yang dihapus tidak dapat dikembalikan. Apakah Anda yakin?
+			</p>
+			<div class="flex gap-3">
+				<button
+					onclick={() => (showRemovePhotoConfirm = false)}
+					class="flex-1 px-4 py-2 border rounded-md text-sm font-medium hover:bg-secondary transition-colors"
+				>
+					Batal
+				</button>
+				<button
+					onclick={removePhoto}
+					class="flex-1 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm font-medium hover:bg-destructive/90 transition-colors"
+				>
+					Hapus
+				</button>
+			</div>
 		</div>
 	</div>
 {/if}

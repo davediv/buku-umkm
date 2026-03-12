@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { ArrowLeft, Camera, Check, X } from '@lucide/svelte';
-	import { formatIdr } from '$lib/utils';
+	import { ArrowLeft, Camera, Check, X, Image, Trash2 } from '@lucide/svelte';
+	import { formatIdr, compressImage } from '$lib/utils';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -17,10 +17,108 @@
 	let showCategoryPicker = $state(false);
 	let showAccountPicker = $state(false);
 
+	// Photo state
+	let photos = $state<{ id: string; file: File; preview: string }[]>([]);
+	let uploading = $state(false);
+	let fileInputRef = $state<HTMLInputElement | null>(null);
+	let showPhotoSourceMenu = $state(false);
+
+	const MAX_PHOTOS = 3;
+
 	// Derived
 	let categories = $derived(type === 'income' ? data.categories.income : data.categories.expense);
 	let selectedCategory = $derived(categories.find((c) => c.id === categoryId));
 	let selectedAccount = $derived(data.accounts.find((a) => a.id === accountId));
+	let photoCount = $derived(photos.length);
+	let canAddPhoto = $derived(photos.length < MAX_PHOTOS);
+
+	// Handle file selection
+	async function handleFileSelect(e: Event) {
+		const input = e.target as HTMLInputElement;
+		if (!input.files || input.files.length === 0) return;
+
+		const file = input.files[0];
+
+		// Validate type
+		if (!['image/jpeg', 'image/png'].includes(file.type)) {
+			alert('Format file harus JPEG atau PNG');
+			return;
+		}
+
+		// Validate size (before compression)
+		if (file.size > 5 * 1024 * 1024) {
+			alert('Ukuran file maksimal adalah 5MB');
+			return;
+		}
+
+		try {
+			// Compress the image
+			const compressed = await compressImage(file);
+
+			// Create preview
+			const preview = URL.createObjectURL(compressed);
+
+			photos = [
+				...photos,
+				{
+					id: crypto.randomUUID(),
+					file: compressed,
+					preview
+				}
+			];
+		} catch (error) {
+			console.error('Error compressing image:', error);
+			alert('Gagal memproses gambar');
+		}
+
+		// Reset input
+		input.value = '';
+		showPhotoSourceMenu = false;
+	}
+
+	// Open camera
+	function openCamera() {
+		if (fileInputRef) {
+			fileInputRef.setAttribute('capture', 'environment');
+			fileInputRef.click();
+		}
+	}
+
+	// Open gallery
+	function openGallery() {
+		if (fileInputRef) {
+			fileInputRef.removeAttribute('capture');
+			fileInputRef.click();
+		}
+	}
+
+	// Remove photo
+	function removePhoto(id: string) {
+		const photo = photos.find((p) => p.id === id);
+		if (photo) {
+			URL.revokeObjectURL(photo.preview);
+		}
+		photos = photos.filter((p) => p.id !== id);
+	}
+
+	// Upload photos to transaction (in parallel)
+	async function uploadPhotos(transactionId: string) {
+		await Promise.all(
+			photos.map(async (photo) => {
+				const formData = new FormData();
+				formData.append('file', photo.file);
+
+				const response = await fetch(`/api/transactions/${transactionId}/photos`, {
+					method: 'POST',
+					body: formData
+				});
+
+				if (!response.ok) {
+					console.error('Failed to upload photo:', photo.id);
+				}
+			})
+		);
+	}
 
 	function handleAmountInput(e: Event) {
 		const input = e.target as HTMLInputElement;
@@ -100,14 +198,26 @@
 				body: JSON.stringify(payload)
 			});
 
-			const result = (await response.json()) as { error?: string };
+			const result = (await response.json()) as { error?: string; transaction?: { id: string } };
 
 			if (response.ok) {
+				// Upload photos if any
+				if (photos.length > 0 && result.transaction?.id) {
+					uploading = true;
+					await uploadPhotos(result.transaction.id);
+				}
+
+				// Revoke object URLs before clearing photos
+				for (const photo of photos) {
+					URL.revokeObjectURL(photo.preview);
+				}
+
 				// Reset form for quick next entry
 				amount = '';
 				categoryId = '';
 				date = new Date().toISOString().split('T')[0];
 				description = '';
+				photos = [];
 
 				// Show success feedback - navigate to transactions list
 				goto('/transaksi?success=true');
@@ -119,6 +229,7 @@
 			alert('Terjadi kesalahan server');
 		} finally {
 			loading = false;
+			uploading = false;
 		}
 	}
 
@@ -295,14 +406,70 @@
 			/>
 		</div>
 
-		<!-- Receipt Photo Button -->
-		<button
-			type="button"
-			class="flex items-center gap-2 p-3 border border-dashed rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
-		>
-			<Camera class="w-5 h-5" />
-			<span>Tambah foto nota</span>
-		</button>
+		<!-- Receipt Photos -->
+		<div class="space-y-2">
+			<div class="flex items-center justify-between">
+				<label class="text-sm font-medium text-muted-foreground">Foto Nota</label>
+				{#if canAddPhoto}
+					<button
+						type="button"
+						onclick={() => (showPhotoSourceMenu = true)}
+						class="text-sm text-primary hover:underline flex items-center gap-1"
+					>
+						<Camera class="w-4 h-4" />
+						Tambah
+					</button>
+				{/if}
+			</div>
+
+			<!-- Photo counter -->
+			{#if photos.length > 0}
+				<div class="text-xs text-muted-foreground">
+					{photoCount}/{MAX_PHOTOS} foto
+				</div>
+			{/if}
+
+			<!-- Photo previews -->
+			{#if photos.length > 0}
+				<div class="flex gap-2 flex-wrap">
+					{#each photos as photo (photo.id)}
+						<div class="relative group">
+							<img
+								src={photo.preview}
+								alt="Foto nota"
+								class="w-20 h-20 object-cover rounded-lg border"
+							/>
+							<button
+								type="button"
+								onclick={() => removePhoto(photo.id)}
+								class="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+								aria-label="Hapus foto"
+							>
+								<Trash2 class="w-3 h-3" />
+							</button>
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<button
+					type="button"
+					onclick={() => (showPhotoSourceMenu = true)}
+					class="w-full flex items-center justify-center gap-2 p-4 border border-dashed rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
+				>
+					<Image class="w-5 h-5" />
+					<span>Tambah foto nota</span>
+				</button>
+			{/if}
+
+			<!-- Hidden file input -->
+			<input
+				bind:this={fileInputRef}
+				type="file"
+				accept="image/jpeg,image/png"
+				onchange={handleFileSelect}
+				class="hidden"
+			/>
+		</div>
 
 		<!-- Spacer -->
 		<div class="flex-1"></div>
@@ -313,7 +480,7 @@
 			disabled={loading}
 			class="w-full py-4 bg-primary text-primary-foreground text-lg font-medium rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50"
 		>
-			{loading ? 'Menyimpan...' : 'Simpan'}
+			{loading || uploading ? 'Menyimpan...' : 'Simpan'}
 		</button>
 	</form>
 </div>
@@ -364,6 +531,50 @@
 					<a href="/kategori" class="text-primary hover:underline">Tambah kategori</a>
 				</div>
 			{/if}
+		</div>
+	</div>
+{/if}
+
+<!-- Photo Source Menu -->
+{#if showPhotoSourceMenu}
+	<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+		<div class="bg-background border rounded-lg shadow-lg w-full max-w-sm p-6">
+			<h2 class="text-lg font-semibold mb-4">Pilih Sumber Foto</h2>
+			<div class="space-y-3">
+				<button
+					type="button"
+					onclick={openCamera}
+					class="w-full flex items-center gap-3 p-4 border rounded-lg hover:bg-secondary transition-colors"
+				>
+					<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+						<Camera class="w-5 h-5 text-primary" />
+					</div>
+					<div class="text-left">
+						<div class="font-medium">Kamera</div>
+						<div class="text-xs text-muted-foreground">Ambil foto langsung</div>
+					</div>
+				</button>
+				<button
+					type="button"
+					onclick={openGallery}
+					class="w-full flex items-center gap-3 p-4 border rounded-lg hover:bg-secondary transition-colors"
+				>
+					<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+						<Image class="w-5 h-5 text-primary" />
+					</div>
+					<div class="text-left">
+						<div class="font-medium">Galeri</div>
+						<div class="text-xs text-muted-foreground">Pilih dari galeri</div>
+					</div>
+				</button>
+			</div>
+			<button
+				type="button"
+				onclick={() => (showPhotoSourceMenu = false)}
+				class="w-full mt-4 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+			>
+				Batal
+			</button>
 		</div>
 	</div>
 {/if}

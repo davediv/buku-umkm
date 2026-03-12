@@ -7,7 +7,8 @@ import {
 	debt,
 	debtPayment,
 	taxRecord,
-	businessProfile
+	businessProfile,
+	transactionPhoto
 } from '../schema';
 
 // ============================================================================
@@ -1009,5 +1010,96 @@ export const dashboardQueries = {
 
 			return results;
 		});
+	}
+};
+
+// ============================================================================
+// Transaction Photo Queries
+// ============================================================================
+
+export const transactionPhotoQueries = {
+	/**
+	 * Get all photos for a transaction
+	 */
+	findByTransactionId(db: SQLiteDb, userId: string, transactionId: string) {
+		return db.query.transactionPhoto.findMany({
+			where: (photos, { eq, and }) =>
+				and(eq(photos.userId, userId), eq(photos.transactionId, transactionId)),
+			orderBy: (photos, { asc }) => [asc(photos.createdAt)]
+		});
+	},
+
+	/**
+	 * Get photo by ID
+	 */
+	findById(db: SQLiteDb, userId: string, photoId: string) {
+		return db.query.transactionPhoto.findFirst({
+			where: (photos, { eq, and }) => and(eq(photos.userId, userId), eq(photos.id, photoId))
+		});
+	},
+
+	/**
+	 * Count photos for a transaction
+	 */
+	countByTransactionId(db: SQLiteDb, userId: string, transactionId: string) {
+		return db
+			.select({ count: sql`COUNT(*)` })
+			.from(transactionPhoto)
+			.where(
+				and(eq(transactionPhoto.userId, userId), eq(transactionPhoto.transactionId, transactionId))
+			)
+			.then((rows) => Number(rows[0]?.count ?? 0));
+	},
+
+	/**
+	 * Create transaction photo
+	 */
+	create(
+		db: SQLiteDb,
+		data: {
+			userId: string;
+			transactionId: string;
+			fileName: string;
+			fileSize: number;
+			mimeType: string;
+			r2Key: string;
+			r2Url?: string;
+			caption?: string;
+		}
+	) {
+		return db
+			.insert(transactionPhoto)
+			.values({
+				id: crypto.randomUUID(),
+				userId: data.userId,
+				transactionId: data.transactionId,
+				fileName: data.fileName,
+				fileSize: data.fileSize,
+				mimeType: data.mimeType,
+				r2Key: data.r2Key,
+				r2Url: data.r2Url ?? null,
+				caption: data.caption ?? null
+			})
+			.returning()
+			.then((rows) => rows[0]);
+	},
+
+	/**
+	 * Update photo caption
+	 */
+	updateCaption(db: SQLiteDb, userId: string, photoId: string, caption: string) {
+		return db
+			.update(transactionPhoto)
+			.set({ caption })
+			.where(and(eq(transactionPhoto.userId, userId), eq(transactionPhoto.id, photoId)));
+	},
+
+	/**
+	 * Delete transaction photo
+	 */
+	delete(db: SQLiteDb, userId: string, photoId: string) {
+		return db
+			.delete(transactionPhoto)
+			.where(and(eq(transactionPhoto.userId, userId), eq(transactionPhoto.id, photoId)));
 	}
 };
