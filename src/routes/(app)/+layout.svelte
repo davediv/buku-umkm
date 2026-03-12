@@ -10,6 +10,7 @@
 		Wallet,
 		Plus
 	} from '@lucide/svelte';
+	import TaxReminder from '$lib/components/tax-reminder.svelte';
 
 	let { children } = $props();
 
@@ -38,6 +39,9 @@
 </script>
 
 <div class="flex flex-col min-h-screen bg-background">
+	<!-- Tax Reminder Banner -->
+	<TaxReminder />
+
 	<!-- Main Content Area -->
 	<main class="flex-1 overflow-y-auto pb-20 md:pb-0 md:pl-20">
 		{@render children()}
