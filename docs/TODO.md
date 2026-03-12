@@ -456,7 +456,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - New debt sets `remaining = amount` and `status = "aktif"`
   - **Dependencies**: DB-P1-002, AUTH-P1-004
 
-- [ ] **API-P2-007**: Implement Debt Payment recording API
+- [x] **API-P2-007**: Implement Debt Payment recording API
   - **Success Criteria**:
     - `POST /api/debts/[id]/payments` creates payment with amount and date
     - Payment creates a corresponding transaction (income for piutang payment, expense for hutang payment)
