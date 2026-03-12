@@ -236,6 +236,21 @@ export const categoryQueries = {
 	 */
 	delete(db: SQLiteDb, userId: string, categoryId: string) {
 		return db.delete(category).where(and(eq(category.userId, userId), eq(category.id, categoryId)));
+	},
+
+	/**
+	 * Generate next available code for a category type
+	 * Income: 4xxx, Expense: 5xxx-8xxx
+	 */
+	generateNextCode(db: SQLiteDb, userId: string, type: 'income' | 'expense') {
+		const baseCode = type === 'income' ? 4000 : 5000;
+		return this.findByType(db, userId, type).then((categories) => {
+			const maxCode = categories.reduce((max, cat) => {
+				const codeNum = parseInt(cat.code, 10);
+				return codeNum > max ? codeNum : max;
+			}, baseCode);
+			return String(maxCode + 1);
+		});
 	}
 };
 
@@ -434,6 +449,15 @@ export const transactionQueries = {
 				account: true,
 				category: true
 			}
+		});
+	},
+
+	/**
+	 * Check if category has transactions
+	 */
+	hasTransactionsByCategory(db: SQLiteDb, categoryId: string) {
+		return db.query.transaction.findFirst({
+			where: (transactions, { eq }) => eq(transactions.categoryId, categoryId)
 		});
 	}
 };
