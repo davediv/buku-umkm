@@ -11,6 +11,7 @@
 		ChevronRight,
 		Loader2
 	} from '@lucide/svelte';
+	import { CashFlowChart } from '$lib/components/ui/charts';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -42,25 +43,6 @@
 		}).format(date);
 	}
 
-	// Get month name
-	function getMonthName(month: number): string {
-		const months = [
-			'Jan',
-			'Feb',
-			'Mar',
-			'Apr',
-			'Mei',
-			'Jun',
-			'Jul',
-			'Agu',
-			'Sep',
-			'Okt',
-			'Nov',
-			'Des'
-		];
-		return months[month - 1];
-	}
-
 	// Handle period change
 	async function changePeriod(period: 'daily' | 'weekly' | 'monthly') {
 		if (loading || selectedPeriod === period) return;
@@ -78,13 +60,6 @@
 		} finally {
 			loading = false;
 		}
-	}
-
-	// Get max value for chart scaling
-	function getMaxChartValue(data: { income: number; expense: number }[]): number {
-		const maxIncome = Math.max(...data.map((d) => d.income));
-		const maxExpense = Math.max(...data.map((d) => d.expense));
-		return Math.max(maxIncome, maxExpense, 1);
 	}
 
 	// Calculate tax progress percentage
@@ -282,46 +257,7 @@
 		{#if dashboard.chartData && dashboard.chartData.length > 0}
 			<div class="bg-card border rounded-lg p-4">
 				<h3 class="text-sm font-medium mb-4">Tren Arus Kas (6 Bulan Terakhir)</h3>
-
-				<!-- Simple Bar Chart -->
-				<div class="h-48 flex items-end justify-around gap-2">
-					{#each dashboard.chartData as item (item.month + '-' + item.year)}
-						{@const maxVal = getMaxChartValue(dashboard.chartData)}
-						{@const incomeHeight = (item.income / maxVal) * 100}
-						{@const expenseHeight = (item.expense / maxVal) * 100}
-						<div class="flex-1 flex flex-col items-center gap-1">
-							<!-- Bars container -->
-							<div class="w-full flex-1 flex items-end justify-center gap-1">
-								<!-- Income bar -->
-								<div
-									class="w-3 md:w-4 bg-green-500/80 rounded-t hover:bg-green-500 transition-colors"
-									style="height: {incomeHeight}%"
-									title="Pemasukan: {formatRupiah(item.income)}"
-								></div>
-								<!-- Expense bar -->
-								<div
-									class="w-3 md:w-4 bg-red-500/80 rounded-t hover:bg-red-500 transition-colors"
-									style="height: {expenseHeight}%"
-									title="Pengeluaran: {formatRupiah(item.expense)}"
-								></div>
-							</div>
-							<!-- Month label -->
-							<span class="text-xs text-muted-foreground">{getMonthName(item.month)}</span>
-						</div>
-					{/each}
-				</div>
-
-				<!-- Legend -->
-				<div class="flex justify-center gap-6 mt-4">
-					<div class="flex items-center gap-2">
-						<div class="w-3 h-3 bg-green-500/80 rounded"></div>
-						<span class="text-xs text-muted-foreground">Pemasukan</span>
-					</div>
-					<div class="flex items-center gap-2">
-						<div class="w-3 h-3 bg-red-500/80 rounded"></div>
-						<span class="text-xs text-muted-foreground">Pengeluaran</span>
-					</div>
-				</div>
+				<CashFlowChart data={dashboard.chartData} height={250} />
 			</div>
 		{:else}
 			<!-- Empty Chart State -->
