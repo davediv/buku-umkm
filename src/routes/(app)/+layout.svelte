@@ -18,7 +18,7 @@
 		{ href: '/beranda', label: 'Beranda', icon: Home },
 		{ href: '/akun', label: 'Akun', icon: Wallet },
 		{ href: '/transaksi', label: 'Transaksi', icon: Receipt },
-		{ href: '/laporan/laba-rugi', label: 'Laporan', icon: FileText },
+		{ href: '/laporan', label: 'Laporan', icon: FileText },
 		{ href: '/hutang-piutang', label: 'Hutang/Piutang', icon: CreditCard },
 		{ href: '/pajak', label: 'Pajak', icon: Calculator },
 		{ href: '/lainnya', label: 'Lainnya', icon: Menu }
