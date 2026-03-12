@@ -801,6 +801,148 @@ export const taxRecordQueries = {
 	 */
 	delete(db: SQLiteDb, userId: string, taxId: string) {
 		return db.delete(taxRecord).where(and(eq(taxRecord.userId, userId), eq(taxRecord.id, taxId)));
+	},
+
+	/**
+	 * Calculate cumulative annual revenue from transactions
+	 */
+	async getCumulativeAnnualRevenue(db: SQLiteDb, userId: string, year: number) {
+		const startOfYear = `${year}-01-01`;
+		const endOfYear = `${year + 1}-01-01`;
+
+		const result = await db
+			.select({ total: sql`COALESCE(SUM(${transaction.amount}), 0)` })
+			.from(transaction)
+			.where(
+				and(
+					eq(transaction.userId, userId),
+					eq(transaction.type, 'income'),
+					gte(transaction.date, startOfYear),
+					lt(transaction.date, endOfYear)
+				)
+			);
+
+		return Number(result[0]?.total ?? 0);
+	},
+
+	/**
+	 * Calculate monthly gross revenue from transactions
+	 */
+	async getMonthlyGrossRevenue(db: SQLiteDb, userId: string, year: number, month: number) {
+		const monthStr = month.toString().padStart(2, '0');
+		const startOfMonth = `${year}-${monthStr}-01`;
+		const endOfMonth =
+			month === 12 ? `${year + 1}-01-01` : `${year}-${(month + 1).toString().padStart(2, '0')}-01`;
+
+		const result = await db
+			.select({ total: sql`COALESCE(SUM(${transaction.amount}), 0)` })
+			.from(transaction)
+			.where(
+				and(
+					eq(transaction.userId, userId),
+					eq(transaction.type, 'income'),
+					gte(transaction.date, startOfMonth),
+					lt(transaction.date, endOfMonth)
+				)
+			);
+
+		return Number(result[0]?.total ?? 0);
+	},
+
+	/**
+	 * Get monthly revenues for a year
+	 */
+	async getMonthlyRevenuesForYear(db: SQLiteDb, userId: string, year: number) {
+		const startOfYear = `${year}-01-01`;
+		const endOfYear = `${year + 1}-01-01`;
+
+		const results = await db
+			.select({
+				month: transaction.date,
+				amount: transaction.amount
+			})
+			.from(transaction)
+			.where(
+				and(
+					eq(transaction.userId, userId),
+					eq(transaction.type, 'income'),
+					gte(transaction.date, startOfYear),
+					lt(transaction.date, endOfYear)
+				)
+			);
+
+		// Group by month
+		const monthlyMap = new Map<number, number>();
+		for (const row of results) {
+			const date = new Date(row.month);
+			const m = date.getMonth() + 1;
+			monthlyMap.set(m, (monthlyMap.get(m) ?? 0) + Number(row.amount));
+		}
+
+		// Convert to array with all 12 months
+		const monthlyRevenues: { month: number; revenue: number }[] = [];
+		for (let m = 1; m <= 12; m++) {
+			monthlyRevenues.push({
+				month: m,
+				revenue: monthlyMap.get(m) ?? 0
+			});
+		}
+
+		return monthlyRevenues;
+	},
+
+	/**
+	 * Update or create tax records for a year based on transactions
+	 */
+	async recalculateForYear(
+		db: SQLiteDb,
+		userId: string,
+		taxpayerType: 'perorangan' | 'badan',
+		year: number
+	) {
+		// Import dynamically to avoid circular dependency
+		const { calculateAnnualTax } = await import('$lib/tax/engine');
+		const { TAX_STATUS } = await import('$lib/tax/config');
+
+		const monthlyRevenues = await this.getMonthlyRevenuesForYear(db, userId, year);
+		const annualSummary = calculateAnnualTax(monthlyRevenues, taxpayerType, year);
+
+		// Update or create each month's record
+		for (const monthCalc of annualSummary.months) {
+			const existing = await this.findByPeriod(db, userId, year, monthCalc.month);
+
+			if (existing) {
+				// Update existing record
+				await db
+					.update(taxRecord)
+					.set({
+						taxableIncome: monthCalc.taxableRevenue,
+						taxRate: monthCalc.taxRate,
+						taxAmount: monthCalc.taxAmount,
+						updatedAt: new Date()
+					})
+					.where(
+						and(
+							eq(taxRecord.userId, userId),
+							eq(taxRecord.year, year),
+							eq(taxRecord.month, monthCalc.month)
+						)
+					);
+			} else {
+				// Create new record
+				await db.insert(taxRecord).values({
+					id: crypto.randomUUID(),
+					userId,
+					year,
+					month: monthCalc.month,
+					taxType: 'pph_final',
+					taxableIncome: monthCalc.taxableRevenue,
+					taxRate: monthCalc.taxRate,
+					taxAmount: monthCalc.taxAmount,
+					status: TAX_STATUS.UNPAID
+				});
+			}
+		}
 	}
 };
 
