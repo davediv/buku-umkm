@@ -306,13 +306,15 @@ export const debt = sqliteTable(
 		dueDate: text('due_date'), // ISO 8601 due date
 		description: text('description'),
 		status: text('status').notNull().default('active'), // 'active' | 'paid' | 'overdue'
+		isActive: integer('is_active', { mode: 'boolean' }).default(true).notNull(), // Soft delete
 		...timestampColumns
 	},
 	(table) => [
 		index('debt_userId_idx').on(table.userId),
 		index('debt_type_idx').on(table.type),
 		index('debt_status_idx').on(table.status),
-		index('debt_dueDate_idx').on(table.dueDate)
+		index('debt_dueDate_idx').on(table.dueDate),
+		index('debt_isActive_idx').on(table.isActive)
 	]
 );
 
