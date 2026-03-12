@@ -555,7 +555,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Verify threshold alerts at 80% and 100%
   - **Dependencies**: API-P2-008, UI-P1-001
 
-- [ ] **UI-P2-012**: Implement Tax billing code prep page
+- [x] **UI-P2-012**: Implement Tax billing code prep page
   - **Success Criteria**:
     - Displays billing code summary: NPWP, Nama WP, KAP (411128), KJS (420), Masa Pajak, Tahun Pajak, Jumlah Setor
     - Each field individually copyable (tap-to-copy with toast confirmation)
