@@ -3,10 +3,7 @@
 	"name": "buku-umkm",
 	"main": ".svelte-kit/cloudflare/_worker.js",
 	"compatibility_date": "2026-03-10",
-	"compatibility_flags": [
-		"nodejs_compat",
-		"nodejs_als"
-	],
+	"compatibility_flags": ["nodejs_compat", "nodejs_als"],
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"
@@ -20,6 +17,44 @@
 			"database_name": "buku-umkm-db",
 			"database_id": "<YOUR_D1_DATABASE_ID>",
 			"migrations_dir": "drizzle"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "R2",
+			"bucket_name": "buku-umkm-receipts"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "KV",
+			"id": "<YOUR_KV_NAMESPACE_ID>"
+		}
+	],
+	"rules": [
+		{
+			"id": "rate_limit_auth",
+			"phase": "http_request",
+			"expression": "http.request.uri.path matches \"^/api/auth/\"",
+			"action": "rate_limit",
+			"config": {
+				"characteristics": ["ip.src"],
+				"period": 60,
+				"requests_per_period": 5,
+				"action": "block"
+			}
+		},
+		{
+			"id": "rate_limit_api",
+			"phase": "http_request",
+			"expression": "http.request.uri.path matches \"^/api/\" and not http.request.uri.path matches \"^/api/auth/\"",
+			"action": "rate_limit",
+			"config": {
+				"characteristics": ["ip.src"],
+				"period": 60,
+				"requests_per_period": 60,
+				"action": "block"
+			}
 		}
 	]
 }

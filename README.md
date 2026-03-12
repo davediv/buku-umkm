@@ -6,11 +6,11 @@ Dibangun khusus untuk UMKM (Usaha Mikro, Kecil, dan Menengah), aplikasi ini berf
 
 ## Fitur
 
-* Pencatatan pemasukan dan pengeluaran
-* Pembukuan sederhana untuk UMKM
-* Manajemen invoice
-* Perhitungan pajak dasar
-* Ringan dan mudah digunakan
+- Pencatatan pemasukan dan pengeluaran
+- Pembukuan sederhana untuk UMKM
+- Manajemen invoice
+- Perhitungan pajak dasar
+- Ringan dan mudah digunakan
 
 ## Tujuan
 
