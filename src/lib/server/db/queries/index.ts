@@ -1202,7 +1202,7 @@ export const dashboardQueries = {
 	getPeriodStats(
 		db: SQLiteDb,
 		userId: string,
-		period: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'monthly'
+		period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' = 'monthly'
 	) {
 		const now = new Date();
 		let startDate: string;
@@ -1234,6 +1234,16 @@ export const dashboardQueries = {
 				now.getMonth() === 11
 					? `${now.getFullYear() + 1}-01-01`
 					: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
+		} else if (period === 'quarterly') {
+			// This quarter
+			const currentQuarter = Math.floor(now.getMonth() / 3);
+			const quarterStartMonth = currentQuarter * 3 + 1;
+			const quarterEndMonth = quarterStartMonth + 3;
+			startDate = `${now.getFullYear()}-${String(quarterStartMonth).padStart(2, '0')}-01`;
+			endDate =
+				quarterEndMonth > 12
+					? `${now.getFullYear() + 1}-01-01`
+					: `${now.getFullYear()}-${String(quarterEndMonth).padStart(2, '0')}-01`;
 		} else {
 			// This year
 			startDate = `${now.getFullYear()}-01-01`;
@@ -1409,12 +1419,12 @@ export const dashboardQueries = {
 
 	/**
 	 * Get profit/loss breakdown by category for a period
-	 * period: 'daily' | 'weekly' | 'monthly' | 'yearly'
+	 * period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'
 	 */
 	getProfitLossByCategory(
 		db: SQLiteDb,
 		userId: string,
-		period: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'monthly'
+		period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' = 'monthly'
 	) {
 		const now = new Date();
 		let startDate: string;
@@ -1441,6 +1451,16 @@ export const dashboardQueries = {
 				now.getMonth() === 11
 					? `${now.getFullYear() + 1}-01-01`
 					: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
+		} else if (period === 'quarterly') {
+			// Calculate current quarter
+			const currentQuarter = Math.floor(now.getMonth() / 3);
+			const quarterStartMonth = currentQuarter * 3 + 1;
+			const quarterEndMonth = quarterStartMonth + 3;
+			startDate = `${now.getFullYear()}-${String(quarterStartMonth).padStart(2, '0')}-01`;
+			endDate =
+				quarterEndMonth > 12
+					? `${now.getFullYear() + 1}-01-01`
+					: `${now.getFullYear()}-${String(quarterEndMonth).padStart(2, '0')}-01`;
 		} else {
 			// yearly
 			startDate = `${now.getFullYear()}-01-01`;
@@ -1452,6 +1472,7 @@ export const dashboardQueries = {
 			const incomeByCategory = await tx
 				.select({
 					categoryId: transaction.categoryId,
+					categoryCode: category.code,
 					categoryName: category.name,
 					categoryColor: category.color,
 					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
@@ -1472,6 +1493,7 @@ export const dashboardQueries = {
 			const expenseByCategory = await tx
 				.select({
 					categoryId: transaction.categoryId,
+					categoryCode: category.code,
 					categoryName: category.name,
 					categoryColor: category.color,
 					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
@@ -1491,12 +1513,14 @@ export const dashboardQueries = {
 			return {
 				income: incomeByCategory.map((row) => ({
 					categoryId: row.categoryId ?? '',
+					categoryCode: row.categoryCode ?? '',
 					categoryName: row.categoryName ?? 'Tanpa Kategori',
 					categoryColor: row.categoryColor ?? '#22c55e',
 					total: Number(row.total)
 				})),
 				expense: expenseByCategory.map((row) => ({
 					categoryId: row.categoryId ?? '',
+					categoryCode: row.categoryCode ?? '',
 					categoryName: row.categoryName ?? 'Tanpa Kategori',
 					categoryColor: row.categoryColor ?? '#ef4444',
 					total: Number(row.total)
@@ -1512,7 +1536,7 @@ export const dashboardQueries = {
 	getPreviousPeriodStats(
 		db: SQLiteDb,
 		userId: string,
-		period: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'monthly'
+		period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' = 'monthly'
 	) {
 		const now = new Date();
 		let startDate: string;
@@ -1561,6 +1585,23 @@ export const dashboardQueries = {
 			const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
 			const lastMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
 			prevStartDate = `${lastMonthYear}-${String(lastMonth + 1).padStart(2, '0')}-01`;
+			prevEndDate = startDate;
+		} else if (period === 'quarterly') {
+			// Last quarter
+			const currentQuarter = Math.floor(now.getMonth() / 3);
+			const quarterStartMonth = currentQuarter * 3 + 1;
+			const quarterEndMonth = quarterStartMonth + 3;
+			startDate = `${now.getFullYear()}-${String(quarterStartMonth).padStart(2, '0')}-01`;
+			endDate =
+				quarterEndMonth > 12
+					? `${now.getFullYear() + 1}-01-01`
+					: `${now.getFullYear()}-${String(quarterEndMonth).padStart(2, '0')}-01`;
+
+			// Previous quarter
+			const prevQuarter = currentQuarter - 1;
+			const prevQuarterYear = prevQuarter < 0 ? now.getFullYear() - 1 : now.getFullYear();
+			const prevQuarterStartMonth = (prevQuarter < 0 ? 3 : prevQuarter) * 3 + 1;
+			prevStartDate = `${prevQuarterYear}-${String(prevQuarterStartMonth).padStart(2, '0')}-01`;
 			prevEndDate = startDate;
 		} else {
 			// Last year

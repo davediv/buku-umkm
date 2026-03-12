@@ -12,7 +12,7 @@
 	} from '@lucide/svelte';
 	import type { PageData } from './$types';
 
-	type Period = 'daily' | 'weekly' | 'monthly' | 'yearly';
+	type Period = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 
 	let { data }: { data: PageData } = $props();
 
@@ -61,7 +61,7 @@
 	}
 
 	// Handle period change
-	async function changePeriod(period: 'daily' | 'weekly' | 'monthly' | 'yearly') {
+	async function changePeriod(period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly') {
 		if (loading || selectedPeriod === period) return;
 
 		loading = true;
@@ -132,6 +132,7 @@
 					<div class="px-4 py-2 rounded-md bg-muted w-20"></div>
 					<div class="px-4 py-2 rounded-md bg-muted w-20"></div>
 					<div class="px-4 py-2 rounded-md bg-muted w-20"></div>
+					<div class="px-4 py-2 rounded-md bg-muted w-20"></div>
 				</div>
 			</div>
 
@@ -197,6 +198,15 @@
 						: 'text-muted-foreground hover:text-foreground'}"
 				>
 					Bulan Ini
+				</button>
+				<button
+					onclick={() => changePeriod('quarterly')}
+					class="px-3 py-2 text-xs md:text-sm font-medium rounded-md transition-all {selectedPeriod ===
+					'quarterly'
+						? 'bg-background shadow-sm'
+						: 'text-muted-foreground hover:text-foreground'}"
+				>
+					Quarter
 				</button>
 				<button
 					onclick={() => changePeriod('yearly')}
@@ -350,7 +360,14 @@
 							{#each profitLoss.categoryBreakdown.income as category (category.categoryId)}
 								<div class="space-y-1">
 									<div class="flex items-center justify-between text-sm">
-										<span class="font-medium">{category.categoryName}</span>
+										<span class="font-medium">
+											{#if category.categoryCode}
+												<span class="text-muted-foreground font-mono text-xs mr-1"
+													>{category.categoryCode}</span
+												>
+											{/if}
+											{category.categoryName}
+										</span>
 										<span class="text-muted-foreground">
 											{formatRupiah(category.total)} ({category.percentage.toFixed(1)}%)
 										</span>
@@ -382,7 +399,14 @@
 							{#each profitLoss.categoryBreakdown.expense as category (category.categoryId)}
 								<div class="space-y-1">
 									<div class="flex items-center justify-between text-sm">
-										<span class="font-medium">{category.categoryName}</span>
+										<span class="font-medium">
+											{#if category.categoryCode}
+												<span class="text-muted-foreground font-mono text-xs mr-1"
+													>{category.categoryCode}</span
+												>
+											{/if}
+											{category.categoryName}
+										</span>
 										<span class="text-muted-foreground">
 											{formatRupiah(category.total)} ({category.percentage.toFixed(1)}%)
 										</span>
