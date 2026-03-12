@@ -624,7 +624,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Data sourced from transaction records
   - **Dependencies**: DB-P1-004, API-P2-003
 
-- [ ] **FEAT-P3-002**: Implement Laporan Posisi Keuangan (Balance Sheet) generator
+- [x] **FEAT-P3-002**: Implement Laporan Posisi Keuangan (Balance Sheet) generator
   - **Success Criteria**:
     - Shows assets (1xxx), liabilities (2xxx), and equity (3xxx) for selected date
     - Assets include: cash/bank account balances, outstanding piutang
