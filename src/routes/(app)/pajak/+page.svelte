@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { AlertCircle, CheckCircle2, Circle } from '@lucide/svelte';
+	import { AlertCircle, CheckCircle2, Circle, Receipt } from '@lucide/svelte';
 	import {
 		Table,
 		TableBody,
@@ -265,15 +265,26 @@
 			</div>
 
 			<!-- Mark as Paid Button -->
-			{#if data.summary.paymentStatus !== TAX_STATUS.PAID && !data.summary.isBelowThreshold}
-				<button
-					onclick={() => (showConfirmDialog = true)}
-					class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md font-medium transition-colors"
-				>
-					<CheckCircle2 class="w-4 h-4" />
-					Tandai Sudah Dibayar
-				</button>
-			{/if}
+			<div class="flex flex-wrap gap-3">
+				{#if data.summary.paymentStatus !== TAX_STATUS.PAID && !data.summary.isBelowThreshold}
+					<button
+						onclick={() => (showConfirmDialog = true)}
+						class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md font-medium transition-colors"
+					>
+						<CheckCircle2 class="w-4 h-4" />
+						Tandai Sudah Dibayar
+					</button>
+				{/if}
+				{#if !data.summary.isBelowThreshold}
+					<a
+						href="/pajak/kode-billing/{data.summary.year}/{data.summary.month}"
+						class="inline-flex items-center justify-center gap-2 border bg-background hover:bg-muted h-10 px-4 py-2 rounded-md font-medium transition-colors"
+					>
+						<Receipt class="w-4 h-4" />
+						Kode Billing
+					</a>
+				{/if}
+			</div>
 		</div>
 	{/if}
 
@@ -293,6 +304,7 @@
 							<TableHead class="text-right">Pendapatan Kotor</TableHead>
 							<TableHead class="text-right">Pajak</TableHead>
 							<TableHead>Status</TableHead>
+							<TableHead class="w-[100px]"></TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -308,7 +320,14 @@
 										<Circle class="w-4 h-4 text-gray-400" />
 									{/if}
 								</TableCell>
-								<TableCell class="font-medium">{getMonthName(record.month)}</TableCell>
+								<TableCell class="font-medium">
+									<a
+										href="/pajak/kode-billing/{record.year}/{record.month}"
+										class="hover:underline"
+									>
+										{getMonthName(record.month)}
+									</a>
+								</TableCell>
 								<TableCell class="text-right">{formatRupiah(record.grossRevenue)}</TableCell>
 								<TableCell class="text-right">
 									{#if record.isBelowThreshold}
@@ -323,6 +342,16 @@
 									>
 										{statusBadge.label}
 									</span>
+								</TableCell>
+								<TableCell>
+									{#if !record.isBelowThreshold}
+										<a
+											href="/pajak/kode-billing/{record.year}/{record.month}"
+											class="text-primary hover:underline text-sm"
+										>
+											Kode Billing
+										</a>
+									{/if}
 								</TableCell>
 							</TableRow>
 						{/each}
