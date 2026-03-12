@@ -488,9 +488,15 @@ export const debtQueries = {
 		options?: {
 			type?: 'piutang' | 'hutang';
 			status?: 'active' | 'paid' | 'overdue';
+			includeInactive?: boolean;
 		}
 	) {
 		const conditions = [eq(debt.userId, userId)];
+
+		// By default, only return active debts
+		if (!options?.includeInactive) {
+			conditions.push(eq(debt.isActive, true));
+		}
 
 		if (options?.type) {
 			conditions.push(eq(debt.type, options.type));
@@ -511,9 +517,13 @@ export const debtQueries = {
 	/**
 	 * Get debt by ID
 	 */
-	findById(db: SQLiteDb, userId: string, debtId: string) {
+	findById(db: SQLiteDb, userId: string, debtId: string, options?: { includeInactive?: boolean }) {
+		// By default, only return active debts
+		const isActiveCondition = options?.includeInactive ? undefined : eq(debt.isActive, true);
+
 		return db.query.debt.findFirst({
-			where: (debts, { eq }) => and(eq(debts.userId, userId), eq(debts.id, debtId)),
+			where: (debts, { eq }) =>
+				and(eq(debts.userId, userId), eq(debts.id, debtId), isActiveCondition),
 			with: {
 				payments: {
 					orderBy: (payments, { asc }) => [asc(payments.date)]
@@ -553,7 +563,47 @@ export const debtQueries = {
 			dueDate: data.dueDate ?? null,
 			description: data.description ?? null,
 			status: 'active'
+			// isActive defaults to true in schema
 		});
+	},
+
+	/**
+	 * Update debt
+	 */
+	update(
+		db: SQLiteDb,
+		userId: string,
+		debtId: string,
+		data: {
+			contactName?: string;
+			contactPhone?: string | null;
+			contactAddress?: string | null;
+			dueDate?: string | null;
+			description?: string | null;
+		}
+	) {
+		const updateData: Record<string, unknown> = {};
+
+		if (data.contactName !== undefined) {
+			updateData.contactName = data.contactName;
+		}
+		if (data.contactPhone !== undefined) {
+			updateData.contactPhone = data.contactPhone;
+		}
+		if (data.contactAddress !== undefined) {
+			updateData.contactAddress = data.contactAddress;
+		}
+		if (data.dueDate !== undefined) {
+			updateData.dueDate = data.dueDate;
+		}
+		if (data.description !== undefined) {
+			updateData.description = data.description;
+		}
+
+		return db
+			.update(debt)
+			.set(updateData)
+			.where(and(eq(debt.userId, userId), eq(debt.id, debtId)));
 	},
 
 	/**
@@ -597,10 +647,13 @@ export const debtQueries = {
 	},
 
 	/**
-	 * Delete debt
+	 * Delete debt (soft delete)
 	 */
 	delete(db: SQLiteDb, userId: string, debtId: string) {
-		return db.delete(debt).where(and(eq(debt.userId, userId), eq(debt.id, debtId)));
+		return db
+			.update(debt)
+			.set({ isActive: false })
+			.where(and(eq(debt.userId, userId), eq(debt.id, debtId)));
 	},
 
 	/**
@@ -616,7 +669,7 @@ export const debtQueries = {
 				count: sql`COUNT(*)`
 			})
 			.from(debt)
-			.where(eq(debt.userId, userId))
+			.where(and(eq(debt.userId, userId), eq(debt.isActive, true)))
 			.groupBy(debt.type);
 	}
 };
