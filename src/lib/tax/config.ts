@@ -66,3 +66,31 @@ export function calculateTaxFromRevenue(grossRevenue: number): number {
 	if (grossRevenue <= 0) return 0;
 	return Math.floor(grossRevenue * TAX_RATE_DECIMAL);
 }
+
+// ============================================================================
+// Indonesian Localization
+// ============================================================================
+
+/** Indonesian month names */
+export const INDONESIAN_MONTHS = [
+	'Januari',
+	'Februari',
+	'Maret',
+	'April',
+	'Mei',
+	'Juni',
+	'Juli',
+	'Agustus',
+	'September',
+	'Oktober',
+	'November',
+	'Desember'
+] as const;
+
+/**
+ * Get Indonesian month name by number (1-12)
+ */
+export function getIndonesianMonthName(month: number): string {
+	if (month < 1 || month > 12) return '';
+	return INDONESIAN_MONTHS[month - 1];
+}

@@ -8,7 +8,10 @@ import { taxRecord, userExtension, transaction } from '$lib/server/db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import type { SQLiteDb } from '$lib/server/db';
 import type { TaxpayerType } from './types';
-import { TAX_TYPE, TAXPAYER_TYPE } from './config';
+import { TAX_TYPE, TAXPAYER_TYPE, INDONESIAN_MONTHS, getIndonesianMonthName } from './config';
+
+// Re-export for backward compatibility
+export { getIndonesianMonthName };
 
 /**
  * Get taxpayer type for a user
@@ -139,32 +142,6 @@ export async function getTaxRecordsForYear(
 				eq(taxRecord.taxType, TAX_TYPE.PPH_FINAL)
 			)
 		);
-}
-
-/**
- * Indonesian month names
- */
-export const INDONESIAN_MONTHS = [
-	'Januari',
-	'Februari',
-	'Maret',
-	'April',
-	'Mei',
-	'Juni',
-	'Juli',
-	'Agustus',
-	'September',
-	'Oktober',
-	'November',
-	'Desember'
-] as const;
-
-/**
- * Get Indonesian month name by number (1-12)
- */
-export function getIndonesianMonthName(month: number): string {
-	if (month < 1 || month > 12) return '';
-	return INDONESIAN_MONTHS[month - 1];
 }
 
 /**
