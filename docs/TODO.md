@@ -510,7 +510,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 ### Tax Engine (F-004, F-005, F-006, F-007)
 
-- [ ] **FEAT-P2-001**: Implement PPh Final 0.5% tax calculation engine
+- [x] **FEAT-P2-001**: Implement PPh Final 0.5% tax calculation engine
   - **Success Criteria**:
     - Tax engine module at `src/lib/server/tax/` or `src/lib/tax/`
     - Calculates monthly PPh Final = 0.5% x gross monthly revenue
@@ -525,7 +525,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Comprehensive unit tests with edge cases (threshold crossing, year boundary, zero revenue months)
   - **Dependencies**: DB-P1-004
 
-- [ ] **API-P2-008**: Implement Tax data API endpoints
+- [x] **API-P2-008**: Implement Tax data API endpoints
   - **Success Criteria**:
     - `GET /api/tax/summary` returns: current month gross revenue, tax amount, cumulative annual revenue, threshold percentage, payment status
     - `GET /api/tax/history` returns monthly tax records for selected year
@@ -534,7 +534,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Tax records auto-generated/updated when transactions are created/modified
   - **Dependencies**: FEAT-P2-001, DB-P1-004, AUTH-P1-004
 
-- [ ] **UI-P2-011**: Implement Tax overview page (`/pajak`)
+- [x] **UI-P2-011**: Implement Tax overview page (`/pajak`)
   - **Success Criteria**:
     - Tax page shows:
       - Threshold progress bar for WP OP (Rp X dari Rp500.000.000) with color coding: green (< 70%), yellow (70-90%), red (> 90%)
