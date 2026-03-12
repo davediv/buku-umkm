@@ -8,7 +8,7 @@ import { taxRecord, userExtension, transaction } from '$lib/server/db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import type { SQLiteDb } from '$lib/server/db';
 import type { TaxpayerType } from './types';
-import { TAX_TYPE, TAXPAYER_TYPE, INDONESIAN_MONTHS, getIndonesianMonthName } from './config';
+import { TAX_TYPE, TAXPAYER_TYPE, getIndonesianMonthName } from './config';
 
 // Re-export for backward compatibility
 export { getIndonesianMonthName };
