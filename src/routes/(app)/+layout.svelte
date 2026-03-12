@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { Home, Receipt, CreditCard, Calculator, Menu } from '@lucide/svelte';
+	import { Home, Receipt, CreditCard, Calculator, Menu, Wallet } from '@lucide/svelte';
 
 	let { children } = $props();
 
 	const navItems: Array<{ href: string; label: string; icon: typeof Home }> = [
 		{ href: '/beranda', label: 'Beranda', icon: Home },
+		{ href: '/akun', label: 'Akun', icon: Wallet },
 		{ href: '/transaksi', label: 'Transaksi', icon: Receipt },
 		{ href: '/hutang-piutang', label: 'Hutang/Piutang', icon: CreditCard },
 		{ href: '/pajak', label: 'Pajak', icon: Calculator },
