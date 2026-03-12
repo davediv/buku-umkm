@@ -435,7 +435,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Verify period comparison text displays correctly
   - **Dependencies**: API-P2-005, UI-P2-006
 
-- [ ] **UI-P2-008**: Integrate lightweight charting library for dashboard
+- [x] **UI-P2-008**: Integrate lightweight charting library for dashboard
   - **Success Criteria**:
     - Chart library installed (LayerChart or lightweight alternative)
     - Bar/line chart component renders income vs expense over time
@@ -446,7 +446,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 ### Debt & Receivable Tracking (F-003)
 
-- [ ] **API-P2-006**: Implement Debt (Piutang/Hutang) CRUD API
+- [x] **API-P2-006**: Implement Debt (Piutang/Hutang) CRUD API
   - **Success Criteria**:
     - `GET /api/debts` returns all debts for user with status filter (active/settled)
     - `POST /api/debts` creates debt with: type (piutang/hutang), contact_name, amount, due_date, note
