@@ -467,7 +467,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - `GET /api/debts/[id]/payments` returns payment history
   - **Dependencies**: API-P2-006, API-P2-003
 
-- [ ] **UI-P2-009**: Implement Piutang/Hutang list page (`/hutang-piutang`)
+- [x] **UI-P2-009**: Implement Piutang/Hutang list page (`/hutang-piutang`)
   - **Success Criteria**:
     - Data Table with tabs or toggle: Piutang / Hutang
     - Columns: contact name, total amount, remaining, due date, status
@@ -489,7 +489,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Verify empty state message
   - **Dependencies**: API-P2-006, UI-P1-004
 
-- [ ] **UI-P2-010**: Implement Debt detail page with payment recording
+- [x] **UI-P2-010**: Implement Debt detail page with payment recording
   - **Success Criteria**:
     - Detail view shows: contact name, original amount, remaining balance, due date, status, notes
     - Payment history list showing date and amount of each payment
