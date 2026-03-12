@@ -952,6 +952,198 @@ export const dashboardQueries = {
 	},
 
 	/**
+	 * Get today's income, expenses, and profit/loss
+	 */
+	getTodayStats(db: SQLiteDb, userId: string) {
+		const now = new Date();
+		const today = now.toISOString().split('T')[0];
+		const tomorrow = new Date(now);
+		tomorrow.setDate(tomorrow.getDate() + 1);
+		const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+		return db.transaction(async (tx) => {
+			const income = await tx
+				.select({
+					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
+				})
+				.from(transaction)
+				.where(
+					and(
+						eq(transaction.userId, userId),
+						eq(transaction.type, 'income'),
+						gte(transaction.date, today),
+						lt(transaction.date, tomorrowStr)
+					)
+				)
+				.then((rows) => Number(rows[0]?.total ?? 0));
+
+			const expense = await tx
+				.select({
+					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
+				})
+				.from(transaction)
+				.where(
+					and(
+						eq(transaction.userId, userId),
+						eq(transaction.type, 'expense'),
+						gte(transaction.date, today),
+						lt(transaction.date, tomorrowStr)
+					)
+				)
+				.then((rows) => Number(rows[0]?.total ?? 0));
+
+			return {
+				income,
+				expense,
+				profit: income - expense
+			};
+		});
+	},
+
+	/**
+	 * Get period-based income, expenses, and profit/loss
+	 * period: 'daily' | 'weekly' | 'monthly'
+	 */
+	getPeriodStats(db: SQLiteDb, userId: string, period: 'daily' | 'weekly' | 'monthly' = 'monthly') {
+		const now = new Date();
+		let startDate: string;
+		let endDate: string;
+
+		if (period === 'daily') {
+			// Today
+			startDate = now.toISOString().split('T')[0];
+			const tomorrow = new Date(now);
+			tomorrow.setDate(tomorrow.getDate() + 1);
+			endDate = tomorrow.toISOString().split('T')[0];
+		} else if (period === 'weekly') {
+			// This week (Monday to Sunday)
+			const dayOfWeek = now.getDay();
+			const monday = new Date(now);
+			monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+			startDate = monday.toISOString().split('T')[0];
+			const sunday = new Date(monday);
+			sunday.setDate(sunday.getDate() + 6);
+			endDate = sunday.toISOString().split('T')[0];
+			// Set endDate to next day for query
+			const nextDay = new Date(sunday);
+			nextDay.setDate(nextDay.getDate() + 1);
+			endDate = nextDay.toISOString().split('T')[0];
+		} else {
+			// This month
+			startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+			endDate =
+				now.getMonth() === 11
+					? `${now.getFullYear() + 1}-01-01`
+					: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
+		}
+
+		return db.transaction(async (tx) => {
+			const income = await tx
+				.select({
+					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
+				})
+				.from(transaction)
+				.where(
+					and(
+						eq(transaction.userId, userId),
+						eq(transaction.type, 'income'),
+						gte(transaction.date, startDate),
+						lt(transaction.date, endDate)
+					)
+				)
+				.then((rows) => Number(rows[0]?.total ?? 0));
+
+			const expense = await tx
+				.select({
+					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
+				})
+				.from(transaction)
+				.where(
+					and(
+						eq(transaction.userId, userId),
+						eq(transaction.type, 'expense'),
+						gte(transaction.date, startDate),
+						lt(transaction.date, endDate)
+					)
+				)
+				.then((rows) => Number(rows[0]?.total ?? 0));
+
+			return {
+				period,
+				startDate,
+				endDate,
+				income,
+				expense,
+				profit: income - expense
+			};
+		});
+	},
+
+	/**
+	 * Get debt summary (total outstanding piutang and hutang)
+	 */
+	getDebtSummary(db: SQLiteDb, userId: string) {
+		return db.transaction(async (tx) => {
+			// Total outstanding piutang (receivables)
+			const piutang = await tx
+				.select({
+					total: sql`COALESCE(SUM(${debt.remainingAmount}), 0)`
+				})
+				.from(debt)
+				.where(and(eq(debt.userId, userId), eq(debt.type, 'piutang'), eq(debt.status, 'active')))
+				.then((rows) => Number(rows[0]?.total ?? 0));
+
+			// Total outstanding hutang (payables)
+			const hutang = await tx
+				.select({
+					total: sql`COALESCE(SUM(${debt.remainingAmount}), 0)`
+				})
+				.from(debt)
+				.where(and(eq(debt.userId, userId), eq(debt.type, 'hutang'), eq(debt.status, 'active')))
+				.then((rows) => Number(rows[0]?.total ?? 0));
+
+			return { piutang, hutang };
+		});
+	},
+
+	/**
+	 * Get current month PPh Final 0.5% tax amount
+	 * Based on monthly revenue (income transactions)
+	 */
+	getCurrentMonthTax(db: SQLiteDb, userId: string) {
+		const now = new Date();
+		const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+		const endOfMonth =
+			now.getMonth() === 11
+				? `${now.getFullYear() + 1}-01-01`
+				: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
+
+		return db.transaction(async (tx) => {
+			// Get total income for the month
+			const monthlyIncome = await tx
+				.select({
+					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
+				})
+				.from(transaction)
+				.where(
+					and(
+						eq(transaction.userId, userId),
+						eq(transaction.type, 'income'),
+						gte(transaction.date, startOfMonth),
+						lt(transaction.date, endOfMonth)
+					)
+				)
+				.then((rows) => Number(rows[0]?.total ?? 0));
+
+			// PPh Final 0.5% calculation
+			// Tax is 0.5% of monthly revenue
+			const taxAmount = Math.floor(monthlyIncome * 0.005);
+
+			return { monthlyIncome, taxAmount };
+		});
+	},
+
+	/**
 	 * Get cash flow data for chart
 	 */
 	getCashFlow(db: SQLiteDb, userId: string, months = 6) {
