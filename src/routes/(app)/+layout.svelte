@@ -1,6 +1,15 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { Home, Receipt, CreditCard, Calculator, Menu, Wallet, Plus } from '@lucide/svelte';
+	import {
+		Home,
+		Receipt,
+		FileText,
+		CreditCard,
+		Calculator,
+		Menu,
+		Wallet,
+		Plus
+	} from '@lucide/svelte';
 
 	let { children } = $props();
 
@@ -8,6 +17,7 @@
 		{ href: '/beranda', label: 'Beranda', icon: Home },
 		{ href: '/akun', label: 'Akun', icon: Wallet },
 		{ href: '/transaksi', label: 'Transaksi', icon: Receipt },
+		{ href: '/laporan/laba-rugi', label: 'Laporan', icon: FileText },
 		{ href: '/hutang-piutang', label: 'Hutang/Piutang', icon: CreditCard },
 		{ href: '/pajak', label: 'Pajak', icon: Calculator },
 		{ href: '/lainnya', label: 'Lainnya', icon: Menu }

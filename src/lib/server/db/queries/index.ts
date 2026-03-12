@@ -1004,7 +1004,11 @@ export const dashboardQueries = {
 	 * Get period-based income, expenses, and profit/loss
 	 * period: 'daily' | 'weekly' | 'monthly'
 	 */
-	getPeriodStats(db: SQLiteDb, userId: string, period: 'daily' | 'weekly' | 'monthly' = 'monthly') {
+	getPeriodStats(
+		db: SQLiteDb,
+		userId: string,
+		period: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'monthly'
+	) {
 		const now = new Date();
 		let startDate: string;
 		let endDate: string;
@@ -1028,13 +1032,17 @@ export const dashboardQueries = {
 			const nextDay = new Date(sunday);
 			nextDay.setDate(nextDay.getDate() + 1);
 			endDate = nextDay.toISOString().split('T')[0];
-		} else {
+		} else if (period === 'monthly') {
 			// This month
 			startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 			endDate =
 				now.getMonth() === 11
 					? `${now.getFullYear() + 1}-01-01`
 					: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
+		} else {
+			// This year
+			startDate = `${now.getFullYear()}-01-01`;
+			endDate = `${now.getFullYear() + 1}-01-01`;
 		}
 
 		return db.transaction(async (tx) => {
@@ -1201,6 +1209,247 @@ export const dashboardQueries = {
 			}
 
 			return results;
+		});
+	},
+
+	/**
+	 * Get profit/loss breakdown by category for a period
+	 * period: 'daily' | 'weekly' | 'monthly' | 'yearly'
+	 */
+	getProfitLossByCategory(
+		db: SQLiteDb,
+		userId: string,
+		period: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'monthly'
+	) {
+		const now = new Date();
+		let startDate: string;
+		let endDate: string;
+
+		if (period === 'daily') {
+			startDate = now.toISOString().split('T')[0];
+			const tomorrow = new Date(now);
+			tomorrow.setDate(tomorrow.getDate() + 1);
+			endDate = tomorrow.toISOString().split('T')[0];
+		} else if (period === 'weekly') {
+			const dayOfWeek = now.getDay();
+			const monday = new Date(now);
+			monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+			startDate = monday.toISOString().split('T')[0];
+			const sunday = new Date(monday);
+			sunday.setDate(sunday.getDate() + 6);
+			const nextDay = new Date(sunday);
+			nextDay.setDate(nextDay.getDate() + 1);
+			endDate = nextDay.toISOString().split('T')[0];
+		} else if (period === 'monthly') {
+			startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+			endDate =
+				now.getMonth() === 11
+					? `${now.getFullYear() + 1}-01-01`
+					: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
+		} else {
+			// yearly
+			startDate = `${now.getFullYear()}-01-01`;
+			endDate = `${now.getFullYear() + 1}-01-01`;
+		}
+
+		return db.transaction(async (tx) => {
+			// Get income by category
+			const incomeByCategory = await tx
+				.select({
+					categoryId: transaction.categoryId,
+					categoryName: category.name,
+					categoryColor: category.color,
+					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
+				})
+				.from(transaction)
+				.leftJoin(category, eq(transaction.categoryId, category.id))
+				.where(
+					and(
+						eq(transaction.userId, userId),
+						eq(transaction.type, 'income'),
+						gte(transaction.date, startDate),
+						lt(transaction.date, endDate)
+					)
+				)
+				.groupBy(transaction.categoryId);
+
+			// Get expense by category
+			const expenseByCategory = await tx
+				.select({
+					categoryId: transaction.categoryId,
+					categoryName: category.name,
+					categoryColor: category.color,
+					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
+				})
+				.from(transaction)
+				.leftJoin(category, eq(transaction.categoryId, category.id))
+				.where(
+					and(
+						eq(transaction.userId, userId),
+						eq(transaction.type, 'expense'),
+						gte(transaction.date, startDate),
+						lt(transaction.date, endDate)
+					)
+				)
+				.groupBy(transaction.categoryId);
+
+			return {
+				income: incomeByCategory.map((row) => ({
+					categoryId: row.categoryId ?? '',
+					categoryName: row.categoryName ?? 'Tanpa Kategori',
+					categoryColor: row.categoryColor ?? '#22c55e',
+					total: Number(row.total)
+				})),
+				expense: expenseByCategory.map((row) => ({
+					categoryId: row.categoryId ?? '',
+					categoryName: row.categoryName ?? 'Tanpa Kategori',
+					categoryColor: row.categoryColor ?? '#ef4444',
+					total: Number(row.total)
+				}))
+			};
+		});
+	},
+
+	/**
+	 * Get previous period stats for comparison
+	 * period: 'daily' | 'weekly' | 'monthly' | 'yearly'
+	 */
+	getPreviousPeriodStats(
+		db: SQLiteDb,
+		userId: string,
+		period: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'monthly'
+	) {
+		const now = new Date();
+		let startDate: string;
+		let endDate: string;
+		let prevStartDate: string;
+		let prevEndDate: string;
+
+		if (period === 'daily') {
+			// Yesterday
+			const yesterday = new Date(now);
+			yesterday.setDate(yesterday.getDate() - 1);
+			startDate = yesterday.toISOString().split('T')[0];
+			endDate = now.toISOString().split('T')[0];
+
+			const dayBeforeYesterday = new Date(yesterday);
+			dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 1);
+			prevStartDate = dayBeforeYesterday.toISOString().split('T')[0];
+			prevEndDate = startDate;
+		} else if (period === 'weekly') {
+			// Last week
+			const dayOfWeek = now.getDay();
+			const monday = new Date(now);
+			monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+			startDate = monday.toISOString().split('T')[0];
+
+			const lastMonday = new Date(monday);
+			lastMonday.setDate(lastMonday.getDate() - 7);
+			prevStartDate = lastMonday.toISOString().split('T')[0];
+
+			const lastSunday = new Date(lastMonday);
+			lastSunday.setDate(lastSunday.getDate() + 6);
+			prevEndDate = lastSunday.toISOString().split('T')[0];
+
+			// Current week end
+			const sunday = new Date(monday);
+			sunday.setDate(sunday.getDate() + 6);
+			endDate = sunday.toISOString().split('T')[0];
+		} else if (period === 'monthly') {
+			// Last month
+			startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+			endDate =
+				now.getMonth() === 11
+					? `${now.getFullYear() + 1}-01-01`
+					: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
+
+			const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+			const lastMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+			prevStartDate = `${lastMonthYear}-${String(lastMonth + 1).padStart(2, '0')}-01`;
+			prevEndDate = startDate;
+		} else {
+			// Last year
+			startDate = `${now.getFullYear()}-01-01`;
+			endDate = `${now.getFullYear() + 1}-01-01`;
+			prevStartDate = `${now.getFullYear() - 1}-01-01`;
+			prevEndDate = startDate;
+		}
+
+		return db.transaction(async (tx) => {
+			// Current period
+			const currentIncome = await tx
+				.select({
+					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
+				})
+				.from(transaction)
+				.where(
+					and(
+						eq(transaction.userId, userId),
+						eq(transaction.type, 'income'),
+						gte(transaction.date, startDate),
+						lt(transaction.date, endDate)
+					)
+				)
+				.then((rows) => Number(rows[0]?.total ?? 0));
+
+			const currentExpense = await tx
+				.select({
+					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
+				})
+				.from(transaction)
+				.where(
+					and(
+						eq(transaction.userId, userId),
+						eq(transaction.type, 'expense'),
+						gte(transaction.date, startDate),
+						lt(transaction.date, endDate)
+					)
+				)
+				.then((rows) => Number(rows[0]?.total ?? 0));
+
+			// Previous period
+			const prevIncome = await tx
+				.select({
+					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
+				})
+				.from(transaction)
+				.where(
+					and(
+						eq(transaction.userId, userId),
+						eq(transaction.type, 'income'),
+						gte(transaction.date, prevStartDate),
+						lt(transaction.date, prevEndDate)
+					)
+				)
+				.then((rows) => Number(rows[0]?.total ?? 0));
+
+			const prevExpense = await tx
+				.select({
+					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
+				})
+				.from(transaction)
+				.where(
+					and(
+						eq(transaction.userId, userId),
+						eq(transaction.type, 'expense'),
+						gte(transaction.date, prevStartDate),
+						lt(transaction.date, prevEndDate)
+					)
+				)
+				.then((rows) => Number(rows[0]?.total ?? 0));
+
+			return {
+				current: {
+					income: currentIncome,
+					expense: currentExpense,
+					profit: currentIncome - currentExpense
+				},
+				previous: {
+					income: prevIncome,
+					expense: prevExpense,
+					profit: prevIncome - prevExpense
+				}
+			};
 		});
 	}
 };

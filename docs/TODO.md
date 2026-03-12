@@ -394,7 +394,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - All monetary values as integers (Rupiah)
   - **Dependencies**: DB-P1-004, API-P2-003
 
-- [ ] **UI-P2-006**: Implement Cash Flow Dashboard page (`/beranda`)
+- [x] **UI-P2-006**: Implement Cash Flow Dashboard page (`/beranda`)
   - **Success Criteria**:
     - Dashboard loads in < 1 second
     - Hero card: total balance across all accounts
@@ -420,7 +420,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Check Console for no errors
   - **Dependencies**: API-P2-005, UI-P1-001, INFRA-P1-006
 
-- [ ] **UI-P2-007**: Implement Profit/Loss summary view
+- [x] **UI-P2-007**: Implement Profit/Loss summary view
   - **Success Criteria**:
     - Accessible from dashboard and dedicated section in `/laporan`
     - Profit/Loss = total pemasukan - total pengeluaran for selected period

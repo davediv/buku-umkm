@@ -250,7 +250,10 @@
 			</div>
 
 			<!-- Laba/Rugi -->
-			<div class="bg-card border rounded-lg p-4">
+			<a
+				href="/laporan/laba-rugi"
+				class="bg-card border rounded-lg p-4 hover:bg-accent/50 transition-colors block"
+			>
 				<div
 					class="flex items-center gap-2 text-sm {dashboard.period.profit >= 0
 						? 'text-green-600'
@@ -271,7 +274,8 @@
 				>
 					{formatRupiah(Math.abs(dashboard.period.profit))}
 				</p>
-			</div>
+				<p class="text-xs text-muted-foreground mt-1">Lihat detail</p>
+			</a>
 		</div>
 
 		<!-- Cash Flow Chart -->
