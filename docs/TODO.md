@@ -674,7 +674,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Library used: SheetJS or similar lightweight library
   - **Dependencies**: API-P2-003
 
-- [ ] **FEAT-P3-005**: Implement PDF export for financial reports
+- [x] **FEAT-P3-005**: Implement PDF export for financial reports
   - **Success Criteria**:
     - PDF generation for Laba Rugi, Posisi Keuangan, and Catatan reports
     - PDF includes: business name, logo (if set), period, report content
@@ -684,7 +684,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - File downloadable and shareable
   - **Dependencies**: FEAT-P3-001, FEAT-P3-002, FEAT-P3-003
 
-- [ ] **FEAT-P3-006**: Implement SPT Tahunan (Annual Tax Return) data export
+- [x] **FEAT-P3-006**: Implement SPT Tahunan (Annual Tax Return) data export
   - **Success Criteria**:
     - User selects tax year
     - Export includes: monthly gross revenue, monthly PPh Final paid, annual totals, net income
