@@ -757,7 +757,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Sync error recovery: retry with exponential backoff
   - **Dependencies**: FEAT-P3-009, API-P2-003
 
-- [ ] **UI-P3-003**: Implement sync status indicator UI
+- [x] **UI-P3-003**: Implement sync status indicator UI
   - **Success Criteria**:
     - Visual indicator in app header: synced (green check), pending (yellow clock), error (red exclamation)
     - Tap indicator shows detail: "X transaksi menunggu sinkronisasi"
@@ -775,7 +775,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 ### Onboarding (F-018)
 
-- [ ] **UI-P3-004**: Implement 3-step onboarding wizard
+- [x] **UI-P3-004**: Implement 3-step onboarding wizard
   - **Success Criteria**:
     - Wizard launches after first registration
     - Step 1: Business name (Nama Usaha) and owner name
