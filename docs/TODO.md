@@ -719,7 +719,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 ### Offline-First PWA (F-016)
 
-- [ ] **FEAT-P3-008**: Implement Service Worker for PWA asset caching
+- [x] **FEAT-P3-008**: Implement Service Worker for PWA asset caching
   - **Success Criteria**:
     - Service Worker registered in app entry point
     - All static assets (JS, CSS, images, fonts) cached on first visit
