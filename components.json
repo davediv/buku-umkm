@@ -5,10 +5,10 @@
 	"cssVariables": true,
 	"prefix": "",
 	"tailwind": {
-		"config": "tailwind.config.js",
+		"config": "vite.config.ts",
 		"css": "src/app.css",
 		"baseColor": "zinc",
-		"utils": "src/lib/utils"
+		"utils": "$lib/utils"
 	},
 	"aliases": {
 		"components": "$lib/components",
