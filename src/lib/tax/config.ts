@@ -67,6 +67,22 @@ export function calculateTaxFromRevenue(grossRevenue: number): number {
 	return Math.floor(grossRevenue * TAX_RATE_DECIMAL);
 }
 
+/**
+ * Get tax status label in Indonesian
+ * @param status - Tax status
+ * @returns Indonesian label
+ */
+export function getTaxStatusLabel(status: string): string {
+	switch (status.toUpperCase()) {
+		case 'PAID':
+			return 'Lunas';
+		case 'OVERDUE':
+			return 'Jatuh Tempo';
+		default:
+			return 'Belum Lunas';
+	}
+}
+
 // ============================================================================
 // Indonesian Localization
 // ============================================================================
@@ -93,4 +109,13 @@ export const INDONESIAN_MONTHS = [
 export function getIndonesianMonthName(month: number): string {
 	if (month < 1 || month > 12) return '';
 	return INDONESIAN_MONTHS[month - 1];
+}
+
+/**
+ * Get taxpayer type label in Indonesian
+ * @param type - Taxpayer type ('perorangan' or 'badan')
+ * @returns Indonesian label
+ */
+export function getTaxpayerTypeLabel(type: string): string {
+	return type === TAXPAYER_TYPE.WP_BADAN ? 'WP Badan' : 'WP Orang Pribadi';
 }

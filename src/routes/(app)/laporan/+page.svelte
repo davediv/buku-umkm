@@ -15,7 +15,8 @@
 		Download,
 		FileSpreadsheet,
 		Printer,
-		AlertCircle
+		AlertCircle,
+		FolderArchive
 	} from '@lucide/svelte';
 	import { INDONESIAN_MONTHS } from '$lib/tax/config';
 	import {
@@ -24,9 +25,16 @@
 		exportCatatanPDF,
 		generatePDFFilename
 	} from '$lib/utils/pdf-export';
+	import {
+		exportSPTToExcel,
+		exportSPTToPDF,
+		generateSPTFilename,
+		type SPTTaxData,
+		type SPTBusinessProfile
+	} from '$lib/utils/spt-export';
 	import type { PageData } from './$types';
 
-	type ReportType = 'laba-rugi' | 'neraca' | 'catatan';
+	type ReportType = 'laba-rugi' | 'neraca' | 'catatan' | 'spt-tahunan';
 	type Period = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 	type CatatanPeriod = 'monthly' | 'quarterly' | 'yearly';
 
@@ -34,6 +42,15 @@
 
 	// State for UI interactions only
 	let loading = $state(false);
+
+	// SPT Tahunan state
+	let sptYear = $state(new Date().getFullYear());
+	let sptData = $state<SPTTaxData | null>(null);
+	let sptLoading = $state(false);
+	let sptExportLoading = $state(false);
+
+	// Generate available years (current year and 5 years back)
+	let availableYears = $derived(Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i));
 
 	// Use data directly - no need for redundant state
 	let selectedReportType = $derived<ReportType>((data.reportType as ReportType) || 'laba-rugi');
@@ -148,6 +165,11 @@
 
 	// Export PDF functionality
 	async function exportPDF() {
+		if (selectedReportType === 'spt-tahunan') {
+			exportSPTPDF();
+			return;
+		}
+
 		if (!data.profitLoss && !data.balanceSheet && !data.catatan) {
 			alert('Tidak ada data untuk diekspor.');
 			return;
@@ -167,8 +189,87 @@
 		}
 	}
 
+	// Fetch SPT Tahunan data
+	async function fetchSPTData() {
+		sptLoading = true;
+		sptData = null;
+		try {
+			const response = await fetch(`/api/tax/annual?year=${sptYear}`);
+			const result = await response.json();
+			if (result.data) {
+				sptData = result.data;
+			}
+		} catch (error) {
+			console.error('Error fetching SPT data:', error);
+			alert('Gagal memuat data SPT Tahunan.');
+		} finally {
+			sptLoading = false;
+		}
+	}
+
+	// Export SPT to Excel
+	async function exportSPTExcel() {
+		if (!sptData) {
+			alert('Silakan pilih tahun dan muat data terlebih dahulu.');
+			return;
+		}
+		sptExportLoading = true;
+		try {
+			const filename = generateSPTFilename(sptYear, 'xlsx');
+			const businessProfile: SPTBusinessProfile = {
+				name: data.businessProfile?.name || '',
+				address: data.businessProfile?.address || '',
+				npwp: data.businessProfile?.npwp || '',
+				ownerName: data.businessProfile?.ownerName || '',
+				taxpayerType: sptData.taxpayerType
+			};
+			await exportSPTToExcel(sptData, businessProfile, filename);
+		} catch (error) {
+			console.error('Error exporting SPT to Excel:', error);
+			alert('Gagal mengekspor ke Excel. Silakan coba lagi.');
+		} finally {
+			sptExportLoading = false;
+		}
+	}
+
+	// Export SPT to PDF
+	async function exportSPTPDF() {
+		if (!sptData) {
+			alert('Silakan pilih tahun dan muat data terlebih dahulu.');
+			return;
+		}
+		sptExportLoading = true;
+		try {
+			const filename = generateSPTFilename(sptYear, 'pdf');
+			const businessProfile: SPTBusinessProfile = {
+				name: data.businessProfile?.name || '',
+				address: data.businessProfile?.address || '',
+				npwp: data.businessProfile?.npwp || '',
+				ownerName: data.businessProfile?.ownerName || '',
+				taxpayerType: sptData.taxpayerType
+			};
+			await exportSPTToPDF(sptData, businessProfile, filename);
+		} catch (error) {
+			console.error('Error exporting SPT to PDF:', error);
+			alert('Gagal mengekspor ke PDF. Silakan coba lagi.');
+		} finally {
+			sptExportLoading = false;
+		}
+	}
+
+	// Load SPT data when year changes
+	$effect(() => {
+		if (selectedReportType === 'spt-tahunan') {
+			fetchSPTData();
+		}
+	});
+
 	function exportExcel() {
-		alert('Fitur export Excel akan segera tersedia.');
+		if (selectedReportType === 'spt-tahunan') {
+			exportSPTExcel();
+		} else {
+			alert('Fitur export Excel akan segera tersedia.');
+		}
 	}
 </script>
 
@@ -241,6 +342,16 @@
 			>
 				<FileText class="w-4 h-4" />
 				Catatan
+			</button>
+			<button
+				onclick={() => changeReportType('spt-tahunan')}
+				class="px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2
+					{selectedReportType === 'spt-tahunan'
+					? 'bg-primary text-primary-foreground'
+					: 'bg-muted hover:bg-muted/80'}"
+			>
+				<FolderArchive class="w-4 h-4" />
+				SPT Tahunan
 			</button>
 		</div>
 
@@ -975,6 +1086,182 @@
 							Tanggal cetak: {formatDate(new Date().toISOString().split('T')[0])}
 						</p>
 					</div>
+				</div>
+			{/if}
+		{:else if selectedReportType === 'spt-tahunan'}
+			<!-- SPT Tahunan Content -->
+			<div class="text-center">
+				<p class="text-sm text-muted-foreground">SPT Tahunan PPh Final 0.5%</p>
+			</div>
+
+			<!-- Year Selector -->
+			<div class="flex justify-center">
+				<div class="flex items-center gap-2 bg-muted rounded-lg p-2">
+					<Calendar class="w-4 h-4 text-muted-foreground" />
+					<select
+						bind:value={sptYear}
+						class="bg-transparent border-none text-sm font-medium focus:outline-none focus:ring-0 cursor-pointer"
+					>
+						{#each availableYears as year (year)}
+							<option value={year}>{year}</option>
+						{/each}
+					</select>
+				</div>
+			</div>
+
+			{#if sptLoading}
+				<!-- Loading State -->
+				<div class="flex justify-center py-12">
+					<Loader2 class="w-8 h-8 animate-spin text-muted-foreground" />
+				</div>
+			{:else if sptData}
+				<!-- SPT Data Display -->
+				<div class="space-y-4">
+					<!-- Summary Card -->
+					<div class="bg-card border rounded-lg p-4">
+						<h3 class="font-semibold mb-4 flex items-center gap-2">
+							<Wallet class="w-5 h-5" />
+							Ringkasan Tahun {sptData.year}
+						</h3>
+						<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+							<div class="p-3 bg-muted/50 rounded-lg">
+								<p class="text-sm text-muted-foreground">Total Pendapatan Kotor</p>
+								<p class="text-xl font-semibold">
+									{formatRupiahValue(sptData.summary.totalGrossRevenue)}
+								</p>
+							</div>
+							<div class="p-3 bg-muted/50 rounded-lg">
+								<p class="text-sm text-muted-foreground">Total PPh Final Terutang</p>
+								<p class="text-xl font-semibold">
+									{formatRupiahValue(sptData.summary.totalTaxDue)}
+								</p>
+							</div>
+							<div class="p-3 bg-muted/50 rounded-lg">
+								<p class="text-sm text-muted-foreground">Total PPh Final Dibayar</p>
+								<p class="text-xl font-semibold">
+									{formatRupiahValue(sptData.summary.totalTaxPaid)}
+								</p>
+							</div>
+							<div class="p-3 bg-muted/50 rounded-lg">
+								<p class="text-sm text-muted-foreground">Total Pengeluaran</p>
+								<p class="text-xl font-semibold">
+									{formatRupiahValue(sptData.summary.totalExpenses)}
+								</p>
+							</div>
+							<div class="p-3 bg-muted/50 rounded-lg">
+								<p class="text-sm text-muted-foreground">Pendapatan Bersih</p>
+								<p
+									class="text-xl font-semibold {sptData.summary.netIncome >= 0
+										? 'text-green-600'
+										: 'text-red-600'}"
+								>
+									{formatRupiahValue(sptData.summary.netIncome)}
+								</p>
+							</div>
+							<div class="p-3 bg-muted/50 rounded-lg">
+								<p class="text-sm text-muted-foreground">Status Threshold</p>
+								<p
+									class="text-xl font-semibold {sptData.summary.thresholdExceeded
+										? 'text-red-600'
+										: 'text-green-600'}"
+								>
+									{sptData.summary.thresholdExceeded ? 'Terlewati' : 'Belum Terlewati'}
+								</p>
+							</div>
+						</div>
+					</div>
+
+					<!-- Monthly Breakdown -->
+					<div class="bg-card border rounded-lg p-4">
+						<h3 class="font-semibold mb-4">Rekapitulasi Bulanan</h3>
+						<div class="overflow-x-auto">
+							<table class="w-full text-sm">
+								<thead>
+									<tr class="border-b">
+										<th class="text-left py-2 px-3">Bulan</th>
+										<th class="text-right py-2 px-3">Pendapatan Kotor</th>
+										<th class="text-right py-2 px-3">Pendapatan Kena Pajak</th>
+										<th class="text-right py-2 px-3">PPh Final</th>
+										<th class="text-center py-2 px-3">Status</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each sptData.months as month (month.month)}
+										<tr class="border-b hover:bg-muted/30">
+											<td class="py-2 px-3">{month.monthName}</td>
+											<td class="text-right py-2 px-3">{formatRupiahValue(month.grossRevenue)}</td>
+											<td class="text-right py-2 px-3">{formatRupiahValue(month.taxableRevenue)}</td
+											>
+											<td class="text-right py-2 px-3">{formatRupiahValue(month.taxAmount)}</td>
+											<td class="text-center py-2 px-3">
+												<span
+													class="inline-block px-2 py-1 text-xs rounded-full {month.taxStatus ===
+													'PAID'
+														? 'bg-green-100 text-green-800'
+														: 'bg-yellow-100 text-yellow-800'}"
+												>
+													{month.taxStatus === 'PAID' ? 'Lunas' : 'Belum Lunas'}
+												</span>
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+								<tfoot>
+									<tr class="font-semibold bg-muted/50">
+										<td class="py-2 px-3">TOTAL</td>
+										<td class="text-right py-2 px-3"
+											>{formatRupiahValue(sptData.summary.totalGrossRevenue)}</td
+										>
+										<td class="text-right py-2 px-3"
+											>{formatRupiahValue(sptData.summary.totalTaxableRevenue)}</td
+										>
+										<td class="text-right py-2 px-3"
+											>{formatRupiahValue(sptData.summary.totalTaxDue)}</td
+										>
+										<td class="text-center py-2 px-3"></td>
+									</tr>
+								</tfoot>
+							</table>
+						</div>
+					</div>
+
+					<!-- Export Buttons for SPT -->
+					<div class="flex justify-center gap-4">
+						<button
+							onclick={exportSPTExcel}
+							disabled={sptExportLoading}
+							class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-green-600 hover:bg-green-700 text-white transition-colors disabled:opacity-50"
+						>
+							{#if sptExportLoading}
+								<Loader2 class="w-4 h-4 animate-spin" />
+							{:else}
+								<FileSpreadsheet class="w-4 h-4" />
+							{/if}
+							Export Excel
+						</button>
+						<button
+							onclick={exportSPTPDF}
+							disabled={sptExportLoading}
+							class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50"
+						>
+							{#if sptExportLoading}
+								<Loader2 class="w-4 h-4 animate-spin" />
+							{:else}
+								<Download class="w-4 h-4" />
+							{/if}
+							Export PDF
+						</button>
+					</div>
+				</div>
+			{:else}
+				<!-- Empty State -->
+				<div class="bg-card border rounded-lg p-8 text-center">
+					<div
+						class="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3"
+					>
+						<FolderArchive class="w-6 h-6 text-muted-foreground" />
+					</div>
+					<p class="text-muted-foreground text-sm">Pilih tahun untuk melihat data SPT Tahunan</p>
 				</div>
 			{/if}
 		{/if}
