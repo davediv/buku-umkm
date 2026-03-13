@@ -736,7 +736,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Verify "Install" prompt appears on Android Chrome
   - **Dependencies**: None
 
-- [ ] **FEAT-P3-009**: Implement IndexedDB local storage for offline data
+- [x] **FEAT-P3-009**: Implement IndexedDB local storage for offline data
   - **Success Criteria**:
     - IndexedDB database created with stores mirroring D1 schema (transactions, accounts, categories, debts, tax_records)
     - All CRUD operations write to IndexedDB first (local-first)
@@ -745,7 +745,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Storage usage monitored (warn user if approaching device limits)
   - **Dependencies**: DB-P1-001
 
-- [ ] **FEAT-P3-010**: Implement offline-to-online sync engine
+- [x] **FEAT-P3-010**: Implement offline-to-online sync engine
   - **Success Criteria**:
     - Sync occurs automatically when connectivity returns
     - Pending changes tracked with sync status (pending/synced/error)
