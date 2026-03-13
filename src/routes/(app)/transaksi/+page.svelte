@@ -9,9 +9,18 @@
 		Trash2,
 		ChevronLeft,
 		ChevronRight,
-		Calendar
+		Calendar,
+		Download,
+		FileSpreadsheet,
+		FileText
 	} from '@lucide/svelte';
 	import { formatTransactionAmount } from '$lib/utils';
+	import {
+		exportTransactions,
+		generateExportFilename,
+		type ExportFormat,
+		type TransactionForExport
+	} from '$lib/utils/export';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -31,6 +40,8 @@
 	let customEndDate = $state('');
 	let deletingId = $state<string | null>(null);
 	let showDeleteConfirm = $state<string | null>(null);
+	let showExportMenu = $state(false);
+	let isExporting = $state(false);
 
 	// Get date range based on selection
 	function getDateRange(): { start: string; end: string } {
@@ -161,10 +172,61 @@
 		}
 	}
 
+	async function handleExport(format: ExportFormat) {
+		showExportMenu = false;
+		isExporting = true;
+
+		try {
+			const range = getDateRange();
+			// Use high limit to get all transactions for the date range
+			const params = new URLSearchParams({
+				start_date: range.start,
+				end_date: range.end,
+				limit: '10000'
+			});
+
+			const response = await fetch(`/api/transactions?${params.toString()}`);
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch transactions');
+			}
+
+			const result = (await response.json()) as { transactions: TransactionForExport[] };
+
+			if (result.transactions.length === 0) {
+				alert('Tidak ada transaksi untuk periode yang dipilih');
+				return;
+			}
+
+			const filename = generateExportFilename('transaksi');
+			await exportTransactions(result.transactions, format, filename);
+		} catch (error) {
+			console.error('Error exporting transactions:', error);
+			alert('Gagal mengekspor transaksi');
+		} finally {
+			isExporting = false;
+		}
+	}
+
 	// Reset page when search changes
 	$effect(() => {
 		if (searchQuery) {
 			currentPage = 1;
+		}
+	});
+
+	// Close export menu when clicking outside
+	function handleClickOutside(event: MouseEvent) {
+		const target = event.target as HTMLElement;
+		if (showExportMenu && !target.closest('.export-menu')) {
+			showExportMenu = false;
+		}
+	}
+
+	$effect(() => {
+		if (showExportMenu) {
+			document.addEventListener('click', handleClickOutside);
+			return () => document.removeEventListener('click', handleClickOutside);
 		}
 	});
 </script>
@@ -180,13 +242,53 @@
 			<h1 class="text-2xl font-bold tracking-tight">Transaksi</h1>
 			<p class="text-sm text-muted-foreground">Daftar transaksi pemasukan dan pengeluaran Anda</p>
 		</div>
-		<a
-			href="/transaksi/tambah"
-			class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
-		>
-			<Plus class="w-4 h-4" />
-			Tambah Transaksi
-		</a>
+		<div class="flex items-center gap-2">
+			<!-- Export Button -->
+			<div class="relative">
+				<button
+					onclick={() => (showExportMenu = !showExportMenu)}
+					disabled={isExporting}
+					class="inline-flex items-center justify-center gap-2 border border-input bg-background hover:bg-secondary px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
+				>
+					{#if isExporting}
+						<span
+							class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"
+						></span>
+					{:else}
+						<Download class="w-4 h-4" />
+					{/if}
+					{isExporting ? 'Mengekspor...' : 'Ekspor'}
+				</button>
+
+				{#if showExportMenu}
+					<div
+						class="export-menu absolute top-full right-0 mt-2 z-10 bg-background border rounded-lg shadow-lg p-2 min-w-[180px]"
+					>
+						<button
+							onclick={() => handleExport('xlsx')}
+							class="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-muted text-left text-sm"
+						>
+							<FileSpreadsheet class="w-4 h-4 text-green-600" />
+							Export Excel (.xlsx)
+						</button>
+						<button
+							onclick={() => handleExport('csv')}
+							class="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-muted text-left text-sm"
+						>
+							<FileText class="w-4 h-4 text-blue-600" />
+							Export CSV (.csv)
+						</button>
+					</div>
+				{/if}
+			</div>
+			<a
+				href="/transaksi/tambah"
+				class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+			>
+				<Plus class="w-4 h-4" />
+				Tambah Transaksi
+			</a>
+		</div>
 	</div>
 
 	<!-- Success Message -->
