@@ -18,6 +18,12 @@
 		AlertCircle
 	} from '@lucide/svelte';
 	import { INDONESIAN_MONTHS } from '$lib/tax/config';
+	import {
+		exportLabaRugiPDF,
+		exportNeracaPDF,
+		exportCatatanPDF,
+		generatePDFFilename
+	} from '$lib/utils/pdf-export';
 	import type { PageData } from './$types';
 
 	type ReportType = 'laba-rugi' | 'neraca' | 'catatan';
@@ -140,11 +146,25 @@
 		window.print();
 	}
 
-	// Export placeholder (full export will be implemented in FEAT-P3-004/005)
-	function exportPDF() {
-		alert(
-			'Fitur export PDF akan segera tersedia. Gunakan fitur cetak browser (Ctrl+P atau Cmd+P) sebagai alternatif.'
-		);
+	// Export PDF functionality
+	async function exportPDF() {
+		if (!data.profitLoss && !data.balanceSheet && !data.catatan) {
+			alert('Tidak ada data untuk diekspor.');
+			return;
+		}
+
+		try {
+			if (selectedReportType === 'laba-rugi' && data.profitLoss) {
+				await exportLabaRugiPDF(data.profitLoss, null, generatePDFFilename('Laba_Rugi'));
+			} else if (selectedReportType === 'neraca' && data.balanceSheet) {
+				await exportNeracaPDF(data.balanceSheet, null, generatePDFFilename('Posisi_Keuangan'));
+			} else if (selectedReportType === 'catatan' && data.catatan) {
+				await exportCatatanPDF(data.catatan, null, generatePDFFilename('Catatan_Laporan_Keuangan'));
+			}
+		} catch (error) {
+			console.error('Error exporting PDF:', error);
+			alert('Gagal mengekspor PDF. Silakan coba lagi.');
+		}
 	}
 
 	function exportExcel() {

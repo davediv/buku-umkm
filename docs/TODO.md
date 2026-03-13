@@ -664,7 +664,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 ### Export Functionality (F-013, F-014, F-021)
 
-- [ ] **FEAT-P3-004**: Implement Excel/CSV export for transactions
+- [x] **FEAT-P3-004**: Implement Excel/CSV export for transactions
   - **Success Criteria**:
     - User can select date range for export
     - Excel (.xlsx) file with proper headers, column widths, and formatting
