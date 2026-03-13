@@ -11,6 +11,7 @@
 		Plus
 	} from '@lucide/svelte';
 	import TaxReminder from '$lib/components/tax-reminder.svelte';
+	import SyncStatusIndicator from '$lib/components/sync-status-indicator.svelte';
 	import Toast from '$lib/components/ui/toast/toast.svelte';
 
 	let { children } = $props();
@@ -42,6 +43,9 @@
 <div class="flex flex-col min-h-screen bg-background">
 	<!-- Tax Reminder Banner -->
 	<TaxReminder />
+
+	<!-- Sync Status Indicator -->
+	<SyncStatusIndicator />
 
 	<!-- Main Content Area -->
 	<main class="flex-1 overflow-y-auto pb-20 md:pb-0 md:pl-20">
