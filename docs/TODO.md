@@ -634,7 +634,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - All labels in Bahasa Indonesia
   - **Dependencies**: DB-P1-004, API-P2-001, API-P2-006
 
-- [ ] **FEAT-P3-003**: Implement Catatan atas Laporan Keuangan (Notes) generator
+- [x] **FEAT-P3-003**: Implement Catatan atas Laporan Keuangan (Notes) generator
   - **Success Criteria**:
     - Includes: business name, reporting period, accounting policies description
     - States: cash-basis accounting, SAK EMKM compliance, functional currency (IDR)
@@ -642,7 +642,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - All text in Bahasa Indonesia
   - **Dependencies**: DB-P1-004
 
-- [ ] **UI-P3-001**: Implement Reports page (`/laporan`)
+- [x] **UI-P3-001**: Implement Reports page (`/laporan`)
   - **Success Criteria**:
     - Report type selector: Laba Rugi, Posisi Keuangan, Catatan atas Laporan Keuangan
     - Period picker: month selector or date range
