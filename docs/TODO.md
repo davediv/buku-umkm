@@ -710,7 +710,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 ### Tax Billing Code PDF Export
 
-- [ ] **FEAT-P3-007**: Implement tax billing code summary PDF export
+- [x] **FEAT-P3-007**: Implement tax billing code summary PDF export
   - **Success Criteria**:
     - PDF includes: NPWP, Nama WP, KAP (411128), KJS (420), Masa Pajak, Tahun Pajak, Jumlah Setor
     - Professional A4 format suitable for reference during DJP Online entry
