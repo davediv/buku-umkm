@@ -11,6 +11,7 @@
 		Plus
 	} from '@lucide/svelte';
 	import TaxReminder from '$lib/components/tax-reminder.svelte';
+	import Toast from '$lib/components/ui/toast/toast.svelte';
 
 	let { children } = $props();
 
@@ -104,4 +105,7 @@
 			{/each}
 		</ul>
 	</aside>
+
+	<!-- Toast Notifications -->
+	<Toast />
 </div>

@@ -33,6 +33,7 @@
 		type SPTBusinessProfile
 	} from '$lib/utils/spt-export';
 	import type { PageData } from './$types';
+	import { toast } from '$lib/components/ui/toast';
 
 	type ReportType = 'laba-rugi' | 'neraca' | 'catatan' | 'spt-tahunan';
 	type Period = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
@@ -171,21 +172,24 @@
 		}
 
 		if (!data.profitLoss && !data.balanceSheet && !data.catatan) {
-			alert('Tidak ada data untuk diekspor.');
+			toast.warning('Tidak ada data', 'Tidak ada data untuk diekspor');
 			return;
 		}
 
 		try {
 			if (selectedReportType === 'laba-rugi' && data.profitLoss) {
 				await exportLabaRugiPDF(data.profitLoss, null, generatePDFFilename('Laba_Rugi'));
+				toast.success('Berhasil mengekspor', 'Laporan Laba Rugi telah diunduh');
 			} else if (selectedReportType === 'neraca' && data.balanceSheet) {
 				await exportNeracaPDF(data.balanceSheet, null, generatePDFFilename('Posisi_Keuangan'));
+				toast.success('Berhasil mengekspor', 'Laporan Posisi Keuangan telah diunduh');
 			} else if (selectedReportType === 'catatan' && data.catatan) {
 				await exportCatatanPDF(data.catatan, null, generatePDFFilename('Catatan_Laporan_Keuangan'));
+				toast.success('Berhasil mengekspor', 'Catatan Laporan Keuangan telah diunduh');
 			}
 		} catch (error) {
 			console.error('Error exporting PDF:', error);
-			alert('Gagal mengekspor PDF. Silakan coba lagi.');
+			toast.error('Gagal mengekspor PDF', 'Terjadi kesalahan saat mengekspor PDF');
 		}
 	}
 
@@ -201,7 +205,7 @@
 			}
 		} catch (error) {
 			console.error('Error fetching SPT data:', error);
-			alert('Gagal memuat data SPT Tahunan.');
+			toast.error('Gagal memuat data', 'Terjadi kesalahan saat memuat data SPT Tahunan');
 		} finally {
 			sptLoading = false;
 		}
@@ -210,7 +214,7 @@
 	// Export SPT to Excel
 	async function exportSPTExcel() {
 		if (!sptData) {
-			alert('Silakan pilih tahun dan muat data terlebih dahulu.');
+			toast.warning('Pilih tahun', 'Silakan pilih tahun dan muat data terlebih dahulu');
 			return;
 		}
 		sptExportLoading = true;
@@ -224,9 +228,10 @@
 				taxpayerType: sptData.taxpayerType
 			};
 			await exportSPTToExcel(sptData, businessProfile, filename);
+			toast.success('Berhasil mengekspor', `SPT Tahunan ${sptYear} telah diunduh`);
 		} catch (error) {
 			console.error('Error exporting SPT to Excel:', error);
-			alert('Gagal mengekspor ke Excel. Silakan coba lagi.');
+			toast.error('Gagal mengekspor', 'Terjadi kesalahan saat mengekspor ke Excel');
 		} finally {
 			sptExportLoading = false;
 		}
@@ -235,7 +240,7 @@
 	// Export SPT to PDF
 	async function exportSPTPDF() {
 		if (!sptData) {
-			alert('Silakan pilih tahun dan muat data terlebih dahulu.');
+			toast.warning('Pilih tahun', 'Silakan pilih tahun dan muat data terlebih dahulu');
 			return;
 		}
 		sptExportLoading = true;
@@ -249,9 +254,10 @@
 				taxpayerType: sptData.taxpayerType
 			};
 			await exportSPTToPDF(sptData, businessProfile, filename);
+			toast.success('Berhasil mengekspor', `SPT Tahunan ${sptYear} PDF telah diunduh`);
 		} catch (error) {
 			console.error('Error exporting SPT to PDF:', error);
-			alert('Gagal mengekspor ke PDF. Silakan coba lagi.');
+			toast.error('Gagal mengekspor', 'Terjadi kesalahan saat mengekspor ke PDF');
 		} finally {
 			sptExportLoading = false;
 		}
@@ -268,7 +274,7 @@
 		if (selectedReportType === 'spt-tahunan') {
 			exportSPTExcel();
 		} else {
-			alert('Fitur export Excel akan segera tersedia.');
+			toast.info('Segera hadir', 'Fitur export Excel untuk laporan keuangan akan segera tersedia');
 		}
 	}
 </script>

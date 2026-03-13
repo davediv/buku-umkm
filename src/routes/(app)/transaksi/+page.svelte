@@ -15,6 +15,7 @@
 		FileText
 	} from '@lucide/svelte';
 	import { formatTransactionAmount } from '$lib/utils';
+	import { toast } from '$lib/components/ui/toast';
 	import {
 		exportTransactions,
 		generateExportFilename,
@@ -194,15 +195,16 @@
 			const result = (await response.json()) as { transactions: TransactionForExport[] };
 
 			if (result.transactions.length === 0) {
-				alert('Tidak ada transaksi untuk periode yang dipilih');
+				toast.warning('Tidak ada transaksi', 'Tidak ada transaksi untuk periode yang dipilih');
 				return;
 			}
 
 			const filename = generateExportFilename('transaksi');
 			await exportTransactions(result.transactions, format, filename);
+			toast.success('Berhasil mengekspor', `File ${filename} telah diunduh`);
 		} catch (error) {
 			console.error('Error exporting transactions:', error);
-			alert('Gagal mengekspor transaksi');
+			toast.error('Gagal mengekspor', 'Terjadi kesalahan saat mengekspor transaksi');
 		} finally {
 			isExporting = false;
 		}

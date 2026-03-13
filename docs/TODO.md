@@ -693,7 +693,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Formatted for easy handoff to tax consultant
   - **Dependencies**: API-P2-008, FEAT-P3-004, FEAT-P3-005
 
-- [ ] **UI-P3-002**: Implement export UI controls in transaction list and reports
+- [x] **UI-P3-002**: Implement export UI controls in transaction list and reports
   - **Success Criteria**:
     - Export button in transaction list page with format picker (Excel/CSV)
     - Date range selector for transaction export
