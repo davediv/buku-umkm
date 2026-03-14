@@ -271,14 +271,14 @@
 							class="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-muted text-left text-sm"
 						>
 							<FileSpreadsheet class="w-4 h-4 text-green-600" />
-							Export Excel (.xlsx)
+							Ekspor Excel (.xlsx)
 						</button>
 						<button
 							onclick={() => handleExport('csv')}
 							class="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-muted text-left text-sm"
 						>
 							<FileText class="w-4 h-4 text-blue-600" />
-							Export CSV (.csv)
+							Ekspor CSV (.csv)
 						</button>
 					</div>
 				{/if}
