@@ -9,7 +9,8 @@
 		Clock,
 		Receipt,
 		ChevronRight,
-		Loader2
+		Loader2,
+		Plus
 	} from '@lucide/svelte';
 	import { CashFlowChart } from '$lib/components/ui/charts';
 	import type { PageData } from './$types';
@@ -401,20 +402,23 @@
 					{/each}
 				</div>
 			{:else}
-				<div class="p-8 text-center">
+				<!-- Empty State -->
+				<div class="flex flex-col items-center justify-center py-12 text-center">
 					<div
-						class="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3"
+						class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4"
 					>
-						<Receipt class="w-6 h-6 text-muted-foreground" />
+						<Receipt class="w-8 h-8 text-muted-foreground" />
 					</div>
-					<p class="text-muted-foreground text-sm">
-						Selamat datang! Yuk, catat transaksi pertamamu.
+					<h3 class="text-lg font-medium mb-2">Selamat datang!</h3>
+					<p class="text-sm text-muted-foreground mb-6 max-w-sm">
+						Yuk, catat transaksi pertamamu untuk memulai keuangan yang lebih tertata!
 					</p>
 					<a
 						href="/transaksi/tambah"
-						class="text-primary text-sm hover:underline mt-2 inline-block"
+						class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
 					>
-						Tambah transaksi pertama
+						<Plus class="w-4 h-4" />
+						Tambah Transaksi
 					</a>
 				</div>
 			{/if}

@@ -936,7 +936,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 ### Empty States & UX Polish
 
-- [ ] **UI-P3-010**: Implement empty states for all pages
+- [x] **UI-P3-010**: Implement empty states for all pages
   - **Success Criteria**:
     - Every data-driven page has an empty state with:
       - Illustration or icon
