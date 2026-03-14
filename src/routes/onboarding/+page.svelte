@@ -16,6 +16,7 @@
 	} from '@lucide/svelte';
 	import { createBusinessProfile } from '$lib/db/business-profile';
 	import { createAccount } from '$lib/db/accounts';
+	import { getBusinessTypeLabel } from '$lib/utils';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -42,7 +43,7 @@
 	let loading = $state(false);
 	let completing = $state(false);
 
-	// Business type options
+	// Business type options (with icons and descriptions for onboarding)
 	const businessTypes = [
 		{
 			value: 'warung_makan',
@@ -167,9 +168,10 @@
 	let canProceedStep2 = $derived(!!businessType);
 	let canFinish = $derived(accountName.trim() && openingBalance >= 0);
 
-	// Helper to get business type label
-	function getBusinessTypeLabel(type: string): string {
-		return businessTypes.find((bt) => bt.value === type)?.label ?? '';
+	// Helper to get business type label (uses shared utility)
+	function getBusinessTypeDisplayLabel(type: string): string {
+		// Use shared utility for consistency
+		return getBusinessTypeLabel(type);
 	}
 </script>
 
@@ -348,7 +350,7 @@
 							<div>
 								<p class="font-medium">{businessName}</p>
 								<p class="text-sm text-muted-foreground">
-									{getBusinessTypeLabel(businessType)}
+									{getBusinessTypeDisplayLabel(businessType)}
 								</p>
 							</div>
 						</div>
