@@ -458,10 +458,84 @@
 			</div>
 		{/if}
 
-		<!-- Loading indicator -->
+		<!-- Loading / Skeleton State -->
 		{#if loading}
-			<div class="flex justify-center py-2">
-				<Loader2 class="w-5 h-5 animate-spin text-muted-foreground" />
+			<div class="space-y-6 animate-pulse">
+				<!-- Period Label Skeleton -->
+				<div class="text-center">
+					<div class="h-4 w-48 bg-muted rounded mx-auto"></div>
+				</div>
+
+				<!-- Summary Cards Skeleton -->
+				<div class="grid gap-4 md:grid-cols-3">
+					{#each Array(3) as i (i)}
+						<div class="bg-card border rounded-lg p-4">
+							<div class="h-4 w-20 bg-muted rounded mb-2"></div>
+							<div class="h-8 w-32 bg-muted rounded"></div>
+						</div>
+					{/each}
+				</div>
+
+				<!-- Category Breakdown Skeleton -->
+				<div class="grid gap-4 md:grid-cols-2">
+					<div class="bg-card border rounded-lg p-4">
+						<div class="h-4 w-32 bg-muted rounded mb-4"></div>
+						<div class="space-y-3">
+							{#each Array(3) as i (i)}
+								<div class="flex items-center justify-between">
+									<div class="flex items-center gap-2">
+										<div class="w-8 h-8 bg-muted rounded-full"></div>
+										<div class="h-4 w-24 bg-muted rounded"></div>
+									</div>
+									<div class="h-4 w-20 bg-muted rounded"></div>
+								</div>
+							{/each}
+						</div>
+					</div>
+					<div class="bg-card border rounded-lg p-4">
+						<div class="h-4 w-32 bg-muted rounded mb-4"></div>
+						<div class="space-y-3">
+							{#each Array(3) as i (i)}
+								<div class="flex items-center justify-between">
+									<div class="flex items-center gap-2">
+										<div class="w-8 h-8 bg-muted rounded-full"></div>
+										<div class="h-4 w-24 bg-muted rounded"></div>
+									</div>
+									<div class="h-4 w-20 bg-muted rounded"></div>
+								</div>
+							{/each}
+						</div>
+					</div>
+				</div>
+
+				<!-- Balance Sheet Skeleton (for neraca tab) -->
+				<div class="bg-card border rounded-lg p-4">
+					<div class="h-4 w-32 bg-muted rounded mb-4"></div>
+					<div class="space-y-4">
+						<div>
+							<div class="h-4 w-24 bg-muted rounded mb-2"></div>
+							<div class="space-y-2 pl-4">
+								<div class="flex justify-between">
+									<div class="h-4 w-32 bg-muted rounded"></div>
+									<div class="h-4 w-24 bg-muted rounded"></div>
+								</div>
+								<div class="flex justify-between">
+									<div class="h-4 w-32 bg-muted rounded"></div>
+									<div class="h-4 w-24 bg-muted rounded"></div>
+								</div>
+							</div>
+						</div>
+						<div>
+							<div class="h-4 w-24 bg-muted rounded mb-2"></div>
+							<div class="space-y-2 pl-4">
+								<div class="flex justify-between">
+									<div class="h-4 w-32 bg-muted rounded"></div>
+									<div class="h-4 w-24 bg-muted rounded"></div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
 			</div>
 		{/if}
 

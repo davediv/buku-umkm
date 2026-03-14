@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import {
 		Plus,
@@ -25,6 +26,9 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	// Loading state for skeleton screens
+	let loading = $state(true);
 
 	// Get success message from URL
 	let showSuccess = $derived($page.url.searchParams.get('success') === 'true');
@@ -83,8 +87,8 @@
 			result = result.filter(
 				(txn) =>
 					txn.description?.toLowerCase().includes(query) ||
-					txn.category?.name.toLowerCase().includes(query) ||
-					txn.account?.name.toLowerCase().includes(query)
+					txn.category?.name?.toLowerCase().includes(query) ||
+					txn.account?.name?.toLowerCase().includes(query)
 			);
 		}
 
@@ -230,6 +234,14 @@
 			document.addEventListener('click', handleClickOutside);
 			return () => document.removeEventListener('click', handleClickOutside);
 		}
+	});
+
+	// Hide skeleton after initial render
+	onMount(() => {
+		// Allow a frame to render before hiding skeleton to prevent flash
+		requestAnimationFrame(() => {
+			loading = false;
+		});
 	});
 </script>
 
@@ -396,7 +408,57 @@
 	</div>
 
 	<!-- Transaction Table -->
-	{#if filteredTransactions.length > 0}
+	{#if loading}
+		<!-- Skeleton Loading State -->
+		<div class="bg-card border rounded-lg overflow-hidden">
+			<div class="overflow-x-auto">
+				<table class="w-full">
+					<thead>
+						<tr class="border-b bg-muted/50">
+							<th class="text-left px-4 py-3 font-medium text-sm">Tanggal</th>
+							<th class="text-left px-4 py-3 font-medium text-sm">Kategori</th>
+							<th class="text-left px-4 py-3 font-medium text-sm">Akun</th>
+							<th class="text-left px-4 py-3 font-medium text-sm hidden md:table-cell"
+								>Keterangan</th
+							>
+							<th class="text-right px-4 py-3 font-medium text-sm">Jumlah</th>
+							<th class="text-right px-4 py-3 font-medium text-sm">Aksi</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each Array(5) as i (i)}
+							<tr class="border-b">
+								<td class="px-4 py-3">
+									<div class="h-4 w-24 bg-muted rounded animate-pulse"></div>
+								</td>
+								<td class="px-4 py-3">
+									<div class="flex items-center gap-2">
+										<div class="w-6 h-6 bg-muted rounded-full animate-pulse"></div>
+										<div class="h-4 w-20 bg-muted rounded animate-pulse"></div>
+									</div>
+								</td>
+								<td class="px-4 py-3">
+									<div class="h-4 w-24 bg-muted rounded animate-pulse"></div>
+								</td>
+								<td class="px-4 py-3 hidden md:table-cell">
+									<div class="h-4 w-32 bg-muted rounded animate-pulse"></div>
+								</td>
+								<td class="px-4 py-3 text-right">
+									<div class="h-4 w-20 bg-muted rounded animate-pulse ml-auto"></div>
+								</td>
+								<td class="px-4 py-3 text-right">
+									<div class="flex items-center justify-end gap-1">
+										<div class="w-8 h-8 bg-muted rounded animate-pulse"></div>
+										<div class="w-8 h-8 bg-muted rounded animate-pulse"></div>
+									</div>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	{:else if filteredTransactions.length > 0}
 		<div class="bg-card border rounded-lg overflow-hidden">
 			<div class="overflow-x-auto">
 				<table class="w-full">
