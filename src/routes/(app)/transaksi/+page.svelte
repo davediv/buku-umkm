@@ -162,11 +162,11 @@
 				goto('/transaksi', { invalidateAll: true });
 			} else {
 				const result = (await response.json()) as { error?: string };
-				alert(result.error || 'Gagal menghapus transaksi');
+				toast.error('Gagal menghapus', result.error || 'Gagal menghapus transaksi');
 			}
 		} catch (error) {
 			console.error('Error deleting transaction:', error);
-			alert('Terjadi kesalahan server');
+			toast.error('Kesalahan', 'Terjadi kesalahan server');
 		} finally {
 			deletingId = null;
 			showDeleteConfirm = null;
@@ -540,9 +540,14 @@
 
 <!-- Delete Confirmation Dialog -->
 {#if showDeleteConfirm}
-	<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="delete-dialog-title"
+	>
 		<div class="bg-background border rounded-lg shadow-lg w-full max-w-md p-6">
-			<h2 class="text-lg font-semibold mb-2">Hapus Transaksi?</h2>
+			<h2 id="delete-dialog-title" class="text-lg font-semibold mb-2">Hapus Transaksi?</h2>
 			<p class="text-sm text-muted-foreground mb-6">
 				Transaksi yang dihapus tidak dapat dikembalikan. Apakah Anda yakin ingin melanjutkan?
 			</p>

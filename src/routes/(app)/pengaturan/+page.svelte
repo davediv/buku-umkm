@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
-	import { goto } from '$app/navigation';
+	import { invalidateAll, goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import {
 		ArrowLeft,
 		Download,
@@ -21,36 +21,28 @@
 		MapPin,
 		Phone,
 		FileText,
-		Save,
-		Eye,
-		EyeOff
+		Save
 	} from '@lucide/svelte';
 	import { APP_VERSION, BUSINESS_TYPES } from '$lib/constants';
 	import { getBusinessTypeLabel } from '$lib/utils';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import type { PageData } from './$types';
 
-	let {
-		data
-	}: {
-		data: {
-			user: { email: string };
-			profile: {
-				id: string;
-				name: string;
-				businessType: string;
-				address: string | null;
-				phone: string | null;
-				npwp: string | null;
-				ownerName: string | null;
-				industry: string | null;
-			} | null;
-		};
-	} = $props();
+	let { data }: { data: PageData } = $props();
+
+	// Tab configuration
+	type SectionId = 'profil' | 'akun' | 'backup' | 'tentang';
+	const sectionTabs: { id: SectionId; label: string; icon: typeof Store }[] = [
+		{ id: 'profil', label: 'Profil Usaha', icon: Store },
+		{ id: 'akun', label: 'Akun Saya', icon: User },
+		{ id: 'backup', label: 'Cadangan', icon: Database },
+		{ id: 'tentang', label: 'Tentang', icon: Info }
+	];
 
 	// State for tabs/sections
-	let activeSection = $state<'profil' | 'akun' | 'backup' | 'tentang'>('profil');
+	let activeSection = $state<SectionId>('profil');
 
 	// Backup/restore state
 	let backingUp = $state(false);
@@ -59,8 +51,7 @@
 	let selectedFile = $state<File | null>(null);
 	let restoreError = $state<string | null>(null);
 	let lastBackupDate = $state<string | null>(null);
-	let fileInputRef: HTMLInputElement;
-	let localStorageInitialized = $state(false);
+	let fileInputRef = $state<HTMLInputElement | null>(null);
 
 	// Business profile edit state
 	let isEditingProfile = $state(false);
@@ -68,41 +59,32 @@
 	let profileError = $state<string | null>(null);
 	let profileSuccess = $state(false);
 
-	// Derive profile form from data - only initialize when not editing
-	let profileForm = $derived({
-		name: data.profile?.name ?? '',
-		businessType: data.profile?.businessType ?? '',
-		address: data.profile?.address ?? '',
-		phone: data.profile?.phone ?? '',
-		npwp: data.profile?.npwp ?? '',
-		ownerName: data.profile?.ownerName ?? '',
-		industry: data.profile?.industry ?? ''
-	});
+	// Helper to create form state from profile data
+	function profileToForm(profile: typeof data.profile) {
+		return {
+			name: profile?.name ?? '',
+			businessType: profile?.businessType ?? '',
+			address: profile?.address ?? '',
+			phone: profile?.phone ?? '',
+			npwp: profile?.npwp ?? '',
+			ownerName: profile?.ownerName ?? '',
+			industry: profile?.industry ?? ''
+		};
+	}
+
+	// Mutable form state initialized from server data
+	let profileForm = $state(profileToForm(data.profile));
 
 	// Password change state
-	let showPasswordForm = $state(false);
-	let changingPassword = $state(false);
-	let passwordForm = $state({
-		currentPassword: '',
-		newPassword: '',
-		confirmPassword: ''
-	});
-	let passwordError = $state<string | null>(null);
-	let passwordSuccess = $state(false);
-	let showCurrentPassword = $state(false);
-	let showNewPassword = $state(false);
 
 	// Logout state
 	let loggingOut = $state(false);
 
 	// Initialize last backup date from localStorage (only once)
-	$effect(() => {
-		if (typeof window !== 'undefined' && !localStorageInitialized) {
-			const stored = localStorage.getItem('lastBackupDate');
-			if (stored) {
-				lastBackupDate = stored;
-			}
-			localStorageInitialized = true;
+	onMount(() => {
+		const stored = localStorage.getItem('lastBackupDate');
+		if (stored) {
+			lastBackupDate = stored;
 		}
 	});
 
@@ -167,57 +149,17 @@
 	}
 
 	// Cancel profile editing
-	function cancelProfileEdit() {
-		if (data.profile) {
-			profileForm = {
-				name: data.profile.name ?? '',
-				businessType: data.profile.businessType ?? '',
-				address: data.profile.address ?? '',
-				phone: data.profile.phone ?? '',
-				npwp: data.profile.npwp ?? '',
-				ownerName: data.profile.ownerName ?? '',
-				industry: data.profile.industry ?? ''
-			};
-		}
-		isEditingProfile = false;
+	// Start profile editing with fresh data from server
+	function startProfileEdit() {
+		profileForm = profileToForm(data.profile);
+		isEditingProfile = true;
 		profileError = null;
 	}
 
-	// Change password
-	async function changePassword() {
-		if (
-			!passwordForm.currentPassword ||
-			!passwordForm.newPassword ||
-			!passwordForm.confirmPassword
-		) {
-			passwordError = 'Semua kolom password wajib diisi';
-			return;
-		}
-
-		if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-			passwordError = 'Password baru dan konfirmasi password tidak cocok';
-			return;
-		}
-
-		if (passwordForm.newPassword.length < 6) {
-			passwordError = 'Password minimal 6 karakter';
-			return;
-		}
-
-		changingPassword = true;
-		passwordError = null;
-		passwordSuccess = false;
-
-		try {
-			// Note: This would require a password change API endpoint
-			// For now, we'll show a message that this feature is not yet available
-			throw new Error('Fitur ubah password belum tersedia. Silakan hubungi dukungan.');
-		} catch (error) {
-			console.error('Error changing password:', error);
-			passwordError = error instanceof Error ? error.message : 'Terjadi kesalahan';
-		} finally {
-			changingPassword = false;
-		}
+	function cancelProfileEdit() {
+		profileForm = profileToForm(data.profile);
+		isEditingProfile = false;
+		profileError = null;
 	}
 
 	// Handle backup
@@ -381,50 +323,19 @@
 	<div class="flex-1 overflow-y-auto p-4 space-y-6">
 		<!-- Section Tabs -->
 		<div class="flex gap-2 overflow-x-auto pb-2">
-			<button
-				type="button"
-				onclick={() => (activeSection = 'profil')}
-				class="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors {activeSection ===
-				'profil'
-					? 'bg-primary text-primary-foreground'
-					: 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
-			>
-				<Store class="w-4 h-4" />
-				Profil Usaha
-			</button>
-			<button
-				type="button"
-				onclick={() => (activeSection = 'akun')}
-				class="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors {activeSection ===
-				'akun'
-					? 'bg-primary text-primary-foreground'
-					: 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
-			>
-				<User class="w-4 h-4" />
-				Akun Saya
-			</button>
-			<button
-				type="button"
-				onclick={() => (activeSection = 'backup')}
-				class="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors {activeSection ===
-				'backup'
-					? 'bg-primary text-primary-foreground'
-					: 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
-			>
-				<Database class="w-4 h-4" />
-				Cadangan
-			</button>
-			<button
-				type="button"
-				onclick={() => (activeSection = 'tentang')}
-				class="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors {activeSection ===
-				'tentang'
-					? 'bg-primary text-primary-foreground'
-					: 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
-			>
-				<Info class="w-4 h-4" />
-				Tentang
-			</button>
+			{#each sectionTabs as tab (tab.id)}
+				<button
+					type="button"
+					onclick={() => (activeSection = tab.id)}
+					class="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors {activeSection ===
+					tab.id
+						? 'bg-primary text-primary-foreground'
+						: 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
+				>
+					<tab.icon class="w-4 h-4" />
+					{tab.label}
+				</button>
+			{/each}
 		</div>
 
 		<!-- Profile Section -->
@@ -570,7 +481,7 @@
 										</p>
 									</div>
 								</div>
-								<Button variant="outline" size="sm" onclick={() => (isEditingProfile = true)}>
+								<Button variant="outline" size="sm" onclick={startProfileEdit}>
 									<Settings class="w-4 h-4 mr-1" />
 									Ubah
 								</Button>
@@ -624,108 +535,14 @@
 						<p class="text-xs text-muted-foreground">Email tidak dapat diubah</p>
 					</div>
 
-					<!-- Change Password -->
-					{#if !showPasswordForm}
-						<Button variant="outline" onclick={() => (showPasswordForm = true)}>
-							<Shield class="w-4 h-4 mr-2" />
-							Ubah Password
-						</Button>
-					{:else}
-						<div class="space-y-4 pt-2 border-t">
-							<div class="space-y-2">
-								<Label for="currentPassword">Password Saat Ini</Label>
-								<div class="relative">
-									<Input
-										id="currentPassword"
-										type={showCurrentPassword ? 'text' : 'password'}
-										placeholder="Masukkan password saat ini"
-										bind:value={passwordForm.currentPassword}
-									/>
-									<button
-										type="button"
-										class="absolute right-3 top-1/2 -translate-y-1/2"
-										onclick={() => (showCurrentPassword = !showCurrentPassword)}
-									>
-										{#if showCurrentPassword}
-											<EyeOff class="w-4 h-4 text-muted-foreground" />
-										{:else}
-											<Eye class="w-4 h-4 text-muted-foreground" />
-										{/if}
-									</button>
-								</div>
-							</div>
-
-							<div class="space-y-2">
-								<Label for="newPassword">Password Baru</Label>
-								<div class="relative">
-									<Input
-										id="newPassword"
-										type={showNewPassword ? 'text' : 'password'}
-										placeholder="Masukkan password baru"
-										bind:value={passwordForm.newPassword}
-									/>
-									<button
-										type="button"
-										class="absolute right-3 top-1/2 -translate-y-1/2"
-										onclick={() => (showNewPassword = !showNewPassword)}
-									>
-										{#if showNewPassword}
-											<EyeOff class="w-4 h-4 text-muted-foreground" />
-										{:else}
-											<Eye class="w-4 h-4 text-muted-foreground" />
-										{/if}
-									</button>
-								</div>
-							</div>
-
-							<div class="space-y-2">
-								<Label for="confirmPassword">Konfirmasi Password Baru</Label>
-								<Input
-									id="confirmPassword"
-									type="password"
-									placeholder="Masukkan kembali password baru"
-									bind:value={passwordForm.confirmPassword}
-								/>
-							</div>
-
-							{#if passwordError}
-								<div class="p-3 bg-destructive/10 border border-destructive rounded-lg">
-									<p class="text-sm text-destructive">{passwordError}</p>
-								</div>
-							{/if}
-
-							{#if passwordSuccess}
-								<div
-									class="p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg"
-								>
-									<p class="text-sm text-green-800 dark:text-green-200">
-										Password berhasil diubah!
-									</p>
-								</div>
-							{/if}
-
-							<div class="flex gap-3">
-								<Button
-									variant="outline"
-									class="flex-1"
-									onclick={() => {
-										showPasswordForm = false;
-										passwordError = null;
-										passwordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
-									}}
-									disabled={changingPassword}
-								>
-									Batal
-								</Button>
-								<Button class="flex-1" onclick={changePassword} disabled={changingPassword}>
-									{#if changingPassword}
-										<Loader2 class="w-4 h-4 mr-2 animate-spin" />
-									{/if}
-									Simpan Password
-								</Button>
-							</div>
+					<!-- Change Password (coming soon) -->
+					<div class="flex items-center gap-3 pt-2 border-t">
+						<Shield class="w-4 h-4 text-muted-foreground" />
+						<div>
+							<p class="text-sm font-medium">Ubah Password</p>
+							<p class="text-xs text-muted-foreground">Fitur ini akan segera tersedia</p>
 						</div>
-					{/if}
+					</div>
 				</div>
 
 				<!-- Logout Button -->
@@ -875,12 +692,17 @@
 
 <!-- Restore Confirmation Dialog -->
 {#if showRestoreConfirm}
-	<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="restore-dialog-title"
+	>
 		<div class="bg-background border rounded-lg shadow-lg w-full max-w-md">
 			<div class="flex items-center justify-between p-4 border-b">
 				<div class="flex items-center gap-2">
 					<AlertTriangle class="w-5 h-5 text-amber-500" />
-					<h2 class="text-lg font-semibold">Peringatan</h2>
+					<h2 id="restore-dialog-title" class="text-lg font-semibold">Peringatan</h2>
 				</div>
 				<button
 					type="button"

@@ -1,3 +1,5 @@
+import { INDONESIAN_MONTHS } from '$lib/tax/config';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type JsPDFAny = any;
 
@@ -130,21 +132,7 @@ function formatRupiah(amount: number): string {
 // Format date to Indonesian format
 function formatDate(dateStr: string): string {
 	const [year, month, day] = dateStr.split('-').map(Number);
-	const monthNames = [
-		'Januari',
-		'Februari',
-		'Maret',
-		'April',
-		'Mei',
-		'Juni',
-		'Juli',
-		'Agustus',
-		'September',
-		'Oktober',
-		'November',
-		'Desember'
-	];
-	return `${day} ${monthNames[month - 1]} ${year}`;
+	return `${day} ${INDONESIAN_MONTHS[month - 1]} ${year}`;
 }
 
 // Business profile type
@@ -246,6 +234,7 @@ export async function exportLabaRugiPDF(
 	filename: string
 ): Promise<void> {
 	const { default: jsPDF } = await import('jspdf');
+	await import('jspdf-autotable');
 
 	const doc = new jsPDF({
 		orientation: 'portrait',
@@ -374,6 +363,7 @@ export async function exportNeracaPDF(
 	filename: string
 ): Promise<void> {
 	const { default: jsPDF } = await import('jspdf');
+	await import('jspdf-autotable');
 
 	const doc = new jsPDF({
 		orientation: 'portrait',
@@ -564,6 +554,7 @@ export async function exportCatatanPDF(
 	filename: string
 ): Promise<void> {
 	const { default: jsPDF } = await import('jspdf');
+	await import('jspdf-autotable');
 
 	const doc = new jsPDF({
 		orientation: 'portrait',
