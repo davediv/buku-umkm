@@ -164,7 +164,7 @@
 		window.print();
 	}
 
-	// Export PDF functionality
+	// Ekspor PDF functionality
 	async function exportPDF() {
 		if (selectedReportType === 'spt-tahunan') {
 			exportSPTPDF();
@@ -479,14 +479,14 @@
 				class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-muted hover:bg-muted/80 transition-colors"
 			>
 				<Download class="w-4 h-4" />
-				Export PDF
+				Ekspor PDF
 			</button>
 			<button
 				onclick={exportExcel}
 				class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-muted hover:bg-muted/80 transition-colors"
 			>
 				<FileSpreadsheet class="w-4 h-4" />
-				Export Excel
+				Ekspor Excel
 			</button>
 		</div>
 
@@ -1243,7 +1243,7 @@
 							{:else}
 								<FileSpreadsheet class="w-4 h-4" />
 							{/if}
-							Export Excel
+							Ekspor Excel
 						</button>
 						<button
 							onclick={exportSPTPDF}
@@ -1255,7 +1255,7 @@
 							{:else}
 								<Download class="w-4 h-4" />
 							{/if}
-							Export PDF
+							Ekspor PDF
 						</button>
 					</div>
 				</div>
