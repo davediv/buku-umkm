@@ -9,7 +9,7 @@
 		TableHeader,
 		TableRow
 	} from '$lib/components/ui/table';
-	import { TAX_STATUS, getIndonesianMonthName } from '$lib/tax/config';
+	import { TAX_STATUS, TAXPAYER_TYPE, getIndonesianMonthName } from '$lib/tax/config';
 	import { formatRupiah } from '$lib/tax/engine';
 	import type { TaxpayerType } from '$lib/tax/types';
 
@@ -160,7 +160,7 @@
 	{#if data.summary}
 		<div class="bg-card border rounded-lg p-6 space-y-6">
 			<!-- WP OP Threshold Progress Bar -->
-			{#if data.summary.taxpayerType === 'WP_OP'}
+			{#if data.summary.taxpayerType === TAXPAYER_TYPE.WP_OP}
 				<div class="space-y-3">
 					<div class="flex items-center justify-between">
 						<span class="text-sm font-medium">Batas Penghasilan Tidak Kena Pajak (PTKP)</span>

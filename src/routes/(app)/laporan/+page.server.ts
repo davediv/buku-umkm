@@ -444,7 +444,15 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			catatanPeriod,
 			profitLoss: profitLossData,
 			balanceSheet: balanceSheetData,
-			catatan: catatanData
+			catatan: catatanData,
+			businessProfile: profile
+				? {
+						name: profile.name,
+						address: profile.address,
+						npwp: profile.npwp,
+						ownerName: profile.ownerName
+					}
+				: null
 		};
 	} catch (error) {
 		console.error('Error fetching laporan data:', error);

@@ -199,7 +199,7 @@
 		sptData = null;
 		try {
 			const response = await fetch(`/api/tax/annual?year=${sptYear}`);
-			const result = await response.json();
+			const result = (await response.json()) as { data?: SPTTaxData };
 			if (result.data) {
 				sptData = result.data;
 			}

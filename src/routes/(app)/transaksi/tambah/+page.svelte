@@ -243,12 +243,12 @@
 	function applyTemplate(tmpl: {
 		id: string;
 		name: string;
-		type: 'income' | 'expense';
+		type: string;
 		categoryId: string | null;
 		description: string | null;
 	}) {
 		// Set type (should match current, but ensure consistency)
-		type = tmpl.type;
+		type = tmpl.type as 'income' | 'expense';
 
 		// Set category if available
 		if (tmpl.categoryId) {
