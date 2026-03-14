@@ -751,7 +751,7 @@
 							type="button"
 							onclick={handleBackup}
 							disabled={backingUp}
-							class="flex items-center justify-center gap-2 py-3 px-4 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							class="flex items-center justify-center gap-2 py-3 px-4 min-h-[48px] text-base bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 						>
 							{#if backingUp}
 								<Loader2 class="w-5 h-5 animate-spin" />
@@ -767,7 +767,7 @@
 							type="button"
 							onclick={() => fileInputRef?.click()}
 							disabled={restoring}
-							class="flex items-center justify-center gap-2 py-3 px-4 border rounded-lg font-medium hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							class="flex items-center justify-center gap-2 py-3 px-4 min-h-[48px] text-base border rounded-lg font-medium hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 						>
 							{#if restoring}
 								<Loader2 class="w-5 h-5 animate-spin" />
@@ -906,7 +906,7 @@
 					<button
 						type="button"
 						onclick={cancelRestore}
-						class="flex-1 py-3 border rounded-lg font-medium hover:bg-secondary transition-colors"
+						class="flex-1 py-3 min-h-[48px] text-base border rounded-lg font-medium hover:bg-secondary transition-colors"
 					>
 						Batal
 					</button>
@@ -914,7 +914,7 @@
 						type="button"
 						onclick={confirmRestore}
 						disabled={restoring}
-						class="flex-1 py-3 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+						class="flex-1 py-3 min-h-[48px] text-base bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
 					>
 						{#if restoring}
 							<Loader2 class="w-5 h-5 animate-spin" />

@@ -340,7 +340,7 @@
 						onclick={() => {
 							amount = quickAmt.toString();
 						}}
-						class="px-3 py-1.5 text-sm bg-muted hover:bg-secondary rounded-full transition-colors"
+						class="px-4 py-2 min-h-[48px] text-base bg-muted hover:bg-secondary rounded-full transition-colors"
 					>
 						+{quickAmt.toLocaleString('id-ID')}
 					</button>
@@ -365,7 +365,7 @@
 							<button
 								type="button"
 								onclick={() => applyTemplate(tmpl)}
-								class="px-3 py-1.5 text-sm bg-secondary hover:bg-secondary/80 rounded-full transition-colors {type ===
+								class="px-4 py-2 min-h-[48px] text-base bg-secondary hover:bg-secondary/80 rounded-full transition-colors {type ===
 								'income'
 									? 'text-green-700'
 									: 'text-red-700'}"

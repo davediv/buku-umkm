@@ -250,7 +250,7 @@
 				<button
 					onclick={() => (showExportMenu = !showExportMenu)}
 					disabled={isExporting}
-					class="inline-flex items-center justify-center gap-2 border border-input bg-background hover:bg-secondary px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
+					class="inline-flex items-center justify-center gap-2 border border-input bg-background hover:bg-secondary px-4 py-3 min-h-[48px] text-base rounded-md font-medium transition-colors disabled:opacity-50"
 				>
 					{#if isExporting}
 						<span
@@ -285,7 +285,7 @@
 			</div>
 			<a
 				href="/transaksi/tambah"
-				class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+				class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-3 min-h-[48px] text-base rounded-md font-medium transition-colors"
 			>
 				<Plus class="w-4 h-4" />
 				Tambah Transaksi
@@ -384,7 +384,7 @@
 									selectedDateRange = 'custom';
 									showDateFilter = false;
 								}}
-								class="w-full px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
+								class="w-full px-4 py-3 min-h-[48px] text-base bg-primary text-primary-foreground rounded hover:bg-primary/90"
 							>
 								Terapkan
 							</button>
@@ -415,7 +415,7 @@
 							</th>
 							<th class="text-left px-4 py-3 font-medium text-sm">Kategori</th>
 							<th class="text-left px-4 py-3 font-medium text-sm">Akun</th>
-							<th class="text-left px-4 py-3 font-medium text-sm hidden sm:table-cell"
+							<th class="text-left px-4 py-3 font-medium text-sm hidden md:table-cell"
 								>Keterangan</th
 							>
 							<th class="text-right px-4 py-3 font-medium text-sm">
@@ -451,7 +451,7 @@
 								</td>
 								<td class="px-4 py-3 text-sm">{txn.account?.name || '-'}</td>
 								<td
-									class="px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell truncate max-w-[150px]"
+									class="px-4 py-3 text-sm text-muted-foreground hidden md:table-cell truncate max-w-[150px]"
 								>
 									{txn.description || '-'}
 								</td>
@@ -529,7 +529,7 @@
 			</p>
 			<a
 				href="/transaksi/tambah"
-				class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+				class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-3 min-h-[48px] text-base rounded-md font-medium transition-colors"
 			>
 				<Plus class="w-4 h-4" />
 				Tambah Transaksi
@@ -549,14 +549,14 @@
 			<div class="flex gap-3">
 				<button
 					onclick={() => (showDeleteConfirm = null)}
-					class="flex-1 px-4 py-2 border rounded-md text-sm font-medium hover:bg-secondary transition-colors"
+					class="flex-1 px-4 py-3 min-h-[48px] text-base border rounded-md font-medium hover:bg-secondary transition-colors"
 				>
 					Batal
 				</button>
 				<button
 					onclick={() => handleDelete(showDeleteConfirm!)}
 					disabled={deletingId !== null}
-					class="flex-1 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50"
+					class="flex-1 px-4 py-3 min-h-[48px] text-base bg-destructive text-destructive-foreground rounded-md font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50"
 				>
 					{deletingId ? 'Menghapus...' : 'Hapus'}
 				</button>

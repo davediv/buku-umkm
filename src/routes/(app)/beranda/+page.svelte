@@ -166,7 +166,8 @@
 			<div class="inline-flex bg-muted rounded-lg p-1">
 				<button
 					onclick={() => changePeriod('daily')}
-					class="px-4 py-2 text-sm font-medium rounded-md transition-all {selectedPeriod === 'daily'
+					class="px-4 py-3 min-h-[48px] text-base font-medium rounded-md transition-all {selectedPeriod ===
+					'daily'
 						? 'bg-background shadow-sm'
 						: 'text-muted-foreground hover:text-foreground'}"
 				>
@@ -174,7 +175,7 @@
 				</button>
 				<button
 					onclick={() => changePeriod('weekly')}
-					class="px-4 py-2 text-sm font-medium rounded-md transition-all {selectedPeriod ===
+					class="px-4 py-3 min-h-[48px] text-base font-medium rounded-md transition-all {selectedPeriod ===
 					'weekly'
 						? 'bg-background shadow-sm'
 						: 'text-muted-foreground hover:text-foreground'}"
@@ -183,7 +184,7 @@
 				</button>
 				<button
 					onclick={() => changePeriod('monthly')}
-					class="px-4 py-2 text-sm font-medium rounded-md transition-all {selectedPeriod ===
+					class="px-4 py-3 min-h-[48px] text-base font-medium rounded-md transition-all {selectedPeriod ===
 					'monthly'
 						? 'bg-background shadow-sm'
 						: 'text-muted-foreground hover:text-foreground'}"

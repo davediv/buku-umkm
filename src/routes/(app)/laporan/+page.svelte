@@ -469,21 +469,21 @@
 		<div class="flex justify-end gap-2 print:hidden">
 			<button
 				onclick={printReport}
-				class="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-md bg-muted hover:bg-muted/80 transition-colors"
+				class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-muted hover:bg-muted/80 transition-colors"
 			>
 				<Printer class="w-4 h-4" />
 				Cetak
 			</button>
 			<button
 				onclick={exportPDF}
-				class="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-md bg-muted hover:bg-muted/80 transition-colors"
+				class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-muted hover:bg-muted/80 transition-colors"
 			>
 				<Download class="w-4 h-4" />
 				Export PDF
 			</button>
 			<button
 				onclick={exportExcel}
-				class="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-md bg-muted hover:bg-muted/80 transition-colors"
+				class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-muted hover:bg-muted/80 transition-colors"
 			>
 				<FileSpreadsheet class="w-4 h-4" />
 				Export Excel
@@ -1236,7 +1236,7 @@
 						<button
 							onclick={exportSPTExcel}
 							disabled={sptExportLoading}
-							class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-green-600 hover:bg-green-700 text-white transition-colors disabled:opacity-50"
+							class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-green-600 hover:bg-green-700 text-white transition-colors disabled:opacity-50"
 						>
 							{#if sptExportLoading}
 								<Loader2 class="w-4 h-4 animate-spin" />
@@ -1248,7 +1248,7 @@
 						<button
 							onclick={exportSPTPDF}
 							disabled={sptExportLoading}
-							class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50"
+							class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50"
 						>
 							{#if sptExportLoading}
 								<Loader2 class="w-4 h-4 animate-spin" />
