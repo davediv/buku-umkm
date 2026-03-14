@@ -798,7 +798,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Test skip functionality and verify wizard accessible from Settings
   - **Dependencies**: API-P2-001, API-P2-002, DB-P1-003, UI-P1-002
 
-- [ ] **FEAT-P3-011**: Implement business profile CRUD
+- [x] **FEAT-P3-011**: Implement business profile CRUD
   - **Success Criteria**:
     - `GET /api/profile` returns business profile for authenticated user
     - `PUT /api/profile` updates business profile (name, type, address, npwp, logo)
@@ -810,7 +810,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 ### Transaction Templates (F-019)
 
-- [ ] **API-P2-010**: Implement Transaction Templates CRUD API
+- [x] **API-P2-010**: Implement Transaction Templates CRUD API
   - **Success Criteria**:
     - `GET /api/templates` returns all templates for user (system + custom)
     - `POST /api/templates` creates custom template with: name, type (in/out), category_id, description

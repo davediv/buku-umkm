@@ -8,7 +8,8 @@ import {
 	debtPayment,
 	taxRecord,
 	businessProfile,
-	transactionPhoto
+	transactionPhoto,
+	transactionTemplate
 } from '../schema';
 
 // ============================================================================
@@ -1778,5 +1779,131 @@ export const transactionPhotoQueries = {
 		return db
 			.delete(transactionPhoto)
 			.where(and(eq(transactionPhoto.userId, userId), eq(transactionPhoto.id, photoId)));
+	}
+};
+
+// ============================================================================
+// Transaction Template Queries
+// ============================================================================
+
+export const transactionTemplateQueries = {
+	/**
+	 * Get all templates for a user (system + custom)
+	 */
+	findAll(db: SQLiteDb, userId: string) {
+		return db.query.transactionTemplate.findMany({
+			where: (templates, { eq }) => eq(templates.userId, userId),
+			orderBy: (templates, { asc }) => [asc(templates.isSystem), asc(templates.name)]
+		});
+	},
+
+	/**
+	 * Get all active templates for a user
+	 */
+	findAllActive(db: SQLiteDb, userId: string) {
+		return db.query.transactionTemplate.findMany({
+			where: (templates, { eq, and }) =>
+				and(eq(templates.userId, userId), eq(templates.isActive, true)),
+			orderBy: (templates, { asc }) => [asc(templates.isSystem), asc(templates.name)]
+		});
+	},
+
+	/**
+	 * Get template by ID
+	 */
+	findById(db: SQLiteDb, userId: string, templateId: string) {
+		return db.query.transactionTemplate.findFirst({
+			where: (templates, { eq, and }) =>
+				and(eq(templates.userId, userId), eq(templates.id, templateId))
+		});
+	},
+
+	/**
+	 * Get templates by type (income/expense)
+	 */
+	findByType(db: SQLiteDb, userId: string, type: 'income' | 'expense') {
+		return db.query.transactionTemplate.findMany({
+			where: (templates, { eq, and }) =>
+				and(eq(templates.userId, userId), eq(templates.type, type), eq(templates.isActive, true)),
+			orderBy: (templates, { asc }) => [asc(templates.isSystem), asc(templates.name)]
+		});
+	},
+
+	/**
+	 * Create new template
+	 */
+	create(
+		db: SQLiteDb,
+		data: {
+			userId: string;
+			name: string;
+			type: 'income' | 'expense';
+			categoryId?: string;
+			description?: string;
+			isSystem?: boolean;
+		}
+	) {
+		return db.insert(transactionTemplate).values({
+			id: crypto.randomUUID(),
+			userId: data.userId,
+			name: data.name,
+			type: data.type,
+			categoryId: data.categoryId ?? null,
+			description: data.description ?? null,
+			isSystem: data.isSystem ?? false,
+			isActive: true
+		});
+	},
+
+	/**
+	 * Update template
+	 */
+	update(
+		db: SQLiteDb,
+		userId: string,
+		templateId: string,
+		data: {
+			name?: string;
+			type?: 'income' | 'expense';
+			categoryId?: string | null;
+			description?: string | null;
+			isActive?: boolean;
+		}
+	) {
+		return db
+			.update(transactionTemplate)
+			.set(data)
+			.where(and(eq(transactionTemplate.userId, userId), eq(transactionTemplate.id, templateId)));
+	},
+
+	/**
+	 * Delete template (only non-system templates can be deleted)
+	 */
+	delete(db: SQLiteDb, userId: string, templateId: string) {
+		return db
+			.delete(transactionTemplate)
+			.where(and(eq(transactionTemplate.userId, userId), eq(transactionTemplate.id, templateId)));
+	},
+
+	/**
+	 * Check if template exists and belongs to user
+	 */
+	exists(db: SQLiteDb, userId: string, templateId: string) {
+		return db
+			.select({ id: transactionTemplate.id })
+			.from(transactionTemplate)
+			.where(and(eq(transactionTemplate.userId, userId), eq(transactionTemplate.id, templateId)))
+			.then((rows) => rows.length > 0);
+	},
+
+	/**
+	 * Count templates by type
+	 */
+	countByType(db: SQLiteDb, userId: string, type: 'income' | 'expense') {
+		return db
+			.select({ count: sql`COUNT(*)` })
+			.from(transactionTemplate)
+			.where(and(eq(transactionTemplate.userId, userId), eq(transactionTemplate.type, type)))
+			.then((rows) => Number(rows[0]?.count ?? 0));
 	}
 };

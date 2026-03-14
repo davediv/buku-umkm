@@ -39,6 +39,17 @@ export type CategoryTemplate = {
 };
 
 // ============================================================================
+// Transaction Template Types
+// ============================================================================
+
+export type TransactionTemplateData = {
+	name: string;
+	type: 'income' | 'expense';
+	categoryName?: string;
+	description?: string;
+};
+
+// ============================================================================
 // Warung Makan (Restaurant) Template
 // ============================================================================
 
@@ -1062,6 +1073,103 @@ export const categoryTemplates: Record<BusinessType, CategoryTemplate[]> = {
 	jasa: jasaCategories,
 	manufaktur: manufakturCategories
 };
+
+// ============================================================================
+// Transaction Templates - Default templates seeded based on business type
+// ============================================================================
+
+export const transactionTemplateData: Record<BusinessType, TransactionTemplateData[]> = {
+	warung_makan: [
+		{
+			name: 'Penjualan Tunai',
+			type: 'income',
+			categoryName: 'Penjualan Makanan',
+			description: 'Penjualan makanan secara tunai'
+		},
+		{
+			name: 'Penjualan Minuman',
+			type: 'income',
+			categoryName: 'Penjualan Minuman',
+			description: 'Penjualan minuman secara tunai'
+		},
+		{
+			name: 'Beli Bahan Baku',
+			type: 'expense',
+			categoryName: 'Bahan Baku',
+			description: 'Pembelian bahan baku masakan'
+		},
+		{ name: 'Bayar Sewa', type: 'expense', description: 'Pembayaran sewa tempat' },
+		{ name: 'Bayar Supplier', type: 'expense', description: 'Pembayaran kepada supplier' }
+	],
+	toko_kelontong: [
+		{
+			name: 'Penjualan Tunai',
+			type: 'income',
+			categoryName: 'Penjualan Barang',
+			description: 'Penjualan barang secara tunai'
+		},
+		{
+			name: 'Penjualan Eceran',
+			type: 'income',
+			categoryName: 'Penjualan Eceran',
+			description: 'Penjualan eceran'
+		},
+		{
+			name: 'Beli Stok',
+			type: 'expense',
+			categoryName: 'Pembelian Stok',
+			description: 'Pembelian stok barang dagangan'
+		},
+		{ name: 'Bayar Sewa', type: 'expense', description: 'Pembayaran sewa tempat' },
+		{ name: 'Bayar Supplier', type: 'expense', description: 'Pembayaran kepada supplier' }
+	],
+	jasa: [
+		{
+			name: 'Penerimaan Jasa',
+			type: 'income',
+			categoryName: 'Pendapatan Jasa',
+			description: 'Penerimaan pembayaran jasa'
+		},
+		{
+			name: 'Uang Muka Client',
+			type: 'income',
+			categoryName: 'Uang Muka Client',
+			description: 'Uang muka dari client'
+		},
+		{ name: 'Bayar Sewa', type: 'expense', description: 'Pembayaran sewa kantor/ruang kerja' },
+		{ name: 'Bayar Supplier', type: 'expense', description: 'Pembayaran kepada supplier' },
+		{ name: 'Biaya Operasional', type: 'expense', description: 'Biaya operasional usaha' }
+	],
+	manufaktur: [
+		{
+			name: 'Penjualan Produk',
+			type: 'income',
+			categoryName: 'Penjualan Produk',
+			description: 'Penjualan produk jadi'
+		},
+		{
+			name: 'Penjualan Sous',
+			type: 'income',
+			categoryName: 'Penjualan Sous',
+			description: 'Penjualan bahan sampingan'
+		},
+		{
+			name: 'Beli Bahan Mentah',
+			type: 'expense',
+			categoryName: 'Bahan Mentah',
+			description: 'Pembelian bahan mentah'
+		},
+		{ name: 'Bayar Sewa', type: 'expense', description: 'Pembayaran sewa tempat' },
+		{ name: 'Bayar Supplier', type: 'expense', description: 'Pembayaran kepada supplier' }
+	]
+};
+
+/**
+ * Get transaction templates by business type
+ */
+export function getTransactionTemplate(businessType: BusinessType): TransactionTemplateData[] {
+	return transactionTemplateData[businessType] || [];
+}
 
 /**
  * Get template by business type

@@ -21,7 +21,8 @@ export const userRelations = relations(user, ({ many }) => ({
 	debts: many(debt),
 	debtPayments: many(debtPayment),
 	taxRecords: many(taxRecord),
-	backups: many(backup)
+	backups: many(backup),
+	transactionTemplates: many(transactionTemplate)
 }));
 
 // ============================================================================
@@ -457,5 +458,46 @@ export const backupRelations = relations(backup, ({ one }) => ({
 	user: one(user, {
 		fields: [backup.userId],
 		references: [user.id]
+	})
+}));
+
+// ============================================================================
+// Transaction Template (Template Transaksi)
+// ============================================================================
+
+export const transactionTemplate = sqliteTable(
+	'transaction_template',
+	{
+		id: text('id')
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		type: text('type').notNull(), // 'income' | 'expense'
+		categoryId: text('category_id').references(() => category.id, { onDelete: 'set null' }),
+		description: text('description'),
+		isSystem: integer('is_system', { mode: 'boolean' }).default(false).notNull(),
+		isActive: integer('is_active', { mode: 'boolean' }).default(true).notNull(),
+		...timestampColumns
+	},
+	(table) => [
+		index('transaction_template_userId_idx').on(table.userId),
+		index('transaction_template_type_idx').on(table.type),
+		index('transaction_template_categoryId_idx').on(table.categoryId),
+		index('transaction_template_isSystem_idx').on(table.isSystem),
+		index('transaction_template_isActive_idx').on(table.isActive)
+	]
+);
+
+export const transactionTemplateRelations = relations(transactionTemplate, ({ one }) => ({
+	user: one(user, {
+		fields: [transactionTemplate.userId],
+		references: [user.id]
+	}),
+	category: one(category, {
+		fields: [transactionTemplate.categoryId],
+		references: [category.id]
 	})
 }));
