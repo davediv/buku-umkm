@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { FileText, Loader2, ChevronLeft, Printer } from '@lucide/svelte';
-	import { INDONESIAN_MONTHS } from '$lib/tax/config';
+	import { formatDateLong } from '$lib/utils';
 	import type { PageData } from './$types';
 
 	type Period = 'monthly' | 'quarterly' | 'yearly';
@@ -22,13 +22,6 @@
 	// Derived - cache data.catatan to reduce property access in template
 	let catatan = $derived(data.catatan);
 	let hasError = $derived(!catatan && data.error);
-
-	// Format date to Indonesian format (avoid timezone issues by parsing manually)
-	function formatDate(dateStr: string): string {
-		const [year, month, day] = dateStr.split('-').map(Number);
-		const monthName = INDONESIAN_MONTHS[month - 1];
-		return `${day} ${monthName} ${year}`;
-	}
 
 	// Handle period change
 	async function changePeriod(period: Period) {
@@ -153,7 +146,7 @@
 							Periode: {catatan.periodLabel}
 						</p>
 						<p class="text-sm text-gray-500 dark:text-gray-500 mt-1">
-							({formatDate(catatan.startDate)} - {formatDate(catatan.endDate)})
+							({formatDateLong(catatan.startDate)} - {formatDateLong(catatan.endDate)})
 						</p>
 					</div>
 				</div>
@@ -252,7 +245,7 @@
 						Dokumen ini generada secara otomatis oleh Buku UMKM
 					</p>
 					<p class="text-xs text-gray-400 dark:text-gray-600 text-center mt-1">
-						Tanggal cetak: {formatDate(new Date().toISOString().split('T')[0])}
+						Tanggal cetak: {formatDateLong(new Date().toISOString().split('T')[0])}
 					</p>
 				</div>
 			</div>

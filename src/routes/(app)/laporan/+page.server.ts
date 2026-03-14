@@ -8,6 +8,7 @@ import {
 } from '$lib/server/db/queries';
 import { redirect } from '@sveltejs/kit';
 import { getIndonesianMonthName } from '$lib/tax/config';
+import { formatDateLong } from '$lib/utils';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Check authentication
@@ -245,18 +246,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			const totalLiabilities = totalHutang;
 			const totalEquity = totalAssets - totalLiabilities;
 
-			const formatDate = (dateStr: string) => {
-				const date = new Date(dateStr);
-				return new Intl.DateTimeFormat('id-ID', {
-					day: 'numeric',
-					month: 'long',
-					year: 'numeric'
-				}).format(date);
-			};
-
 			balanceSheetData = {
 				date: selectedDate,
-				dateLabel: formatDate(selectedDate),
+				dateLabel: formatDateLong(selectedDate),
 				assets: {
 					total: totalAssets,
 					breakdown: {

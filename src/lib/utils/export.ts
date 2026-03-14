@@ -1,3 +1,5 @@
+import { formatDateLong } from '$lib/utils';
+
 export type ExportFormat = 'xlsx' | 'csv';
 
 export type TransactionForExport = {
@@ -25,18 +27,9 @@ interface TransactionExportRow {
 	taxAmount: number;
 }
 
-export function formatDateForExport(dateStr: string): string {
-	const date = new Date(dateStr);
-	return date.toLocaleDateString('id-ID', {
-		day: 'numeric',
-		month: 'long',
-		year: 'numeric'
-	});
-}
-
 function convertToExportRows(transactions: TransactionForExport[]): TransactionExportRow[] {
 	return transactions.map((t) => ({
-		date: formatDateForExport(t.date),
+		date: formatDateLong(t.date),
 		type: t.type,
 		typeLabel:
 			t.type === 'income' ? 'Pemasukan' : t.type === 'expense' ? 'Pengeluaran' : 'Transfer',

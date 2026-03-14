@@ -24,7 +24,7 @@
 		Save
 	} from '@lucide/svelte';
 	import { APP_VERSION, BUSINESS_TYPES } from '$lib/constants';
-	import { getBusinessTypeLabel } from '$lib/utils';
+	import { getBusinessTypeLabel, formatDateTime } from '$lib/utils';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
@@ -87,19 +87,6 @@
 			lastBackupDate = stored;
 		}
 	});
-
-	// Format date for display
-	function formatDate(dateString: string | null): string {
-		if (!dateString) return '-';
-		const date = new Date(dateString);
-		return date.toLocaleDateString('id-ID', {
-			day: 'numeric',
-			month: 'long',
-			year: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit'
-		});
-	}
 
 	// Save business profile
 	async function saveProfile() {
@@ -571,7 +558,7 @@
 					<!-- Last Backup Info -->
 					<div class="flex items-center gap-3 text-sm text-muted-foreground">
 						<Calendar class="w-4 h-4" />
-						<span>Cadangan terakhir: {formatDate(lastBackupDate)}</span>
+						<span>Cadangan terakhir: {formatDateTime(lastBackupDate)}</span>
 					</div>
 
 					<!-- Action Buttons -->

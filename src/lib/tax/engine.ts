@@ -224,11 +224,13 @@ export function getThresholdColor(percentage: number): 'green' | 'yellow' | 'red
  * @param amount - Amount in Rupiah
  * @returns Formatted string (e.g., "Rp 1.000.000")
  */
+const rupiahFormatter = new Intl.NumberFormat('id-ID', {
+	style: 'currency',
+	currency: 'IDR',
+	minimumFractionDigits: 0,
+	maximumFractionDigits: 0
+});
+
 export function formatRupiah(amount: number): string {
-	return new Intl.NumberFormat('id-ID', {
-		style: 'currency',
-		currency: 'IDR',
-		minimumFractionDigits: 0,
-		maximumFractionDigits: 0
-	}).format(amount);
+	return rupiahFormatter.format(amount);
 }

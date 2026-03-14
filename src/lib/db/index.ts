@@ -269,6 +269,4 @@ export * from './tax-records';
 export * from './business-profile';
 export * from './sync';
 export type { SyncState } from './sync';
-export * from './usage';
-export type { StorageInfo } from './usage';
 export * from './stores.svelte';

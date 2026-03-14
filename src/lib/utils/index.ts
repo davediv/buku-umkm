@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { BUSINESS_TYPES } from '$lib/constants';
+import { INDONESIAN_MONTHS } from '$lib/tax/config';
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
@@ -13,8 +14,15 @@ export function getBusinessTypeLabel(type: string): string {
 	return BUSINESS_TYPES.find((bt) => bt.value === type)?.label ?? type;
 }
 
+// ============================================================================
+// Currency Formatting
+// ============================================================================
+
+// Re-export canonical formatRupiah from tax engine
+export { formatRupiah } from '$lib/tax/engine';
+
 /**
- * Format a number as Indonesian Rupiah
+ * Format a number as Indonesian Rupiah (plain number, no "Rp" prefix)
  */
 export function formatIdr(amount: number | string): string {
 	const num = typeof amount === 'string' ? parseInt(amount.replace(/\D/g, ''), 10) : amount;
@@ -28,6 +36,108 @@ export function formatIdr(amount: number | string): string {
 export function formatTransactionAmount(amount: number, type: 'income' | 'expense'): string {
 	const formatted = amount.toLocaleString('id-ID');
 	return type === 'income' ? `+${formatted}` : `-${formatted}`;
+}
+
+// ============================================================================
+// Date Formatting
+// ============================================================================
+
+/**
+ * Format date string to short format: "5 Mar 2025"
+ */
+export function formatDate(dateStr: string | null): string {
+	if (!dateStr) return '-';
+	return new Date(dateStr).toLocaleDateString('id-ID', {
+		day: 'numeric',
+		month: 'short',
+		year: 'numeric'
+	});
+}
+
+/**
+ * Format date string to short format without year: "5 Mar"
+ */
+export function formatDateShort(dateStr: string): string {
+	return new Date(dateStr).toLocaleDateString('id-ID', {
+		day: 'numeric',
+		month: 'short'
+	});
+}
+
+/**
+ * Format date string to long Indonesian format: "5 Maret 2025"
+ * Uses manual parsing to avoid timezone issues with date-only strings
+ */
+export function formatDateLong(dateStr: string): string {
+	const dateOnly = dateStr.split('T')[0];
+	const [year, month, day] = dateOnly.split('-').map(Number);
+	return `${day} ${INDONESIAN_MONTHS[month - 1]} ${year}`;
+}
+
+/**
+ * Format date string with time: "5 Maret 2025 pukul 10.30"
+ */
+export function formatDateTime(dateString: string | null): string {
+	if (!dateString) return '-';
+	return new Date(dateString).toLocaleDateString('id-ID', {
+		day: 'numeric',
+		month: 'long',
+		year: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit'
+	});
+}
+
+/**
+ * Format date string to DD/MM/YYYY: "05/03/2025"
+ */
+export function formatDateSlash(dateStr: string): string {
+	return new Date(dateStr).toLocaleDateString('id-ID', {
+		day: '2-digit',
+		month: '2-digit',
+		year: 'numeric'
+	});
+}
+
+// ============================================================================
+// Status Badge Utilities
+// ============================================================================
+
+/**
+ * Get debt status badge label and class
+ */
+export function getDebtStatusBadge(status: string): { label: string; class: string } {
+	switch (status) {
+		case 'active':
+			return { label: 'Aktif', class: 'bg-blue-100 text-blue-700' };
+		case 'paid':
+			return { label: 'Lunas', class: 'bg-green-100 text-green-700' };
+		case 'overdue':
+			return { label: 'Jatuh Tempo', class: 'bg-red-100 text-red-700' };
+		default:
+			return { label: status, class: 'bg-gray-100 text-gray-700' };
+	}
+}
+
+// ============================================================================
+// Report Utilities
+// ============================================================================
+
+/**
+ * Get comparison text for period-over-period changes
+ */
+export function getComparisonText(change: number): { text: string; isPositive: boolean } {
+	const absChange = Math.abs(change);
+	if (change > 0) return { text: `Naik ${absChange.toFixed(1)}%`, isPositive: true };
+	else if (change < 0) return { text: `Turun ${absChange.toFixed(1)}%`, isPositive: false };
+	return { text: 'Tidak berubah', isPositive: true };
+}
+
+/**
+ * Get maximum category value for chart scaling
+ */
+export function getMaxCategoryValue(categories: { total: number }[]): number {
+	return Math.max(...categories.map((c) => c.total), 1);
 }
 
 // ============================================================================

@@ -10,6 +10,7 @@
 		ChevronLeft,
 		Receipt
 	} from '@lucide/svelte';
+	import { formatRupiah, getComparisonText, getMaxCategoryValue } from '$lib/utils';
 	import type { PageData } from './$types';
 
 	type Period = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
@@ -30,26 +31,6 @@
 	// Derived
 	let profitLoss = $derived(data.profitLoss);
 	let hasError = $derived(!profitLoss && data.error);
-
-	// Format currency to Indonesian Rupiah
-	function formatRupiah(amount: number): string {
-		return new Intl.NumberFormat('id-ID', {
-			style: 'currency',
-			currency: 'IDR',
-			minimumFractionDigits: 0
-		}).format(amount);
-	}
-
-	// Get comparison text
-	function getComparisonText(change: number): { text: string; isPositive: boolean } {
-		const absChange = Math.abs(change);
-		if (change > 0) {
-			return { text: `Naik ${absChange.toFixed(1)}%`, isPositive: true };
-		} else if (change < 0) {
-			return { text: `Turun ${absChange.toFixed(1)}%`, isPositive: false };
-		}
-		return { text: 'Tidak berubah', isPositive: true };
-	}
 
 	// Get previous period text
 	function getPreviousPeriodText(change: number, previousValue: number): string {
@@ -77,11 +58,6 @@
 		} finally {
 			loading = false;
 		}
-	}
-
-	// Calculate max for chart scaling
-	function getMaxCategoryValue(categories: { total: number }[]): number {
-		return Math.max(...categories.map((c) => c.total), 1);
 	}
 </script>
 

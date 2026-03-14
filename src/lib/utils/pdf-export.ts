@@ -1,4 +1,4 @@
-import { INDONESIAN_MONTHS } from '$lib/tax/config';
+import { formatRupiah, formatDateLong } from '$lib/utils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type JsPDFAny = any;
@@ -119,22 +119,6 @@ export interface CatatanReport {
 
 export type ReportType = 'laba-rugi' | 'neraca' | 'catatan';
 
-// Format currency for PDF
-function formatRupiah(amount: number): string {
-	return new Intl.NumberFormat('id-ID', {
-		style: 'currency',
-		currency: 'IDR',
-		minimumFractionDigits: 0,
-		maximumFractionDigits: 0
-	}).format(amount);
-}
-
-// Format date to Indonesian format
-function formatDate(dateStr: string): string {
-	const [year, month, day] = dateStr.split('-').map(Number);
-	return `${day} ${INDONESIAN_MONTHS[month - 1]} ${year}`;
-}
-
 // Business profile type
 interface BusinessProfile {
 	name?: string | null;
@@ -212,7 +196,7 @@ function addReportFooter(doc: JsPDFAny): number {
 
 	// Footer text
 	const footerText = `Dokumen ini dihasilkan secara otomatis oleh Buku UMKM`;
-	const dateText = `Tanggal cetak: ${formatDate(new Date().toISOString().split('T')[0])}`;
+	const dateText = `Tanggal cetak: ${formatDateLong(new Date().toISOString().split('T')[0])}`;
 
 	doc.text(footerText, 20, footerY);
 	doc.text(dateText, 20, footerY + 4);
@@ -684,15 +668,5 @@ export async function exportCatatanPDF(
 	doc.save(`${filename}.pdf`);
 }
 
-// Generate filename with date
-export function generatePDFFilename(prefix: string): string {
-	const now = new Date();
-	const dateStr = now
-		.toLocaleDateString('id-ID', {
-			day: 'numeric',
-			month: 'numeric',
-			year: 'numeric'
-		})
-		.replace(/\//g, '-');
-	return `${prefix}_${dateStr}`;
-}
+// Re-export from shared utility for backward compatibility
+export { generateExportFilename as generatePDFFilename } from '$lib/utils/export';

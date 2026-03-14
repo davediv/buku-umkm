@@ -13,6 +13,7 @@
 		Plus
 	} from '@lucide/svelte';
 	import { CashFlowChart } from '$lib/components/ui/charts';
+	import { formatRupiah, formatDateSlash } from '$lib/utils';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -24,25 +25,6 @@
 	// Derived
 	let dashboard = $derived(data.dashboard);
 	let hasError = $derived(!dashboard && data.error);
-
-	// Format currency to Indonesian Rupiah
-	function formatRupiah(amount: number): string {
-		return new Intl.NumberFormat('id-ID', {
-			style: 'currency',
-			currency: 'IDR',
-			minimumFractionDigits: 0
-		}).format(amount);
-	}
-
-	// Format date to DD/MM/YYYY
-	function formatDate(dateStr: string): string {
-		const date = new Date(dateStr);
-		return new Intl.DateTimeFormat('id-ID', {
-			day: '2-digit',
-			month: '2-digit',
-			year: 'numeric'
-		}).format(date);
-	}
 
 	// Handle period change
 	async function changePeriod(period: 'daily' | 'weekly' | 'monthly') {
@@ -395,7 +377,7 @@
 								</p>
 								<p class="text-xs text-muted-foreground flex items-center gap-1 justify-end">
 									<Clock class="w-3 h-3" />
-									{formatDate(transaction.date)}
+									{formatDateSlash(transaction.date)}
 								</p>
 							</div>
 						</a>

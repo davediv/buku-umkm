@@ -7,8 +7,7 @@
 
 import type { TaxpayerType } from '$lib/tax/types';
 import { getTaxStatusLabel, getTaxpayerTypeLabel, TAXPAYER_TYPE } from '$lib/tax/config';
-import { formatRupiah as formatRupiahFromEngine } from '$lib/tax/engine';
-import { formatDateForExport } from '$lib/utils/export';
+import { formatRupiah, formatDateLong } from '$lib/utils';
 
 export type SPTExportFormat = 'xlsx' | 'pdf';
 
@@ -60,12 +59,6 @@ export interface SPTBusinessProfile {
 	ownerName: string;
 	taxpayerType: string;
 }
-
-// Re-export formatRupiah from tax engine
-const formatRupiah = formatRupiahFromEngine;
-
-// Re-use formatDateForExport from export utilities
-const formatDate = formatDateForExport;
 
 /**
  * Get status label in Indonesian
@@ -182,7 +175,7 @@ export async function exportSPTToExcel(
 	// Sheet 3: Informasi
 	const infoData: (string | number)[][] = [
 		['INFORMASI EXPORT'],
-		['Tanggal Generate', formatDate(sptData.generatedAt)],
+		['Tanggal Generate', formatDateLong(sptData.generatedAt)],
 		['Aplikasi', 'Buku UMKM'],
 		[''],
 		['CATATAN:'],
@@ -394,7 +387,7 @@ export async function exportSPTToPDF(
 	doc.setFontSize(8);
 	doc.setTextColor(128, 128, 128);
 	doc.text(
-		`Dokumen dihasilkan oleh Buku UMKM pada ${formatDate(sptData.generatedAt)}`,
+		`Dokumen dihasilkan oleh Buku UMKM pada ${formatDateLong(sptData.generatedAt)}`,
 		pageWidth / 2,
 		285,
 		{
