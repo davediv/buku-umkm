@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Settings, HelpCircle, Info, Shield, Download, Upload, ArrowRight } from '@lucide/svelte';
+	import { Settings, HelpCircle, Info, Shield, Database, ArrowRight } from '@lucide/svelte';
 
 	// Menu items
 	const menuItems = [
@@ -31,16 +31,10 @@
 
 	const dataItems = [
 		{
-			title: 'Ekspor Data',
-			desc: 'Simpan data ke file JSON',
-			icon: Download,
-			href: '#'
-		},
-		{
-			title: 'Impor Data',
-			desc: 'Muat data dari file',
-			icon: Upload,
-			href: '#'
+			title: 'Cadangkan & Pulihkan Data',
+			desc: 'Backup dan restore data bisnis',
+			icon: Database,
+			href: '/pengaturan'
 		}
 	];
 </script>
