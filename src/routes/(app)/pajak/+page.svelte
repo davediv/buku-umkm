@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { AlertCircle, CheckCircle2, Circle, Receipt } from '@lucide/svelte';
+	import { AlertCircle, CheckCircle2, Circle, Plus, Receipt } from '@lucide/svelte';
 	import {
 		Table,
 		TableBody,
@@ -360,8 +360,22 @@
 			</div>
 		</div>
 	{:else if data.history}
-		<div class="bg-card border rounded-lg p-8 text-center">
-			<p class="text-muted-foreground">Belum ada data pajak untuk tahun ini.</p>
+		<!-- Empty State -->
+		<div class="flex flex-col items-center justify-center py-12 text-center">
+			<div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+				<Receipt class="w-8 h-8 text-muted-foreground" />
+			</div>
+			<h3 class="text-lg font-medium mb-2">Belum ada pemasukan tercatat.</h3>
+			<p class="text-sm text-muted-foreground mb-6 max-w-sm">
+				Catat transaksi pemasukan Anda untuk melihat perhitungan pajak.
+			</p>
+			<a
+				href="/transaksi/tambah"
+				class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+			>
+				<Plus class="w-4 h-4" />
+				Tambah Transaksi
+			</a>
 		</div>
 	{/if}
 
