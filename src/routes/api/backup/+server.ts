@@ -12,7 +12,7 @@ import {
 } from '$lib/server/db/queries';
 import { APP_VERSION, BACKUP_SCHEMA_VERSION } from '$lib/constants';
 
-// GET /api/backup - Generate and download backup file
+// POST /api/backup - Generate and download backup file
 export const POST: RequestHandler = async ({ locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {

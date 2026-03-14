@@ -404,9 +404,7 @@
 			{:else}
 				<!-- Empty State -->
 				<div class="flex flex-col items-center justify-center py-12 text-center">
-					<div
-						class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4"
-					>
+					<div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
 						<Receipt class="w-8 h-8 text-muted-foreground" />
 					</div>
 					<h3 class="text-lg font-medium mb-2">Selamat datang!</h3>
