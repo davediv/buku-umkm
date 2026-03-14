@@ -819,7 +819,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Default templates seeded based on business type during onboarding
   - **Dependencies**: DB-P1-002, API-P2-002, AUTH-P1-004
 
-- [ ] **UI-P3-005**: Implement transaction templates in transaction entry form
+- [x] **UI-P3-005**: Implement transaction templates in transaction entry form
   - **Success Criteria**:
     - Quick-entry template buttons displayed above/below amount entry
     - Default templates: "Penjualan Tunai," "Bayar Supplier," "Bayar Sewa," "Beli Stok" (based on business type)
@@ -837,7 +837,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 ### Backup & Restore (F-020)
 
-- [ ] **FEAT-P3-012**: Implement data backup generation
+- [x] **FEAT-P3-012**: Implement data backup generation
   - **Success Criteria**:
     - `POST /api/backup` generates backup file containing all user data: transactions, categories, accounts, debts, tax records, profile, settings
     - Backup file is JSON format with schema version and metadata (app version, backup date, business name)
