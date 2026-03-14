@@ -854,7 +854,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Forward-compatible: newer app version can restore older backup
   - **Dependencies**: FEAT-P3-012
 
-- [ ] **UI-P3-006**: Implement backup/restore UI in Settings
+- [x] **UI-P3-006**: Implement backup/restore UI in Settings
   - **Success Criteria**:
     - Settings page section: "Cadangkan & Pulihkan Data"
     - "Cadangkan Data" button triggers backup download
@@ -873,7 +873,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 ### Settings Page
 
-- [ ] **UI-P3-007**: Implement Settings page (`/pengaturan`)
+- [x] **UI-P3-007**: Implement Settings page (`/pengaturan`)
   - **Success Criteria**:
     - Accessible from "Lainnya" (More) bottom nav item
     - Sections: Profil Usaha (business profile), Akun Saya (my account), Cadangan (backup), Tentang (about)

@@ -1,8 +1,16 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { BUSINESS_TYPES } from '$lib/constants';
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
+}
+
+/**
+ * Get business type label from business type value
+ */
+export function getBusinessTypeLabel(type: string): string {
+	return BUSINESS_TYPES.find((bt) => bt.value === type)?.label ?? type;
 }
 
 /**
