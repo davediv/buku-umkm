@@ -2,7 +2,7 @@
 	import '../app.css';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import { initStores, destroyStores } from '$lib/db/stores';
+	import { initStores, destroyStores } from '$lib/db/stores.svelte';
 
 	let { children } = $props();
 

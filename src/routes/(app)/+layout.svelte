@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import {
 		Home,
 		Receipt,
@@ -35,8 +35,8 @@
 
 	// Check if current page is a transaction form (hide FAB there)
 	let hideFab = $derived(
-		$page.url.pathname === '/transaksi/tambah' ||
-			$page.url.pathname.match(/^\/transaksi\/[\w-]+$/) !== null
+		page.url.pathname === '/transaksi/tambah' ||
+			page.url.pathname.match(/^\/transaksi\/[\w-]+$/) !== null
 	);
 </script>
 
@@ -70,7 +70,7 @@
 	>
 		<ul class="flex justify-around items-center h-16">
 			{#each navItems as item (item.href)}
-				{@const active = isActive(item.href, $page.url.pathname)}
+				{@const active = isActive(item.href, page.url.pathname)}
 				<li class="flex-1">
 					<a
 						href={item.href}
@@ -93,7 +93,7 @@
 	>
 		<ul class="flex flex-col items-center py-4 gap-2">
 			{#each navItems as item (item.href)}
-				{@const active = isActive(item.href, $page.url.pathname)}
+				{@const active = isActive(item.href, page.url.pathname)}
 				<li>
 					<a
 						href={item.href}

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { toast, type ToastVariant } from './index';
+	import { toast, type ToastVariant } from './index.svelte';
 	import { fly } from 'svelte/transition';
 
 	const variantStyles: Record<ToastVariant, string> = {
@@ -11,7 +11,7 @@
 </script>
 
 <div class="fixed bottom-4 right-4 z-50 space-y-2">
-	{#each $toast as t (t.id)}
+	{#each toast.items as t (t.id)}
 		<div
 			class="px-4 py-3 rounded-lg shadow-lg border {variantStyles[
 				t.variant

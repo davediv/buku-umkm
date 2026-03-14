@@ -271,4 +271,4 @@ export * from './sync';
 export type { SyncState } from './sync';
 export * from './usage';
 export type { StorageInfo } from './usage';
-export * from './stores';
+export * from './stores.svelte';
