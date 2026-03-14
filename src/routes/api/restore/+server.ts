@@ -13,9 +13,10 @@ import {
 	transactionTemplate
 } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
+import { BACKUP_SCHEMA_VERSION } from '$lib/constants';
 
-// Backup schema version - same as backup endpoint
-const BACKUP_SCHEMA_VERSION = '1.0.0';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DbClient = any;
 
 /**
  * Parse date string to Date object
@@ -83,7 +84,7 @@ function validateBackupData(data: unknown): {
 /**
  * Clear existing user data in correct order (respecting foreign key dependencies)
  */
-async function clearUserData(db: SQLiteDb, userId: string): Promise<void> {
+async function clearUserData(db: DbClient, userId: string): Promise<void> {
 	// Delete in reverse order of dependencies
 	await Promise.all([
 		// Delete transaction photos first (depends on transactions)
@@ -111,7 +112,7 @@ async function clearUserData(db: SQLiteDb, userId: string): Promise<void> {
  * Insert backup data for a user
  */
 async function insertBackupData(
-	db: SQLiteDb,
+	db: DbClient,
 	userId: string,
 	data: Record<string, unknown>
 ): Promise<void> {
@@ -354,11 +355,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		console.log(`Starting restore for user ${userId}, schema version: ${validation.version}`);
 
-		// Clear existing user data first
-		await clearUserData(db, userId);
+		// Use transaction to ensure atomicity - if any step fails, rollback
+		await db.transaction(async (tx) => {
+			// Clear existing user data first
+			await clearUserData(tx, userId);
 
-		// Insert backup data
-		await insertBackupData(db, userId, backupData as Record<string, unknown>);
+			// Insert backup data
+			await insertBackupData(tx, userId, backupData as Record<string, unknown>);
+		});
 
 		console.log(`Restore completed successfully for user ${userId}`);
 

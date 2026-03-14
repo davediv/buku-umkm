@@ -894,7 +894,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 ### Mobile Responsive Design (F-017)
 
-- [ ] **UI-P3-008**: Implement mobile-optimized responsive design across all pages
+- [x] **UI-P3-008**: Implement mobile-optimized responsive design across all pages
   - **Success Criteria**:
     - Touch targets >= 48px on all interactive elements
     - Bottom navigation accessible with one hand
@@ -916,7 +916,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 ### Bahasa Indonesia Review (F-015)
 
-- [ ] **UI-P3-009**: Comprehensive Bahasa Indonesia UI language review
+- [x] **UI-P3-009**: Comprehensive Bahasa Indonesia UI language review
   - **Success Criteria**:
     - Zero English-only strings in user-facing interface
     - Accounting terms in plain Indonesian: "Pemasukan" not "Revenue", "Hutang" not "Accounts Payable"

@@ -10,10 +10,7 @@ import {
 	businessProfileQueries,
 	transactionTemplateQueries
 } from '$lib/server/db/queries';
-import { APP_VERSION } from '$lib/constants';
-
-// Backup schema version - increment when backup format changes
-const BACKUP_SCHEMA_VERSION = '1.0.0';
+import { APP_VERSION, BACKUP_SCHEMA_VERSION } from '$lib/constants';
 
 // GET /api/backup - Generate and download backup file
 export const POST: RequestHandler = async ({ locals }) => {

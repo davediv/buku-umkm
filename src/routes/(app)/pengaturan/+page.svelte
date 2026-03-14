@@ -75,7 +75,8 @@
 		address: data.profile?.address ?? '',
 		phone: data.profile?.phone ?? '',
 		npwp: data.profile?.npwp ?? '',
-		ownerName: data.profile?.ownerName ?? ''
+		ownerName: data.profile?.ownerName ?? '',
+		industry: data.profile?.industry ?? ''
 	});
 
 	// Password change state
@@ -139,7 +140,8 @@
 					address: profileForm.address || null,
 					phone: profileForm.phone || null,
 					npwp: profileForm.npwp || null,
-					ownerName: profileForm.ownerName || null
+					ownerName: profileForm.ownerName || null,
+					industry: profileForm.industry || null
 				})
 			});
 
@@ -173,7 +175,8 @@
 				address: data.profile.address ?? '',
 				phone: data.profile.phone ?? '',
 				npwp: data.profile.npwp ?? '',
-				ownerName: data.profile.ownerName ?? ''
+				ownerName: data.profile.ownerName ?? '',
+				industry: data.profile.industry ?? ''
 			};
 		}
 		isEditingProfile = false;
@@ -487,6 +490,16 @@
 									type="tel"
 									placeholder="Contoh: 081234567890"
 									bind:value={profileForm.phone}
+								/>
+							</div>
+
+							<div class="space-y-2">
+								<Label for="industry">Industri</Label>
+								<Input
+									id="industry"
+									type="text"
+									placeholder="Contoh: Makanan, Fashion, Teknologi"
+									bind:value={profileForm.industry}
 								/>
 							</div>
 
