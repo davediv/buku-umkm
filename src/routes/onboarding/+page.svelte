@@ -12,7 +12,9 @@
 		Wrench,
 		Factory,
 		Wallet,
-		ChevronRight
+		ChevronRight,
+		ShoppingCart,
+		MoreHorizontal
 	} from '@lucide/svelte';
 	import { createBusinessProfile } from '$lib/db/business-profile';
 	import { createAccount } from '$lib/db/accounts';
@@ -27,7 +29,7 @@
 	// Wizard state
 	let currentStep = $state(1);
 	const totalSteps = 3;
-	const steps = [1, 2, 3]; // Pre-created array to avoid recreation on each render
+	const steps = [0, 1, 2]; // Zero-indexed for progress indicator
 
 	// Form data
 	let businessName = $state('');
@@ -44,6 +46,7 @@
 	let completing = $state(false);
 
 	// Business type options (with icons and descriptions for onboarding)
+	// Must stay in sync with BUSINESS_TYPES in $lib/constants.ts
 	const businessTypes = [
 		{
 			value: 'warung_makan',
@@ -58,7 +61,24 @@
 			desc: 'Minimarket, toko kelontong, grosir'
 		},
 		{ value: 'jasa', label: 'Jasa', icon: Wrench, desc: 'Jasa service, konsultasi, freelancer' },
-		{ value: 'manufaktur', label: 'Manufaktur', icon: Factory, desc: 'Pabrik, produksi, crafting' }
+		{
+			value: 'manufaktur',
+			label: 'Manufaktur',
+			icon: Factory,
+			desc: 'Pabrik, produksi, crafting'
+		},
+		{
+			value: 'toko_online',
+			label: 'Toko Online',
+			icon: ShoppingCart,
+			desc: 'E-commerce, marketplace, dropship'
+		},
+		{
+			value: 'lainnya',
+			label: 'Lainnya',
+			icon: MoreHorizontal,
+			desc: 'Jenis bisnis lain yang tidak tercantum'
+		}
 	];
 
 	// Selected account type (kas, bank, or piutang)
@@ -167,12 +187,6 @@
 	let canProceedStep1 = $derived(businessName.trim() && ownerName.trim());
 	let canProceedStep2 = $derived(!!businessType);
 	let canFinish = $derived(accountName.trim() && openingBalance >= 0);
-
-	// Helper to get business type label (uses shared utility)
-	function getBusinessTypeDisplayLabel(type: string): string {
-		// Use shared utility for consistency
-		return getBusinessTypeLabel(type);
-	}
 </script>
 
 <svelte:head>
@@ -350,7 +364,7 @@
 							<div>
 								<p class="font-medium">{businessName}</p>
 								<p class="text-sm text-muted-foreground">
-									{getBusinessTypeDisplayLabel(businessType)}
+									{getBusinessTypeLabel(businessType)}
 								</p>
 							</div>
 						</div>

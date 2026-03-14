@@ -210,22 +210,21 @@ export const POST: RequestHandler = async ({ locals }) => {
 			}))
 		};
 
-		// Calculate record count
 		const recordCount =
-			(accounts.length || 0) +
-			(categories.length || 0) +
-			(transactions.length || 0) +
-			(debts.length || 0) +
-			(debtPayments.length || 0) +
-			(taxRecords.length || 0) +
-			(templates.length || 0);
+			accounts.length +
+			categories.length +
+			transactions.length +
+			debts.length +
+			debtPayments.length +
+			taxRecords.length +
+			templates.length;
 
 		console.log(
 			`Backup generated for user ${userId}: ${recordCount} records, business: ${businessName}`
 		);
 
 		// Return JSON as downloadable file
-		return new Response(JSON.stringify(backupData, null, 2), {
+		return new Response(JSON.stringify(backupData), {
 			headers: {
 				'Content-Type': 'application/json',
 				'Content-Disposition': `attachment; filename="backup-${businessName.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.json"`

@@ -85,25 +85,23 @@ function validateBackupData(data: unknown): {
  * Clear existing user data in correct order (respecting foreign key dependencies)
  */
 async function clearUserData(db: DbClient, userId: string): Promise<void> {
-	// Delete in reverse order of dependencies
+	// Delete in reverse order of FK dependencies
+	// Wave 1: leaf tables (depend on transactions/debts)
 	await Promise.all([
-		// Delete transaction photos first (depends on transactions)
 		db.delete(transactionPhoto).where(eq(transactionPhoto.userId, userId)),
-		// Delete debt payments (depends on debts)
-		db.delete(debtPayment).where(eq(debtPayment.userId, userId)),
-		// Delete transactions (depends on accounts, categories, debts)
+		db.delete(debtPayment).where(eq(debtPayment.userId, userId))
+	]);
+	// Wave 2: transactions (depend on accounts, categories, debts)
+	await Promise.all([
 		db.delete(transaction).where(eq(transaction.userId, userId)),
-		// Delete debts
-		db.delete(debt).where(eq(debt.userId, userId)),
-		// Delete tax records
-		db.delete(taxRecord).where(eq(taxRecord.userId, userId)),
-		// Delete transaction templates
 		db.delete(transactionTemplate).where(eq(transactionTemplate.userId, userId)),
-		// Delete categories
+		db.delete(taxRecord).where(eq(taxRecord.userId, userId))
+	]);
+	// Wave 3: base tables (no FK dependents remaining)
+	await Promise.all([
+		db.delete(debt).where(eq(debt.userId, userId)),
 		db.delete(category).where(eq(category.userId, userId)),
-		// Delete chart of accounts
 		db.delete(chartOfAccount).where(eq(chartOfAccount.userId, userId)),
-		// Delete business profiles
 		db.delete(businessProfile).where(eq(businessProfile.userId, userId))
 	]);
 }

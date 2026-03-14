@@ -98,7 +98,7 @@
 			</p>
 			<button
 				onclick={() => goto('/beranda')}
-				class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+				class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-3 min-h-[48px] text-base rounded-md font-medium transition-colors"
 			>
 				Coba Lagi
 			</button>
@@ -413,7 +413,7 @@
 					</p>
 					<a
 						href="/transaksi/tambah"
-						class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+						class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-3 min-h-[48px] text-base rounded-md font-medium transition-colors"
 					>
 						<Plus class="w-4 h-4" />
 						Tambah Transaksi

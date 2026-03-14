@@ -13,7 +13,6 @@
 	import { formatRupiah } from '$lib/tax/engine';
 	import type { TaxpayerType } from '$lib/tax/types';
 
-	// Types for page data
 	interface TaxSummary {
 		year: number;
 		month: number;
@@ -71,7 +70,7 @@
 		error: string | null;
 	}
 
-	let { data } = $props<{ data: PageData }>();
+	let { data }: { data: PageData } = $props();
 
 	// State
 	let showConfirmDialog = $state(false);
@@ -352,7 +351,7 @@
 			</p>
 			<a
 				href="/transaksi/tambah"
-				class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+				class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-3 min-h-[48px] text-base rounded-md font-medium transition-colors"
 			>
 				<Plus class="w-4 h-4" />
 				Tambah Transaksi
@@ -362,9 +361,16 @@
 
 	<!-- Confirmation Dialog -->
 	{#if showConfirmDialog}
-		<div class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+		<div
+			class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="tax-confirm-title"
+		>
 			<div class="bg-background border rounded-lg shadow-lg max-w-md w-full p-6">
-				<h3 class="text-lg font-semibold mb-2">Konfirmasi Pembayaran Pajak</h3>
+				<h3 id="tax-confirm-title" class="text-lg font-semibold mb-2">
+					Konfirmasi Pembayaran Pajak
+				</h3>
 				<p class="text-muted-foreground mb-4">
 					Apakah Anda yakin ingin menandai pajak bulan {data.summary
 						? getIndonesianMonthName(data.summary.month)
