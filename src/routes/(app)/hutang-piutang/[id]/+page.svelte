@@ -14,6 +14,7 @@
 		X,
 		Plus
 	} from '@lucide/svelte';
+	import { formatRupiah, formatDate, getDebtStatusBadge } from '$lib/utils';
 
 	let { data } = $props();
 
@@ -33,7 +34,7 @@
 	let debt = $derived(data.debt);
 	let payments = $derived(data.payments);
 	let accounts = $derived(data.accounts);
-	let statusBadge = $derived(getStatusBadge(debt.status));
+	let statusBadge = $derived(getDebtStatusBadge(debt.status));
 
 	// Pre-fill payment amount with remaining balance
 	$effect(() => {
@@ -41,40 +42,6 @@
 			paymentAmount = debt.remainingAmount;
 		}
 	});
-
-	// Format currency
-	function formatRupiah(value: number): string {
-		return new Intl.NumberFormat('id-ID', {
-			style: 'currency',
-			currency: 'IDR',
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 0
-		}).format(value);
-	}
-
-	// Format date
-	function formatDate(dateStr: string | null): string {
-		if (!dateStr) return '-';
-		return new Date(dateStr).toLocaleDateString('id-ID', {
-			day: 'numeric',
-			month: 'short',
-			year: 'numeric'
-		});
-	}
-
-	// Get status badge
-	function getStatusBadge(status: string) {
-		switch (status) {
-			case 'active':
-				return { label: 'Aktif', class: 'bg-blue-100 text-blue-700' };
-			case 'paid':
-				return { label: 'Lunas', class: 'bg-green-100 text-green-700' };
-			case 'overdue':
-				return { label: 'Jatuh Tempo', class: 'bg-red-100 text-red-700' };
-			default:
-				return { label: status, class: 'bg-gray-100 text-gray-700' };
-		}
-	}
 
 	// Get type label
 	function getTypeLabel(type: string): string {

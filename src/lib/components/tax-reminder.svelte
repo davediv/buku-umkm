@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { AlertTriangle, Bell, Calendar, Receipt, X } from '@lucide/svelte';
-	import { formatRupiah } from '$lib/tax/engine';
+	import { formatRupiah } from '$lib/utils';
 	import { getIndonesianMonthName } from '$lib/tax/config';
 
 	interface TaxReminderData {

@@ -18,7 +18,7 @@
 		AlertCircle,
 		FolderArchive
 	} from '@lucide/svelte';
-	import { INDONESIAN_MONTHS } from '$lib/tax/config';
+	import { formatRupiah, formatDateLong, getComparisonText, getMaxCategoryValue } from '$lib/utils';
 	import {
 		exportLabaRugiPDF,
 		exportNeracaPDF,
@@ -63,40 +63,6 @@
 
 	// Derived - use data directly
 	let hasError = $derived(!data.profitLoss && !data.balanceSheet && !data.catatan && data.error);
-
-	// Memoized formatter for performance
-	const formatRupiah = $derived(
-		new Intl.NumberFormat('id-ID', {
-			style: 'currency',
-			currency: 'IDR',
-			minimumFractionDigits: 0
-		}).format
-	);
-
-	// Format currency using memoized formatter
-	function formatRupiahValue(amount: number): string {
-		return formatRupiah(amount);
-	}
-
-	// Format date to Indonesian format
-	function formatDate(dateStr: string): string {
-		const [year, month, day] = dateStr.split('-').map(Number);
-		const monthName = INDONESIAN_MONTHS[month - 1];
-		return `${day} ${monthName} ${year}`;
-	}
-
-	// Get comparison text
-	function getComparisonText(change: number): { text: string; isPositive: boolean } {
-		const absChange = Math.abs(change);
-		if (change > 0) return { text: `Naik ${absChange.toFixed(1)}%`, isPositive: true };
-		else if (change < 0) return { text: `Turun ${absChange.toFixed(1)}%`, isPositive: false };
-		return { text: 'Tidak berubah', isPositive: true };
-	}
-
-	// Calculate max for chart scaling
-	function getMaxCategoryValue(categories: { total: number }[]): number {
-		return Math.max(...categories.map((c) => c.total), 1);
-	}
 
 	// Handle report type change
 	async function changeReportType(type: ReportType) {
@@ -595,7 +561,7 @@
 						<span>Total Saldo Saat Ini</span>
 					</div>
 					<p class="text-3xl md:text-4xl font-bold">
-						{formatRupiahValue(data.profitLoss.totalBalance)}
+						{formatRupiah(data.profitLoss.totalBalance)}
 					</p>
 				</div>
 
@@ -620,7 +586,7 @@
 							{/if}
 						</div>
 						<p class="text-xl md:text-2xl font-semibold text-green-600">
-							{formatRupiahValue(data.profitLoss.income)}
+							{formatRupiah(data.profitLoss.income)}
 						</p>
 					</div>
 
@@ -643,7 +609,7 @@
 							{/if}
 						</div>
 						<p class="text-xl md:text-2xl font-semibold text-red-600">
-							{formatRupiahValue(data.profitLoss.expense)}
+							{formatRupiah(data.profitLoss.expense)}
 						</p>
 					</div>
 
@@ -669,7 +635,7 @@
 								? 'text-green-600'
 								: 'text-red-600'}"
 						>
-							{formatRupiahValue(Math.abs(data.profitLoss.profit))}
+							{formatRupiah(Math.abs(data.profitLoss.profit))}
 						</p>
 					</div>
 				</div>
@@ -699,7 +665,7 @@
 													{category.categoryName}
 												</span>
 												<span class="text-muted-foreground">
-													{formatRupiahValue(category.total)} ({category.percentage.toFixed(1)}%)
+													{formatRupiah(category.total)} ({category.percentage.toFixed(1)}%)
 												</span>
 											</div>
 											<div class="h-2 bg-muted rounded-full overflow-hidden">
@@ -740,7 +706,7 @@
 													{category.categoryName}
 												</span>
 												<span class="text-muted-foreground">
-													{formatRupiahValue(category.total)} ({category.percentage.toFixed(1)}%)
+													{formatRupiah(category.total)} ({category.percentage.toFixed(1)}%)
 												</span>
 											</div>
 											<div class="h-2 bg-muted rounded-full overflow-hidden">
@@ -802,14 +768,14 @@
 											>{data.balanceSheet.assets.breakdown.kas.label}</span
 										>
 										<span class="text-sm font-semibold"
-											>{formatRupiahValue(data.balanceSheet.assets.breakdown.kas.subtotal)}</span
+											>{formatRupiah(data.balanceSheet.assets.breakdown.kas.subtotal)}</span
 										>
 									</div>
 									{#each data.balanceSheet.assets.breakdown.kas.items as item (item.id)}
 										<div class="flex justify-between text-sm text-muted-foreground pl-2">
 											<span><span class="font-mono text-xs mr-2">{item.code}</span>{item.name}</span
 											>
-											<span>{formatRupiahValue(item.balance)}</span>
+											<span>{formatRupiah(item.balance)}</span>
 										</div>
 									{/each}
 								</div>
@@ -822,14 +788,14 @@
 											>{data.balanceSheet.assets.breakdown.bank.label}</span
 										>
 										<span class="text-sm font-semibold"
-											>{formatRupiahValue(data.balanceSheet.assets.breakdown.bank.subtotal)}</span
+											>{formatRupiah(data.balanceSheet.assets.breakdown.bank.subtotal)}</span
 										>
 									</div>
 									{#each data.balanceSheet.assets.breakdown.bank.items as item (item.id)}
 										<div class="flex justify-between text-sm text-muted-foreground pl-2">
 											<span><span class="font-mono text-xs mr-2">{item.code}</span>{item.name}</span
 											>
-											<span>{formatRupiahValue(item.balance)}</span>
+											<span>{formatRupiah(item.balance)}</span>
 										</div>
 									{/each}
 								</div>
@@ -842,7 +808,7 @@
 											>{data.balanceSheet.assets.breakdown.piutangUsaha.label}</span
 										>
 										<span class="text-sm font-semibold"
-											>{formatRupiahValue(
+											>{formatRupiah(
 												data.balanceSheet.assets.breakdown.piutangUsaha.subtotal
 											)}</span
 										>
@@ -851,7 +817,7 @@
 										<div class="flex justify-between text-sm text-muted-foreground pl-2">
 											<span><span class="font-mono text-xs mr-2">{item.code}</span>{item.name}</span
 											>
-											<span>{formatRupiahValue(item.balance)}</span>
+											<span>{formatRupiah(item.balance)}</span>
 										</div>
 									{/each}
 								</div>
@@ -864,7 +830,7 @@
 											>{data.balanceSheet.assets.breakdown.piutangDetail.label}</span
 										>
 										<span class="text-sm font-semibold"
-											>{formatRupiahValue(
+											>{formatRupiah(
 												data.balanceSheet.assets.breakdown.piutangDetail.subtotal
 											)}</span
 										>
@@ -872,7 +838,7 @@
 									{#each data.balanceSheet.assets.breakdown.piutangDetail.items as item (item.id)}
 										<div class="flex justify-between text-sm text-muted-foreground pl-2">
 											<span>{item.name}</span>
-											<span>{formatRupiahValue(item.remainingAmount)}</span>
+											<span>{formatRupiah(item.remainingAmount)}</span>
 										</div>
 									{/each}
 								</div>
@@ -885,16 +851,14 @@
 											>{data.balanceSheet.assets.breakdown.persediaan.label}</span
 										>
 										<span class="text-sm font-semibold"
-											>{formatRupiahValue(
-												data.balanceSheet.assets.breakdown.persediaan.subtotal
-											)}</span
+											>{formatRupiah(data.balanceSheet.assets.breakdown.persediaan.subtotal)}</span
 										>
 									</div>
 									{#each data.balanceSheet.assets.breakdown.persediaan.items as item (item.id)}
 										<div class="flex justify-between text-sm text-muted-foreground pl-2">
 											<span><span class="font-mono text-xs mr-2">{item.code}</span>{item.name}</span
 											>
-											<span>{formatRupiahValue(item.balance)}</span>
+											<span>{formatRupiah(item.balance)}</span>
 										</div>
 									{/each}
 								</div>
@@ -907,16 +871,14 @@
 											>{data.balanceSheet.assets.breakdown.aktivaTetap.label}</span
 										>
 										<span class="text-sm font-semibold"
-											>{formatRupiahValue(
-												data.balanceSheet.assets.breakdown.aktivaTetap.subtotal
-											)}</span
+											>{formatRupiah(data.balanceSheet.assets.breakdown.aktivaTetap.subtotal)}</span
 										>
 									</div>
 									{#each data.balanceSheet.assets.breakdown.aktivaTetap.items as item (item.id)}
 										<div class="flex justify-between text-sm text-muted-foreground pl-2">
 											<span><span class="font-mono text-xs mr-2">{item.code}</span>{item.name}</span
 											>
-											<span>{formatRupiahValue(item.balance)}</span>
+											<span>{formatRupiah(item.balance)}</span>
 										</div>
 									{/each}
 								</div>
@@ -926,7 +888,7 @@
 							<div class="border-t pt-3 mt-3">
 								<div class="flex justify-between items-center font-semibold">
 									<span>TOTAL ASET</span>
-									<span class="text-lg">{formatRupiahValue(data.balanceSheet.assets.total)}</span>
+									<span class="text-lg">{formatRupiah(data.balanceSheet.assets.total)}</span>
 								</div>
 							</div>
 						</div>
@@ -948,7 +910,7 @@
 											>{data.balanceSheet.liabilities.breakdown.hutangDetail.label}</span
 										>
 										<span class="text-sm font-semibold"
-											>{formatRupiahValue(
+											>{formatRupiah(
 												data.balanceSheet.liabilities.breakdown.hutangDetail.subtotal
 											)}</span
 										>
@@ -956,7 +918,7 @@
 									{#each data.balanceSheet.liabilities.breakdown.hutangDetail.items as item (item.id)}
 										<div class="flex justify-between text-sm text-muted-foreground pl-2">
 											<span>{item.name}</span>
-											<span>{formatRupiahValue(item.remainingAmount)}</span>
+											<span>{formatRupiah(item.remainingAmount)}</span>
 										</div>
 									{/each}
 								</div>
@@ -967,9 +929,7 @@
 							<div class="border-t pt-3 mt-3">
 								<div class="flex justify-between items-center font-semibold">
 									<span>TOTAL KEWAJIBAN</span>
-									<span class="text-lg"
-										>{formatRupiahValue(data.balanceSheet.liabilities.total)}</span
-									>
+									<span class="text-lg">{formatRupiah(data.balanceSheet.liabilities.total)}</span>
 								</div>
 							</div>
 						</div>
@@ -987,14 +947,14 @@
 							{#each data.balanceSheet.equity.components as component (component.name)}
 								<div class="flex justify-between text-sm">
 									<span>{component.name}</span>
-									<span>{formatRupiahValue(component.amount)}</span>
+									<span>{formatRupiah(component.amount)}</span>
 								</div>
 							{/each}
 
 							<div class="border-t pt-3 mt-3">
 								<div class="flex justify-between items-center font-semibold">
 									<span>TOTAL EKUITAS</span>
-									<span class="text-lg">{formatRupiahValue(data.balanceSheet.equity.total)}</span>
+									<span class="text-lg">{formatRupiah(data.balanceSheet.equity.total)}</span>
 								</div>
 							</div>
 						</div>
@@ -1010,21 +970,17 @@
 						<div class="text-sm space-y-2">
 							<div class="flex justify-between">
 								<span class="text-muted-foreground">Total Aset</span>
-								<span class="font-medium"
-									>{formatRupiahValue(data.balanceSheet.equation.assets)}</span
-								>
+								<span class="font-medium">{formatRupiah(data.balanceSheet.equation.assets)}</span>
 							</div>
 							<div class="flex justify-between">
 								<span class="text-muted-foreground">Total Kewajiban + Ekuitas</span>
-								<span class="font-medium"
-									>{formatRupiahValue(data.balanceSheet.equation.expected)}</span
-								>
+								<span class="font-medium">{formatRupiah(data.balanceSheet.equation.expected)}</span>
 							</div>
 							<div class="border-t pt-2 mt-2">
 								<div class="flex justify-between font-semibold">
 									<span>Selisih</span>
 									<span class={data.balanceSheet.isBalanced ? 'text-green-600' : 'text-red-600'}>
-										{formatRupiahValue(
+										{formatRupiah(
 											Math.abs(
 												data.balanceSheet.equation.result - data.balanceSheet.equation.expected
 											)
@@ -1086,7 +1042,7 @@
 							</h3>
 							<p class="text-sm text-muted-foreground mt-1">Periode: {data.catatan.periodLabel}</p>
 							<p class="text-xs text-muted-foreground mt-1">
-								({formatDate(data.catatan.startDate)} - {formatDate(data.catatan.endDate)})
+								({formatDateLong(data.catatan.startDate)} - {formatDateLong(data.catatan.endDate)})
 							</p>
 						</div>
 					</div>
@@ -1163,7 +1119,7 @@
 							Dokumen ini dihasilkan secara otomatis oleh Buku UMKM
 						</p>
 						<p class="text-xs text-muted-foreground text-center mt-1">
-							Tanggal cetak: {formatDate(new Date().toISOString().split('T')[0])}
+							Tanggal cetak: {formatDateLong(new Date().toISOString().split('T')[0])}
 						</p>
 					</div>
 				</div>
@@ -1207,25 +1163,25 @@
 							<div class="p-3 bg-muted/50 rounded-lg">
 								<p class="text-sm text-muted-foreground">Total Pendapatan Kotor</p>
 								<p class="text-xl font-semibold">
-									{formatRupiahValue(sptData.summary.totalGrossRevenue)}
+									{formatRupiah(sptData.summary.totalGrossRevenue)}
 								</p>
 							</div>
 							<div class="p-3 bg-muted/50 rounded-lg">
 								<p class="text-sm text-muted-foreground">Total PPh Final Terutang</p>
 								<p class="text-xl font-semibold">
-									{formatRupiahValue(sptData.summary.totalTaxDue)}
+									{formatRupiah(sptData.summary.totalTaxDue)}
 								</p>
 							</div>
 							<div class="p-3 bg-muted/50 rounded-lg">
 								<p class="text-sm text-muted-foreground">Total PPh Final Dibayar</p>
 								<p class="text-xl font-semibold">
-									{formatRupiahValue(sptData.summary.totalTaxPaid)}
+									{formatRupiah(sptData.summary.totalTaxPaid)}
 								</p>
 							</div>
 							<div class="p-3 bg-muted/50 rounded-lg">
 								<p class="text-sm text-muted-foreground">Total Pengeluaran</p>
 								<p class="text-xl font-semibold">
-									{formatRupiahValue(sptData.summary.totalExpenses)}
+									{formatRupiah(sptData.summary.totalExpenses)}
 								</p>
 							</div>
 							<div class="p-3 bg-muted/50 rounded-lg">
@@ -1235,7 +1191,7 @@
 										? 'text-green-600'
 										: 'text-red-600'}"
 								>
-									{formatRupiahValue(sptData.summary.netIncome)}
+									{formatRupiah(sptData.summary.netIncome)}
 								</p>
 							</div>
 							<div class="p-3 bg-muted/50 rounded-lg">
@@ -1269,10 +1225,9 @@
 									{#each sptData.months as month (month.month)}
 										<tr class="border-b hover:bg-muted/30">
 											<td class="py-2 px-3">{month.monthName}</td>
-											<td class="text-right py-2 px-3">{formatRupiahValue(month.grossRevenue)}</td>
-											<td class="text-right py-2 px-3">{formatRupiahValue(month.taxableRevenue)}</td
-											>
-											<td class="text-right py-2 px-3">{formatRupiahValue(month.taxAmount)}</td>
+											<td class="text-right py-2 px-3">{formatRupiah(month.grossRevenue)}</td>
+											<td class="text-right py-2 px-3">{formatRupiah(month.taxableRevenue)}</td>
+											<td class="text-right py-2 px-3">{formatRupiah(month.taxAmount)}</td>
 											<td class="text-center py-2 px-3">
 												<span
 													class="inline-block px-2 py-1 text-xs rounded-full {month.taxStatus ===
@@ -1290,13 +1245,12 @@
 									<tr class="font-semibold bg-muted/50">
 										<td class="py-2 px-3">TOTAL</td>
 										<td class="text-right py-2 px-3"
-											>{formatRupiahValue(sptData.summary.totalGrossRevenue)}</td
+											>{formatRupiah(sptData.summary.totalGrossRevenue)}</td
 										>
 										<td class="text-right py-2 px-3"
-											>{formatRupiahValue(sptData.summary.totalTaxableRevenue)}</td
+											>{formatRupiah(sptData.summary.totalTaxableRevenue)}</td
 										>
-										<td class="text-right py-2 px-3"
-											>{formatRupiahValue(sptData.summary.totalTaxDue)}</td
+										<td class="text-right py-2 px-3">{formatRupiah(sptData.summary.totalTaxDue)}</td
 										>
 										<td class="text-center py-2 px-3"></td>
 									</tr>

@@ -10,7 +10,7 @@
 		TableRow
 	} from '$lib/components/ui/table';
 	import { TAX_STATUS, TAXPAYER_TYPE, getIndonesianMonthName } from '$lib/tax/config';
-	import { formatRupiah } from '$lib/tax/engine';
+	import { formatRupiah } from '$lib/utils';
 	import type { TaxpayerType } from '$lib/tax/types';
 
 	interface TaxSummary {

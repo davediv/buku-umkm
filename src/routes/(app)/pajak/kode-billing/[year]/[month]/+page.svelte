@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { ArrowLeft, Copy, FileDown, AlertCircle, CheckCircle2 } from '@lucide/svelte';
-	import { formatRupiah } from '$lib/tax/engine';
+	import { formatRupiah } from '$lib/utils';
 	import { copyToast } from '$lib/components/ui/toast';
 	import { jsPDF } from 'jspdf';
 

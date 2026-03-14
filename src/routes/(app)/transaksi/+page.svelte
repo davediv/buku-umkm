@@ -15,7 +15,7 @@
 		FileSpreadsheet,
 		FileText
 	} from '@lucide/svelte';
-	import { formatTransactionAmount } from '$lib/utils';
+	import { formatTransactionAmount, formatDate, formatDateShort } from '$lib/utils';
 	import { toast } from '$lib/components/ui/toast';
 	import {
 		exportTransactions,
@@ -127,23 +127,6 @@
 		};
 		return labels[selectedDateRange] || 'Bulan Ini';
 	});
-
-	function formatDate(dateStr: string): string {
-		const date = new Date(dateStr);
-		return date.toLocaleDateString('id-ID', {
-			day: 'numeric',
-			month: 'short',
-			year: 'numeric'
-		});
-	}
-
-	function formatDateShort(dateStr: string): string {
-		const date = new Date(dateStr);
-		return date.toLocaleDateString('id-ID', {
-			day: 'numeric',
-			month: 'short'
-		});
-	}
 
 	function toggleSort(column: 'date' | 'amount') {
 		if (sortBy === column) {

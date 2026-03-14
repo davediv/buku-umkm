@@ -10,6 +10,7 @@
 		AlertCircle,
 		Loader2
 	} from '@lucide/svelte';
+	import { formatRupiah } from '$lib/utils';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -27,15 +28,6 @@
 
 	// Derived - directly use data since it's already reactive
 	let hasError = $derived(!data.balanceSheet && data.error);
-
-	// Format currency to Indonesian Rupiah
-	function formatRupiah(amount: number): string {
-		return new Intl.NumberFormat('id-ID', {
-			style: 'currency',
-			currency: 'IDR',
-			minimumFractionDigits: 0
-		}).format(amount);
-	}
 
 	// Handle date change
 	async function changeDate() {

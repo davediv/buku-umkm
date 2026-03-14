@@ -11,6 +11,7 @@
 		X,
 		ArrowLeftRight
 	} from '@lucide/svelte';
+	import { formatRupiah } from '$lib/utils';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -42,15 +43,6 @@
 	// Derived
 	let accounts = $derived(data.accounts);
 	let totalBalance = $derived(accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0));
-
-	// Helper to format currency
-	function formatRupiah(amount: number): string {
-		return new Intl.NumberFormat('id-ID', {
-			style: 'currency',
-			currency: 'IDR',
-			minimumFractionDigits: 0
-		}).format(amount);
-	}
 
 	// Helper to get icon by type
 	function getIconByType(accountType: string) {
