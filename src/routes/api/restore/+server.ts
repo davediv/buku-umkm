@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, type SQLiteDb } from '$lib/server/db';
+import { getDb } from '$lib/server/db';
 import {
 	chartOfAccount,
 	category,

@@ -9,7 +9,7 @@
 		TableHeader,
 		TableRow
 	} from '$lib/components/ui/table';
-	import { TAX_STATUS } from '$lib/tax/config';
+	import { TAX_STATUS, getIndonesianMonthName } from '$lib/tax/config';
 	import { formatRupiah } from '$lib/tax/engine';
 	import type { TaxpayerType } from '$lib/tax/types';
 
@@ -77,25 +77,6 @@
 	let showConfirmDialog = $state(false);
 	let loading = $state(false);
 	let error = $state<string | null>(null);
-
-	// Format month name
-	function getMonthName(month: number): string {
-		const months = [
-			'Januari',
-			'Februari',
-			'Maret',
-			'April',
-			'Mei',
-			'Juni',
-			'Juli',
-			'Agustus',
-			'September',
-			'Oktober',
-			'November',
-			'Desember'
-		];
-		return months[month - 1] || '';
-	}
 
 	// Get progress bar color class
 	function getProgressBarColor(percentage: number): string {
@@ -240,7 +221,7 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 				<div>
 					<p class="text-sm text-muted-foreground">
-						Pajak Bulan {getMonthName(data.summary.month)}
+						Pajak Bulan {getIndonesianMonthName(data.summary.month)}
 						{data.summary.year}
 					</p>
 					{#if data.summary.isBelowThreshold}
@@ -325,7 +306,7 @@
 										href="/pajak/kode-billing/{record.year}/{record.month}"
 										class="hover:underline"
 									>
-										{getMonthName(record.month)}
+										{getIndonesianMonthName(record.month)}
 									</a>
 								</TableCell>
 								<TableCell class="text-right">{formatRupiah(record.grossRevenue)}</TableCell>
@@ -386,7 +367,7 @@
 				<h3 class="text-lg font-semibold mb-2">Konfirmasi Pembayaran Pajak</h3>
 				<p class="text-muted-foreground mb-4">
 					Apakah Anda yakin ingin menandai pajak bulan {data.summary
-						? getMonthName(data.summary.month)
+						? getIndonesianMonthName(data.summary.month)
 						: ''}
 					{data.summary?.year || ''} sebagai sudah dibayar?
 				</p>

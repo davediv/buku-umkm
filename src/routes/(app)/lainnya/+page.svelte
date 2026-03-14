@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Settings, HelpCircle, Info, Shield, Database, ArrowRight } from '@lucide/svelte';
+	import { APP_VERSION } from '$lib/constants';
 
 	// Menu items
 	const menuItems = [
@@ -92,7 +93,7 @@
 
 	<!-- App Info -->
 	<section class="pt-6 text-center text-sm text-muted-foreground">
-		<p>Buku UMKM v1.0.0</p>
+		<p>Buku UMKM v{APP_VERSION}</p>
 		<p class="mt-1">Gratis dan open source</p>
 	</section>
 </div>
