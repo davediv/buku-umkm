@@ -43,7 +43,7 @@
 	<title>Lainnya - Buku UMKM</title>
 </svelte:head>
 
-<div class="p-4 space-y-6">
+<div class="p-4 md:p-6 space-y-6">
 	<h1 class="text-2xl font-bold">Lainnya</h1>
 
 	<!-- Settings Section -->

@@ -727,13 +727,13 @@
 			<div class="flex gap-3">
 				<button
 					onclick={() => (showRemovePhotoConfirm = false)}
-					class="flex-1 px-4 py-2 border rounded-md text-sm font-medium hover:bg-secondary transition-colors"
+					class="flex-1 px-4 py-3 min-h-[48px] border rounded-md text-base font-medium hover:bg-secondary transition-colors"
 				>
 					Batal
 				</button>
 				<button
 					onclick={removePhoto}
-					class="flex-1 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm font-medium hover:bg-destructive/90 transition-colors"
+					class="flex-1 px-4 py-3 min-h-[48px] bg-destructive text-destructive-foreground rounded-md text-base font-medium hover:bg-destructive/90 transition-colors"
 				>
 					Hapus
 				</button>
@@ -753,14 +753,14 @@
 			<div class="flex gap-3">
 				<button
 					onclick={() => (showDeleteConfirm = false)}
-					class="flex-1 px-4 py-2 border rounded-md text-sm font-medium hover:bg-secondary transition-colors"
+					class="flex-1 px-4 py-3 min-h-[48px] border rounded-md text-base font-medium hover:bg-secondary transition-colors"
 				>
 					Batal
 				</button>
 				<button
 					onclick={handleDelete}
 					disabled={deleting}
-					class="flex-1 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50"
+					class="flex-1 px-4 py-3 min-h-[48px] bg-destructive text-destructive-foreground rounded-md text-base font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50"
 				>
 					{deleting ? 'Menghapus...' : 'Hapus'}
 				</button>

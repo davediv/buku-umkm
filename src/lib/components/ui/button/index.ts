@@ -4,7 +4,7 @@ import Button from './button.svelte';
 export { Button };
 
 export const buttonVariants = tv({
-	base: 'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+	base: 'inline-flex items-center justify-center whitespace-nowrap rounded-md text-base md:text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
 	variants: {
 		variant: {
 			default: 'bg-primary text-primary-foreground hover:bg-primary/90',
@@ -15,10 +15,10 @@ export const buttonVariants = tv({
 			link: 'text-primary underline-offset-4 hover:underline'
 		},
 		size: {
-			default: 'h-10 px-4 py-2',
-			sm: 'h-9 rounded-md px-3',
-			lg: 'h-11 rounded-md px-8',
-			icon: 'h-10 w-10'
+			default: 'h-12 md:h-10 px-5 md:px-4 py-3 md:py-2 min-h-[48px]',
+			sm: 'h-10 md:h-9 px-4 md:px-3 py-2 min-h-[40px]',
+			lg: 'h-14 md:h-11 px-8 md:px-8 py-3 md:py-2 min-h-[56px]',
+			icon: 'h-12 md:h-10 w-12 md:w-10 min-h-[48px]'
 		}
 	},
 	defaultVariants: {
