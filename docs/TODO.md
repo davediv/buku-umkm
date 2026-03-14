@@ -845,7 +845,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Backup accessible from Settings page
   - **Dependencies**: DB-P1-004, AUTH-P1-004
 
-- [ ] **FEAT-P3-013**: Implement data restore from backup
+- [x] **FEAT-P3-013**: Implement data restore from backup
   - **Success Criteria**:
     - `POST /api/restore` accepts backup file and overwrites local data
     - Schema version validation before applying restore
