@@ -999,11 +999,11 @@ export const businessProfileQueries = {
 		data: {
 			name?: string;
 			businessType?: string;
-			address?: string;
-			phone?: string;
-			npwp?: string;
-			ownerName?: string;
-			industry?: string;
+			address?: string | null;
+			phone?: string | null;
+			npwp?: string | null;
+			ownerName?: string | null;
+			industry?: string | null;
 		}
 	) {
 		return db.update(businessProfile).set(data).where(eq(businessProfile.userId, userId));

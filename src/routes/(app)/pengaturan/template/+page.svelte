@@ -66,13 +66,13 @@
 	function openEditModal(tmpl: {
 		id: string;
 		name: string;
-		type: 'income' | 'expense';
+		type: string;
 		categoryId: string | null;
 		description: string | null;
 	}) {
-		editingTemplate = tmpl;
+		editingTemplate = { ...tmpl, type: tmpl.type as 'income' | 'expense' };
 		name = tmpl.name;
-		type = tmpl.type;
+		type = tmpl.type as 'income' | 'expense';
 		categoryId = tmpl.categoryId || '';
 		description = tmpl.description || '';
 		showModal = true;

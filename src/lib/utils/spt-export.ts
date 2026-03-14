@@ -6,7 +6,7 @@
  */
 
 import type { TaxpayerType } from '$lib/tax/types';
-import { getTaxStatusLabel, getTaxpayerTypeLabel } from '$lib/tax/config';
+import { getTaxStatusLabel, getTaxpayerTypeLabel, TAXPAYER_TYPE } from '$lib/tax/config';
 import { formatRupiah as formatRupiahFromEngine } from '$lib/tax/engine';
 import { formatDateForExport } from '$lib/utils/export';
 
@@ -316,7 +316,6 @@ export async function exportSPTToPDF(
 		styles: { fontSize: 9, cellPadding: 3 }
 	});
 
-	// @ts-expect-error - jsPDF-autotable types not fully compatible
 	yPos = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
 
 	// Check if we need a new page for the monthly table
@@ -370,11 +369,10 @@ export async function exportSPTToPDF(
 		styles: { fontSize: 8, cellPadding: 2 }
 	});
 
-	// @ts-expect-error - jsPDF-autotable types not fully compatible
 	yPos = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
 
 	// Threshold info
-	if (sptData.taxpayerType === 'WP_OP') {
+	if (sptData.taxpayerType === TAXPAYER_TYPE.WP_OP) {
 		addSectionTitle('INFORMASI THRESHOLD');
 
 		setFont('normal', 10);

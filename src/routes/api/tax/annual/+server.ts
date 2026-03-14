@@ -5,7 +5,7 @@ import { transaction } from '$lib/server/db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { calculateMonthlyTax } from '$lib/tax/engine';
 import { calculateMonthlyRevenues, getTaxpayerType, getTaxRecordsForYear } from '$lib/tax/service';
-import { TAX_STATUS } from '$lib/tax/config';
+import { TAX_STATUS, TAXPAYER_TYPE } from '$lib/tax/config';
 import { INDONESIAN_MONTHS } from '$lib/tax/config';
 
 /**
@@ -101,7 +101,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				monthName: INDONESIAN_MONTHS[month - 1],
 				grossRevenue: revenue,
 				taxableRevenue: taxCalculation.taxableRevenue,
-				taxRate: taxCalculation.taxRate,
+				taxRate: String(taxCalculation.taxRate),
 				taxAmount: taxRec?.taxAmount || taxCalculation.taxAmount,
 				taxStatus: paymentStatus,
 				isBelowThreshold: taxCalculation.isBelowThreshold
@@ -149,7 +149,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				totalTaxPaid,
 				totalExpenses,
 				netIncome,
-				thresholdAmount: taxpayerType === 'WP_BADAN' ? null : 500000000000, // Rp 500 Billion in Rupiah
+				thresholdAmount: taxpayerType === TAXPAYER_TYPE.WP_BADAN ? null : 500000000000, // Rp 500 Billion in Rupiah
 				thresholdExceeded: months.some((m) => !m.isBelowThreshold)
 			},
 			generatedAt: new Date().toISOString()
