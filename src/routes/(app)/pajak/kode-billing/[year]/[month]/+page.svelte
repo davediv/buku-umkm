@@ -1,15 +1,14 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { ArrowLeft, Copy, FileDown, AlertCircle, CheckCircle2 } from '@lucide/svelte';
 	import { formatRupiah } from '$lib/tax/engine';
 	import { copyToast } from '$lib/components/ui/toast';
-	import Toast from '$lib/components/ui/toast/toast.svelte';
 	import { jsPDF } from 'jspdf';
 
 	// Get year and month from URL params
-	const year = $derived(parseInt($page.params.year || '0'));
-	const month = $derived(parseInt($page.params.month || '0'));
+	const year = $derived(parseInt(page.params.year || '0'));
+	const month = $derived(parseInt(page.params.month || '0'));
 
 	// State
 	let loading = $state(true);
@@ -149,8 +148,6 @@
 		doc.save(`kode-billing-${billingData.tahun}-${month.toString().padStart(2, '0')}.pdf`);
 	}
 </script>
-
-<Toast />
 
 <div class="p-4 md:p-6 space-y-6">
 	<!-- Header -->

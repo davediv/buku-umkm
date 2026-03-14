@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import {
 		Plus,
 		X,
@@ -33,7 +33,7 @@
 
 	// Parse initial type from URL
 	$effect(() => {
-		const typeParam = $page.url.searchParams.get('type');
+		const typeParam = page.url.searchParams.get('type');
 		if (typeParam === 'piutang' || typeParam === 'hutang') {
 			activeTab = typeParam;
 		}

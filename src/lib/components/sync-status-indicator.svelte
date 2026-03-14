@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { CheckCircle, Clock, AlertCircle, RefreshCw, WifiOff, X } from '@lucide/svelte';
-	import { syncStore } from '$lib/db/stores';
+	import { syncStore } from '$lib/db/stores.svelte';
 	import { triggerSync, refreshPendingCount } from '$lib/db/sync';
 	import { browser } from '$app/environment';
 
@@ -21,8 +21,8 @@
 		return sessionStorage.getItem('buku-umkm-user-id');
 	}
 
-	// Subscribe to sync store
-	let syncState = $derived($syncStore);
+	// Reactive sync state
+	let syncState = $derived(syncStore.state);
 
 	// Determine status type
 	let statusType: SyncStatusType = $derived.by(() => {

@@ -955,7 +955,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Verify illustrations/icons are present
   - **Dependencies**: All UI tasks
 
-- [ ] **UI-P3-011**: Implement loading states (skeleton screens)
+- [x] **UI-P3-011**: Implement loading states (skeleton screens)
   - **Success Criteria**:
     - Skeleton screens used for all data-loading states (not spinners)
     - Skeleton matches the layout shape of the loaded content

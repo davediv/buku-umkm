@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import {
@@ -31,7 +31,7 @@
 	let loading = $state(true);
 
 	// Get success message from URL
-	let showSuccess = $derived($page.url.searchParams.get('success') === 'true');
+	let showSuccess = $derived(page.url.searchParams.get('success') === 'true');
 
 	// State
 	let searchQuery = $state('');
