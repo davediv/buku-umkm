@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { ArrowLeft, Camera, Check, X, Image, Trash2 } from '@lucide/svelte';
+	import { ArrowLeft, Camera, Check, X, Image, Trash2, Link } from '@lucide/svelte';
 	import { formatIdr, compressImage } from '$lib/utils';
 	import type { PageData } from './$types';
 
@@ -235,6 +235,31 @@
 
 	// Quick amount buttons
 	const quickAmounts = [10000, 25000, 50000, 100000, 200000, 500000];
+
+	// Derived templates by type
+	let filteredTemplates = $derived(data.templates.filter((t: { type: string }) => t.type === type));
+
+	// Apply template to form
+	function applyTemplate(tmpl: {
+		id: string;
+		name: string;
+		type: 'income' | 'expense';
+		categoryId: string | null;
+		description: string | null;
+	}) {
+		// Set type (should match current, but ensure consistency)
+		type = tmpl.type;
+
+		// Set category if available
+		if (tmpl.categoryId) {
+			categoryId = tmpl.categoryId;
+		}
+
+		// Set description if available
+		if (tmpl.description) {
+			description = tmpl.description;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -321,6 +346,36 @@
 					</button>
 				{/each}
 			</div>
+
+			<!-- Template Quick Select -->
+			{#if filteredTemplates.length > 0}
+				<div class="pt-4 space-y-2">
+					<div class="flex items-center justify-between">
+						<label class="text-sm font-medium text-muted-foreground">Template Cepat</label>
+						<a
+							href="/pengaturan/template"
+							class="text-sm text-primary hover:underline flex items-center gap-1"
+						>
+							<Link class="w-3 h-3" />
+							Kelola Template
+						</a>
+					</div>
+					<div class="flex flex-wrap gap-2">
+						{#each filteredTemplates as tmpl (tmpl.id)}
+							<button
+								type="button"
+								onclick={() => applyTemplate(tmpl)}
+								class="px-3 py-1.5 text-sm bg-secondary hover:bg-secondary/80 rounded-full transition-colors {type ===
+								'income'
+									? 'text-green-700'
+									: 'text-red-700'}"
+							>
+								{tmpl.name}
+							</button>
+						{/each}
+					</div>
+				</div>
+			{/if}
 		</div>
 
 		<!-- Category Picker -->

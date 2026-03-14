@@ -1,6 +1,10 @@
 import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import { categoryQueries, chartOfAccountQueries } from '$lib/server/db/queries';
+import {
+	categoryQueries,
+	chartOfAccountQueries,
+	transactionTemplateQueries
+} from '$lib/server/db/queries';
 import { redirect } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -24,15 +28,32 @@ export const load: PageServerLoad = async ({ locals }) => {
 		const allAccounts = await chartOfAccountQueries.findAll(db, userId);
 		const accounts = allAccounts.filter((a) => a.isActive);
 
+		// Get all active templates
+		const templates = await transactionTemplateQueries.findAllActive(db, userId);
+
+		// Map to include category info for display
+		const categoryMap = new Map(allCategories.map((c) => [c.id, c]));
+		const mappedTemplates = templates.map((tmpl) => ({
+			id: tmpl.id,
+			name: tmpl.name,
+			type: tmpl.type,
+			categoryId: tmpl.categoryId,
+			categoryName: tmpl.categoryId ? categoryMap.get(tmpl.categoryId)?.name : null,
+			description: tmpl.description,
+			isSystem: tmpl.isSystem
+		}));
+
 		return {
 			categories,
-			accounts
+			accounts,
+			templates: mappedTemplates
 		};
 	} catch (error) {
 		console.error('Error loading transaction form data:', error);
 		return {
 			categories: { income: [], expense: [] },
 			accounts: [],
+			templates: [],
 			error: 'Gagal memuat data'
 		};
 	}
