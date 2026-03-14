@@ -407,7 +407,9 @@
 					>
 						<Receipt class="w-6 h-6 text-muted-foreground" />
 					</div>
-					<p class="text-muted-foreground text-sm">Belum ada transaksi</p>
+					<p class="text-muted-foreground text-sm">
+						Selamat datang! Yuk, catat transaksi pertamamu.
+					</p>
 					<a
 						href="/transaksi/tambah"
 						class="text-primary text-sm hover:underline mt-2 inline-block"

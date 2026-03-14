@@ -523,9 +523,9 @@
 			<div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
 				<Plus class="w-8 h-8 text-muted-foreground" />
 			</div>
-			<h3 class="text-lg font-medium mb-2">Belum ada transaksi</h3>
+			<h3 class="text-lg font-medium mb-2">Belum ada transaksi. Yuk, catat yang pertama!</h3>
 			<p class="text-sm text-muted-foreground mb-6 max-w-sm">
-				Yuk, catat transaksi pertama Anda untuk memulai keuangan yang lebih tertata!
+				Catat transaksi pertama Anda untuk memulai keuangan yang lebih tertata!
 			</p>
 			<a
 				href="/transaksi/tambah"
