@@ -86,9 +86,9 @@ const handleCSP: Handle = async ({ event, resolve }) => {
 		[
 			"default-src 'self'",
 			"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
-			"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+			"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com",
 			`img-src 'self' data: blob: ${CLOUDFLARE_STORAGE_DOMAINS}`,
-			"font-src 'self' data:",
+			"font-src 'self' data: https://fonts.gstatic.com",
 			`connect-src 'self' ${CLOUDFLARE_STORAGE_DOMAINS}`,
 			"frame-src 'none'",
 			"object-src 'none'",

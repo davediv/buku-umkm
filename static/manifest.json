@@ -4,8 +4,8 @@
   "description": "Free bookkeeping app for Indonesian MSMEs with PPh Final 0.5% tax compliance",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ff3e00",
+  "background_color": "#F8F5EF",
+  "theme_color": "#A4411D",
   "orientation": "portrait-primary",
   "icons": [
     {

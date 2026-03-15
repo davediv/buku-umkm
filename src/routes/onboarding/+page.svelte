@@ -193,14 +193,20 @@
 	<title>Setup Bisnis - Buku UMKM</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-b from-primary/5 to-background flex flex-col">
+<div class="relative min-h-screen flex flex-col bg-background">
+	<!-- Decorative background -->
+	<div
+		class="pointer-events-none fixed inset-0 -z-10"
+		style="background: radial-gradient(ellipse 80% 60% at 50% -20%, hsl(16 70% 38% / 0.06), transparent);"
+	></div>
+
 	<!-- Header -->
 	<header class="px-4 py-6 flex items-center justify-between">
-		<div class="flex items-center gap-2">
-			<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+		<div class="flex items-center gap-2.5">
+			<div class="w-9 h-9 bg-primary rounded-lg flex items-center justify-center shadow-sm">
 				<span class="text-primary-foreground font-bold text-sm">B</span>
 			</div>
-			<span class="font-semibold text-lg">Buku UMKM</span>
+			<span class="font-bold text-lg tracking-tight">Buku UMKM</span>
 		</div>
 		<Button variant="ghost" size="sm" onclick={skipOnboarding} disabled={loading || completing}>
 			{t('onboarding.skip')}

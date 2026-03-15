@@ -326,7 +326,7 @@
 		aria-labelledby="payment-modal-title"
 	>
 		<div
-			class="bg-background border rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
+			class="bg-card border rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
 		>
 			<div class="flex items-center justify-between mb-6">
 				<h2 id="payment-modal-title" class="text-lg font-semibold">Catat Pembayaran</h2>
