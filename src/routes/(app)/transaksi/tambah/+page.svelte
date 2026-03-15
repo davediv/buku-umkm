@@ -585,7 +585,12 @@
 					<p class="text-muted-foreground mb-4">
 						Belum ada kategori untuk {type === 'income' ? 'pemasukan' : 'pengeluaran'}
 					</p>
-					<a href="/kategori" class="text-primary hover:underline">Tambah kategori</a>
+					<a
+						href="/kategori"
+						class="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+					>
+						+ Tambah Kategori
+					</a>
 				</div>
 			{/if}
 		</div>
@@ -684,7 +689,12 @@
 			{:else}
 				<div class="flex flex-col items-center justify-center py-12 text-center">
 					<p class="text-muted-foreground mb-4">Belum ada akun</p>
-					<a href="/akun" class="text-primary hover:underline">Tambah akun</a>
+					<a
+						href="/akun"
+						class="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+					>
+						+ Tambah Akun
+					</a>
 				</div>
 			{/if}
 		</div>
