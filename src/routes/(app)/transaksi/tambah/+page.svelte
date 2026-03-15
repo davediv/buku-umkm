@@ -281,14 +281,16 @@
 	</header>
 
 	<!-- Main Form -->
-	<form onsubmit={handleSubmit} class="flex-1 flex flex-col p-4 space-y-6">
+	<form id="transaction-form" onsubmit={handleSubmit} class="flex-1 flex flex-col p-4 space-y-6">
 		<!-- Type Toggle -->
-		<div class="flex gap-2">
+		<div class="flex gap-2" role="radiogroup" aria-label="Jenis transaksi">
 			<button
 				type="button"
+				role="radio"
+				aria-checked={type === 'income'}
 				onclick={() => {
 					type = 'income';
-					categoryId = ''; // Reset category when switching type
+					categoryId = '';
 				}}
 				class="flex-1 py-3 rounded-lg font-medium transition-all {type === 'income'
 					? 'bg-green-500 text-white'
@@ -298,9 +300,11 @@
 			</button>
 			<button
 				type="button"
+				role="radio"
+				aria-checked={type === 'expense'}
 				onclick={() => {
 					type = 'expense';
-					categoryId = ''; // Reset category when switching type
+					categoryId = '';
 				}}
 				class="flex-1 py-3 rounded-lg font-medium transition-all {type === 'expense'
 					? 'bg-red-500 text-white'
@@ -312,7 +316,9 @@
 
 		<!-- Amount Input -->
 		<div class="space-y-2">
-			<label for="amount" class="text-sm font-medium text-muted-foreground">Jumlah</label>
+			<label for="amount" class="text-sm font-medium text-muted-foreground"
+				>Jumlah <span class="text-destructive">*</span></label
+			>
 			<div class="relative">
 				<span
 					class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-medium text-muted-foreground"
@@ -343,7 +349,7 @@
 						}}
 						class="px-4 py-2 min-h-[48px] text-base bg-muted hover:bg-secondary rounded-full transition-colors"
 					>
-						+{quickAmt.toLocaleString('id-ID')}
+						{quickAmt.toLocaleString('id-ID')}
 					</button>
 				{/each}
 			</div>
@@ -381,10 +387,13 @@
 
 		<!-- Category Picker -->
 		<div class="space-y-2">
-			<label for="category" class="text-sm font-medium text-muted-foreground">Kategori</label>
+			<label for="category-picker" class="text-sm font-medium text-muted-foreground">Kategori</label
+			>
 			<button
+				id="category-picker"
 				type="button"
 				onclick={() => (showCategoryPicker = true)}
+				aria-haspopup="dialog"
 				class="w-full flex items-center gap-3 p-3 bg-muted rounded-lg hover:bg-secondary transition-colors text-left"
 			>
 				{#if selectedCategory}
@@ -408,10 +417,14 @@
 
 		<!-- Account Picker -->
 		<div class="space-y-2">
-			<label for="account" class="text-sm font-medium text-muted-foreground">Akun</label>
+			<label for="account-picker" class="text-sm font-medium text-muted-foreground"
+				>Akun <span class="text-destructive">*</span></label
+			>
 			<button
+				id="account-picker"
 				type="button"
 				onclick={() => (showAccountPicker = true)}
+				aria-haspopup="dialog"
 				class="w-full flex items-center gap-3 p-3 bg-muted rounded-lg hover:bg-secondary transition-colors text-left"
 			>
 				{#if selectedAccount}
@@ -498,10 +511,10 @@
 							<button
 								type="button"
 								onclick={() => removePhoto(photo.id)}
-								class="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+								class="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity min-w-[28px] min-h-[28px] flex items-center justify-center"
 								aria-label="Hapus foto"
 							>
-								<Trash2 class="w-3 h-3" />
+								<Trash2 class="w-3.5 h-3.5" />
 							</button>
 						</div>
 					{/each}
@@ -524,21 +537,22 @@
 				accept="image/jpeg,image/png"
 				onchange={handleFileSelect}
 				class="hidden"
+				aria-label="Pilih file foto nota"
 			/>
 		</div>
+	</form>
 
-		<!-- Spacer -->
-		<div class="flex-1"></div>
-
-		<!-- Submit Button -->
+	<!-- Sticky Submit Button -->
+	<div class="sticky bottom-0 z-10 bg-background border-t p-4">
 		<button
 			type="submit"
-			disabled={loading}
-			class="w-full py-4 bg-primary text-primary-foreground text-lg font-medium rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50"
+			form="transaction-form"
+			disabled={loading || uploading}
+			class="w-full py-4 bg-primary text-primary-foreground text-lg font-medium rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 shadow-sm"
 		>
 			{loading || uploading ? 'Menyimpan...' : 'Simpan'}
 		</button>
-	</form>
+	</div>
 </div>
 
 <!-- Category Picker Modal -->
@@ -547,6 +561,10 @@
 		class="fixed inset-0 z-[55] flex flex-col bg-white md:left-20"
 		role="dialog"
 		aria-modal="true"
+		aria-label="Pilih Kategori"
+		onkeydown={(e) => {
+			if (e.key === 'Escape') showCategoryPicker = false;
+		}}
 	>
 		<header class="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
 			<h2 class="text-lg font-semibold">Pilih Kategori</h2>
@@ -600,7 +618,18 @@
 
 <!-- Photo Source Menu -->
 {#if showPhotoSourceMenu}
-	<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+		role="dialog"
+		aria-modal="true"
+		aria-label="Pilih sumber foto"
+		onclick={(e) => {
+			if (e.target === e.currentTarget) showPhotoSourceMenu = false;
+		}}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') showPhotoSourceMenu = false;
+		}}
+	>
 		<div class="bg-white border rounded-lg shadow-xl w-full max-w-sm p-6">
 			<h2 class="text-lg font-semibold mb-4">Pilih Sumber Foto</h2>
 			<div class="space-y-3">
@@ -648,6 +677,10 @@
 		class="fixed inset-0 z-[55] flex flex-col bg-white md:left-20"
 		role="dialog"
 		aria-modal="true"
+		aria-label="Pilih Akun"
+		onkeydown={(e) => {
+			if (e.key === 'Escape') showAccountPicker = false;
+		}}
 	>
 		<header class="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
 			<h2 class="text-lg font-semibold">Pilih Akun</h2>
