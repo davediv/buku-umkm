@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { goto } from '$app/navigation';
 	import {
 		Tags,
 		Plus,
@@ -40,14 +39,8 @@
 	let type = $state<'income' | 'expense'>('expense');
 
 	// Local mutable categories state — syncs from load data, allows optimistic updates
-	let incomeCategories = $state(data.categories.income);
-	let expenseCategories = $state(data.categories.expense);
-
-	// Sync when load data changes (e.g., navigation, full reload)
-	$effect(() => {
-		incomeCategories = data.categories.income;
-		expenseCategories = data.categories.expense;
-	});
+	let incomeCategories = $derived(data.categories.income);
+	let expenseCategories = $derived(data.categories.expense);
 
 	// Get current categories based on tab
 	let currentCategories = $derived(activeTab === 'income' ? incomeCategories : expenseCategories);
@@ -130,7 +123,14 @@
 			});
 
 			if (response.ok) {
-				goto('/kategori', { invalidateAll: true });
+				const toggleInList = (cats: typeof incomeCategories): typeof incomeCategories => {
+					const all = cats.all.map((c) =>
+						c.id === categoryId ? { ...c, isActive: !currentActive } : c
+					);
+					return { all, groups: groupByCodePrefix(all) };
+				};
+				incomeCategories = toggleInList(incomeCategories);
+				expenseCategories = toggleInList(expenseCategories);
 			} else {
 				const resData = (await response.json()) as { error?: string };
 				toast.error(resData.error || 'Gagal mengubah status');
@@ -170,7 +170,10 @@
 			});
 
 			if (response.ok) {
-				goto('/kategori', { invalidateAll: true });
+				const updatedIncome = incomeCategories.all.filter((c) => c.id !== deleteTargetId);
+				incomeCategories = { all: updatedIncome, groups: groupByCodePrefix(updatedIncome) };
+				const updatedExpense = expenseCategories.all.filter((c) => c.id !== deleteTargetId);
+				expenseCategories = { all: updatedExpense, groups: groupByCodePrefix(updatedExpense) };
 			} else {
 				const resData = (await response.json()) as { error?: string };
 				toast.error(resData.error || 'Gagal menghapus kategori');

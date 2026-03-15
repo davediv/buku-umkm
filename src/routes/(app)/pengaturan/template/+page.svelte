@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { invalidate } from '$app/navigation';
 	import {
 		FileText,
 		Plus,
@@ -47,12 +46,7 @@
 	let description = $state('');
 
 	// Local mutable templates state — syncs from load data, allows optimistic updates
-	let templates = $state(data.templates);
-
-	// Sync when load data changes (e.g., navigation, full reload)
-	$effect(() => {
-		templates = data.templates;
-	});
+	let templates = $derived(data.templates);
 
 	let incomeTemplates = $derived(
 		templates.filter((t: { type: string; isActive: boolean }) => t.type === 'income')
@@ -132,7 +126,9 @@
 			});
 
 			if (response.ok) {
-				await invalidate('?/');
+				templates = templates.map((t) =>
+					t.id === templateId ? { ...t, isActive: !currentActive } : t
+				);
 			} else {
 				const resData = (await response.json()) as { error?: string };
 				toast.error(resData.error || 'Gagal mengubah status');
@@ -172,7 +168,7 @@
 			});
 
 			if (response.ok) {
-				await invalidate('?/');
+				templates = templates.filter((t) => t.id !== deleteTargetId);
 			} else {
 				const resData = (await response.json()) as { error?: string };
 				toast.error(resData.error || 'Gagal menghapus template');
