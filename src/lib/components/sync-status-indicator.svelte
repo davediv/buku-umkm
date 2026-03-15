@@ -152,9 +152,7 @@
 				class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 bg-white border border-border rounded-lg shadow-xl z-[60] overflow-hidden md:bottom-0 md:left-full md:translate-x-0 md:ml-2 md:mb-0"
 			>
 				<!-- Header -->
-				<div
-					class="flex items-center justify-between px-4 py-3 border-b border-border bg-secondary/30"
-				>
+				<div class="flex items-center justify-between px-4 py-3 border-b border-border bg-gray-50">
 					<h3 class="font-semibold text-sm">Status Sinkronisasi</h3>
 					<button
 						type="button"
