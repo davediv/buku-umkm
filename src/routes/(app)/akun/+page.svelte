@@ -40,9 +40,14 @@
 	let type = $state<'cash' | 'bank' | 'ewallet'>('cash');
 	let openingBalance = $state(0);
 
-	// Derived
-	let accounts = $derived(data.accounts);
+	// Local mutable accounts state — syncs from load data, allows optimistic updates
+	let accounts = $state(data.accounts);
 	let totalBalance = $derived(accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0));
+
+	// Sync when load data changes (e.g., navigation, full reload)
+	$effect(() => {
+		accounts = data.accounts;
+	});
 
 	// Helper to get icon by type
 	function getIconByType(accountType: string) {
@@ -190,11 +195,16 @@
 	// Handle form submission
 	function handleSubmit() {
 		loading = true;
-		return async ({ result }: { result: { type: string } }) => {
+		return async ({
+			result
+		}: {
+			result: { type: string; data?: Record<string, unknown> };
+		}) => {
 			loading = false;
-			if (result.type === 'success') {
+			if (result.type === 'success' && result.data?.account) {
+				const newAccount = result.data.account as (typeof accounts)[number];
+				accounts = [...accounts, newAccount];
 				closeModal();
-				goto('/akun', { invalidateAll: true });
 			}
 		};
 	}

@@ -36,12 +36,19 @@
 	let categoryId = $state('');
 	let description = $state('');
 
-	// Derived
+	// Local mutable templates state — syncs from load data, allows optimistic updates
+	let templates = $state(data.templates);
+
+	// Sync when load data changes (e.g., navigation, full reload)
+	$effect(() => {
+		templates = data.templates;
+	});
+
 	let incomeTemplates = $derived(
-		data.templates.filter((t: { type: string; isActive: boolean }) => t.type === 'income')
+		templates.filter((t: { type: string; isActive: boolean }) => t.type === 'income')
 	);
 	let expenseTemplates = $derived(
-		data.templates.filter((t: { type: string; isActive: boolean }) => t.type === 'expense')
+		templates.filter((t: { type: string; isActive: boolean }) => t.type === 'expense')
 	);
 
 	// Get current templates based on tab
@@ -91,11 +98,16 @@
 	// Handle form submission
 	function handleSubmit() {
 		loading = true;
-		return async ({ result }: { result: { type: string } }) => {
+		return async ({
+			result
+		}: {
+			result: { type: string; data?: Record<string, unknown> };
+		}) => {
 			loading = false;
-			if (result.type === 'success') {
+			if (result.type === 'success' && result.data?.template) {
+				const newTemplate = result.data.template as (typeof templates)[number];
+				templates = [...templates, newTemplate];
 				closeModal();
-				goto('/pengaturan/template', { invalidateAll: true });
 			}
 		};
 	}

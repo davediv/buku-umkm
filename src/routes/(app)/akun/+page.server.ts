@@ -104,9 +104,19 @@ export const actions: Actions = {
 				balance: openingBalance
 			});
 
+			const now = new Date().toISOString();
 			return {
 				success: true,
-				message: 'Akun berhasil dibuat'
+				message: 'Akun berhasil dibuat',
+				account: {
+					id: accountId,
+					name: name.trim(),
+					type: mapSchemaToApiType(subType),
+					balance: openingBalance,
+					code: newCode,
+					createdAt: now,
+					updatedAt: now
+				}
 			};
 		} catch (error) {
 			console.error('Error creating account:', error);

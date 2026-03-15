@@ -40,14 +40,21 @@
 		}
 	});
 
-	// Derived
+	// Local mutable debts state — syncs from load data, allows optimistic updates
+	let debts = $state(data.debts);
+	let summary = $state(data.summary);
+
+	// Sync when load data changes (e.g., navigation, full reload)
+	$effect(() => {
+		debts = data.debts;
+		summary = data.summary;
+	});
+
 	let filteredDebts = $derived(
-		data.debts
+		debts
 			.filter((d) => d.type === activeTab)
 			.filter((d) => d.contactName.toLowerCase().includes(searchQuery.toLowerCase()))
 	);
-
-	let summary = $derived(data.summary);
 
 	// Open create modal
 	function openCreateModal(type: 'piutang' | 'hutang') {
@@ -93,16 +100,24 @@
 				})
 			});
 
-			const result = (await response.json()) as { error?: string; message?: string };
+			const result = (await response.json()) as {
+				error?: string;
+				message?: string;
+				debt?: (typeof debts)[number];
+			};
 
 			if (!response.ok) {
 				error = result.error || 'Terjadi kesalahan';
 				return;
 			}
 
+			// Optimistically add the new debt to local state
+			if (result.debt) {
+				debts = [...debts, result.debt];
+			}
+
 			success = result.message ?? null;
 			closeModal();
-			goto('/hutang-piutang?type=' + activeTab, { invalidateAll: true });
 		} catch (err) {
 			error = 'Terjadi kesalahan server';
 			console.error(err);

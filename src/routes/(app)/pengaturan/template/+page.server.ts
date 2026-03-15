@@ -85,9 +85,26 @@ export const actions: Actions = {
 				isSystem: false
 			});
 
+			// Resolve category name for optimistic update
+			let categoryName: string | null = null;
+			if (categoryId) {
+				const cat = await categoryQueries.findById(db, userId, categoryId);
+				categoryName = cat?.name ?? null;
+			}
+
 			return {
 				success: true,
-				message: 'Template berhasil dibuat'
+				message: 'Template berhasil dibuat',
+				template: {
+					id: crypto.randomUUID(),
+					name: name.trim(),
+					type,
+					categoryId: categoryId || null,
+					categoryName,
+					description: description || null,
+					isSystem: false,
+					isActive: true
+				}
 			};
 		} catch (error) {
 			console.error('Error creating template:', error);
