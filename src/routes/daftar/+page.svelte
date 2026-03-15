@@ -4,6 +4,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { BookOpen } from '@lucide/svelte';
 	import type { ActionData } from './$types';
 
 	let { form }: { form: ActionData } = $props();
@@ -15,10 +16,25 @@
 	<title>Daftar - Buku UMKM</title>
 </svelte:head>
 
-<div class="min-h-screen flex flex-col items-center justify-center bg-background p-4">
-	<div class="w-full max-w-sm space-y-6">
+<div class="relative flex min-h-screen flex-col items-center justify-center bg-background p-4">
+	<!-- Decorative background -->
+	<div
+		class="pointer-events-none fixed inset-0 -z-10"
+		style="background: radial-gradient(ellipse 70% 50% at 50% 0%, hsl(16 70% 38% / 0.05), transparent);"
+	></div>
+
+	<div class="w-full max-w-sm space-y-8">
+		<!-- Logo -->
+		<div class="flex justify-center">
+			<div
+				class="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-md shadow-primary/20"
+			>
+				<BookOpen class="h-6 w-6 text-primary-foreground" />
+			</div>
+		</div>
+
 		<!-- Header -->
-		<div class="text-center space-y-2">
+		<div class="space-y-2 text-center">
 			<h1 class="text-2xl font-bold tracking-tight">{t('auth.createAccount')}</h1>
 			<p class="text-sm text-muted-foreground">Buat akun untuk memulai menggunakan Buku UMKM</p>
 		</div>
@@ -26,7 +42,7 @@
 		<!-- Error Message -->
 		{#if form?.message}
 			<div
-				class="bg-destructive/10 border border-destructive text-destructive text-sm p-3 rounded-md"
+				class="rounded-lg border border-destructive bg-destructive/10 p-3 text-sm text-destructive"
 			>
 				{form.message}
 			</div>
@@ -123,7 +139,7 @@
 		<!-- Login Link -->
 		<p class="text-center text-sm text-muted-foreground">
 			{t('auth.hasAccount')}
-			<a href="/masuk" class="text-primary hover:underline font-medium"> {t('auth.login')}</a>
+			<a href="/masuk" class="font-medium text-primary hover:underline"> {t('auth.login')}</a>
 		</p>
 	</div>
 </div>

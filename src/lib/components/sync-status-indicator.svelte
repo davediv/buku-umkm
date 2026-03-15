@@ -114,45 +114,42 @@
 {#if !syncState.isOnline}
 	<div class="bg-gray-800 text-white px-4 py-2 flex items-center justify-center gap-2">
 		<WifiOff class="w-4 h-4" />
-		<span class="text-sm font-medium">Mode Offline - Perubahan akan disimpan secara lokal</span>
+		<span class="text-sm font-medium">Mode Offline</span>
 	</div>
 {/if}
 
 <!-- Sync Status Indicator -->
 {#if syncState.isOnline}
-	<div class="sync-popover-container relative">
-		<!-- Status Button -->
+	<div class="sync-popover-container relative flex justify-center">
+		<!-- Status Button (icon only, tooltip via aria-label) -->
 		<button
 			type="button"
 			onclick={togglePopover}
-			class="flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors hover:bg-secondary/50 cursor-pointer"
+			class="flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:bg-secondary/50 cursor-pointer"
 			aria-label="Status sinkronisasi"
+			title={statusType === 'synced'
+				? 'Tersinkron'
+				: statusType === 'pending'
+					? `${syncState.pendingCount} menunggu`
+					: statusType === 'syncing'
+						? 'Menyinkronkan...'
+						: 'Sinkronisasi Gagal'}
 		>
-			<!-- Synced (green check) -->
 			{#if statusType === 'synced'}
 				<CheckCircle class="w-5 h-5 text-green-600" />
-				<span class="text-sm text-green-700 font-medium hidden sm:inline">Tersinkron</span>
-				<!-- Pending (yellow clock) -->
 			{:else if statusType === 'pending'}
 				<Clock class="w-5 h-5 text-yellow-600" />
-				<span class="text-sm text-yellow-700 font-medium hidden sm:inline">
-					{syncState.pendingCount} menunggu
-				</span>
-				<!-- Syncing (animated spinner) -->
 			{:else if statusType === 'syncing'}
 				<RefreshCw class="w-5 h-5 text-blue-600 animate-spin" />
-				<span class="text-sm text-blue-700 font-medium hidden sm:inline">Menyinkronkan...</span>
-				<!-- Error (red exclamation) -->
 			{:else if statusType === 'error'}
 				<AlertCircle class="w-5 h-5 text-red-600" />
-				<span class="text-sm text-red-700 font-medium hidden sm:inline">Sinkronisasi Gagal</span>
 			{/if}
 		</button>
 
 		<!-- Popover Detail -->
 		{#if showPopover}
 			<div
-				class="absolute right-0 top-full mt-2 w-72 bg-background border border-border rounded-lg shadow-lg z-50 overflow-hidden"
+				class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 bg-card border border-border rounded-lg shadow-lg z-[60] overflow-hidden md:bottom-0 md:left-full md:translate-x-0 md:ml-2 md:mb-0"
 			>
 				<!-- Header -->
 				<div

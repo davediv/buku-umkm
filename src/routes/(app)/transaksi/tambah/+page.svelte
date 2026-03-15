@@ -542,7 +542,11 @@
 
 <!-- Category Picker Modal -->
 {#if showCategoryPicker}
-	<div class="fixed inset-0 z-50 flex flex-col bg-background" role="dialog" aria-modal="true">
+	<div
+		class="fixed inset-0 z-[55] flex flex-col bg-background md:left-20"
+		role="dialog"
+		aria-modal="true"
+	>
 		<header
 			class="sticky top-0 z-10 bg-background border-b px-4 py-3 flex items-center justify-between"
 		>
@@ -593,7 +597,7 @@
 <!-- Photo Source Menu -->
 {#if showPhotoSourceMenu}
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-		<div class="bg-background border rounded-lg shadow-lg w-full max-w-sm p-6">
+		<div class="bg-card border rounded-lg shadow-lg w-full max-w-sm p-6">
 			<h2 class="text-lg font-semibold mb-4">Pilih Sumber Foto</h2>
 			<div class="space-y-3">
 				<button
@@ -636,7 +640,11 @@
 
 <!-- Account Picker Modal -->
 {#if showAccountPicker}
-	<div class="fixed inset-0 z-50 flex flex-col bg-background" role="dialog" aria-modal="true">
+	<div
+		class="fixed inset-0 z-[55] flex flex-col bg-background md:left-20"
+		role="dialog"
+		aria-modal="true"
+	>
 		<header
 			class="sticky top-0 z-10 bg-background border-b px-4 py-3 flex items-center justify-between"
 		>

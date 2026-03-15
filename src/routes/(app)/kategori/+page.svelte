@@ -318,7 +318,7 @@
 		aria-modal="true"
 		aria-labelledby="modal-title"
 	>
-		<div class="bg-background border rounded-lg shadow-lg w-full max-w-md p-6">
+		<div class="bg-card border rounded-lg shadow-lg w-full max-w-md p-6">
 			<div class="flex items-center justify-between mb-6">
 				<h2 id="modal-title" class="text-lg font-semibold">
 					{editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}
