@@ -352,7 +352,7 @@
 		aria-labelledby="modal-title"
 	>
 		<div
-			class="bg-card border rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
+			class="bg-white border rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
 		>
 			<div class="flex items-center justify-between mb-6">
 				<h2 id="modal-title" class="text-lg font-semibold">

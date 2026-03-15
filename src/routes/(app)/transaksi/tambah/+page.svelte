@@ -597,7 +597,7 @@
 <!-- Photo Source Menu -->
 {#if showPhotoSourceMenu}
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-		<div class="bg-card border rounded-lg shadow-lg w-full max-w-sm p-6">
+		<div class="bg-white border rounded-lg shadow-xl w-full max-w-sm p-6">
 			<h2 class="text-lg font-semibold mb-4">Pilih Sumber Foto</h2>
 			<div class="space-y-3">
 				<button
