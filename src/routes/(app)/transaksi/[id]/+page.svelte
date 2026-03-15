@@ -2,6 +2,14 @@
 	import { goto } from '$app/navigation';
 	import { ArrowLeft, Check, X, Trash2, Camera, Image } from '@lucide/svelte';
 	import { formatIdr, compressImage } from '$lib/utils';
+	import { toast } from '$lib/components/ui/toast';
+	import {
+		AlertDialog,
+		AlertDialogTitle,
+		AlertDialogDescription,
+		AlertDialogAction,
+		AlertDialogCancel
+	} from '$lib/components/ui/alert-dialog';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -49,12 +57,12 @@
 		const file = input.files[0];
 
 		if (!['image/jpeg', 'image/png'].includes(file.type)) {
-			alert('Format file harus JPEG atau PNG');
+			toast.error('Format file harus JPEG atau PNG');
 			return;
 		}
 
 		if (file.size > 5 * 1024 * 1024) {
-			alert('Ukuran file maksimal adalah 5MB');
+			toast.error('Ukuran file maksimal adalah 5MB');
 			return;
 		}
 
@@ -75,11 +83,11 @@
 				}
 			} else {
 				const result = (await response.json()) as { error?: string };
-				alert(result.error || 'Gagal mengunggah foto');
+				toast.error(result.error || 'Gagal mengunggah foto');
 			}
 		} catch (error) {
 			console.error('Error uploading photo:', error);
-			alert('Terjadi kesalahan server');
+			toast.error('Terjadi kesalahan server');
 		} finally {
 			showPhotoSourceMenu = false;
 			input.value = '';
@@ -129,11 +137,11 @@
 				photos = photos.filter((p) => p.id !== photoToRemove);
 			} else {
 				const result = (await response.json()) as { error?: string };
-				alert(result.error || 'Gagal menghapus foto');
+				toast.error(result.error || 'Gagal menghapus foto');
 			}
 		} catch (error) {
 			console.error('Error removing photo:', error);
-			alert('Terjadi kesalahan server');
+			toast.error('Terjadi kesalahan server');
 		} finally {
 			showRemovePhotoConfirm = false;
 			photoToRemove = null;
@@ -184,12 +192,12 @@
 		e.preventDefault();
 
 		if (!amount || parseInt(amount.replace(/\D/g, ''), 10) <= 0) {
-			alert('Jumlah harus lebih dari 0');
+			toast.warning('Jumlah harus lebih dari 0');
 			return;
 		}
 
 		if (!accountId) {
-			alert('Pilih akun terlebih dahulu');
+			toast.warning('Pilih akun terlebih dahulu');
 			return;
 		}
 
@@ -216,11 +224,11 @@
 			if (response.ok) {
 				goto('/transaksi?success=updated');
 			} else {
-				alert(result.error || 'Gagal memperbarui transaksi');
+				toast.error(result.error || 'Gagal memperbarui transaksi');
 			}
 		} catch (error) {
 			console.error('Error updating transaction:', error);
-			alert('Terjadi kesalahan server');
+			toast.error('Terjadi kesalahan server');
 		} finally {
 			loading = false;
 		}
@@ -238,11 +246,11 @@
 				goto('/transaksi?success=deleted');
 			} else {
 				const result = (await response.json()) as { error?: string };
-				alert(result.error || 'Gagal menghapus transaksi');
+				toast.error(result.error || 'Gagal menghapus transaksi');
 			}
 		} catch (error) {
 			console.error('Error deleting transaction:', error);
-			alert('Terjadi kesalahan server');
+			toast.error('Terjadi kesalahan server');
 		} finally {
 			deleting = false;
 			showDeleteConfirm = false;
@@ -731,54 +739,45 @@
 {/if}
 
 <!-- Remove Photo Confirmation -->
-{#if showRemovePhotoConfirm}
-	<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-		<div class="bg-white border rounded-lg shadow-xl w-full max-w-md p-6">
-			<h2 class="text-lg font-semibold mb-2">Hapus Foto?</h2>
-			<p class="text-sm text-muted-foreground mb-6">
-				Foto yang dihapus tidak dapat dikembalikan. Apakah Anda yakin?
-			</p>
-			<div class="flex gap-3">
-				<button
-					onclick={() => (showRemovePhotoConfirm = false)}
-					class="flex-1 px-4 py-3 min-h-[48px] border rounded-md text-base font-medium hover:bg-secondary transition-colors"
-				>
-					Batal
-				</button>
-				<button
-					onclick={removePhoto}
-					class="flex-1 px-4 py-3 min-h-[48px] bg-destructive text-destructive-foreground rounded-md text-base font-medium hover:bg-destructive/90 transition-colors"
-				>
-					Hapus
-				</button>
-			</div>
-		</div>
+<AlertDialog
+	open={showRemovePhotoConfirm}
+	onopenchange={(open) => {
+		if (!open) {
+			showRemovePhotoConfirm = false;
+			photoToRemove = null;
+		}
+	}}
+>
+	<AlertDialogTitle>Hapus Foto?</AlertDialogTitle>
+	<AlertDialogDescription>
+		Foto yang dihapus tidak dapat dikembalikan. Apakah Anda yakin?
+	</AlertDialogDescription>
+	<div class="flex gap-3 mt-6">
+		<AlertDialogCancel
+			onclick={() => {
+				showRemovePhotoConfirm = false;
+				photoToRemove = null;
+			}}>Batal</AlertDialogCancel
+		>
+		<AlertDialogAction onclick={removePhoto}>Hapus</AlertDialogAction>
 	</div>
-{/if}
+</AlertDialog>
 
 <!-- Delete Confirmation Dialog -->
-{#if showDeleteConfirm}
-	<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-		<div class="bg-white border rounded-lg shadow-xl w-full max-w-md p-6">
-			<h2 class="text-lg font-semibold mb-2">Hapus Transaksi?</h2>
-			<p class="text-sm text-muted-foreground mb-6">
-				Transaksi yang dihapus tidak dapat dikembalikan. Apakah Anda yakin ingin melanjutkan?
-			</p>
-			<div class="flex gap-3">
-				<button
-					onclick={() => (showDeleteConfirm = false)}
-					class="flex-1 px-4 py-3 min-h-[48px] border rounded-md text-base font-medium hover:bg-secondary transition-colors"
-				>
-					Batal
-				</button>
-				<button
-					onclick={handleDelete}
-					disabled={deleting}
-					class="flex-1 px-4 py-3 min-h-[48px] bg-destructive text-destructive-foreground rounded-md text-base font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50"
-				>
-					{deleting ? 'Menghapus...' : 'Hapus'}
-				</button>
-			</div>
-		</div>
+<AlertDialog
+	open={showDeleteConfirm}
+	onopenchange={(open) => {
+		if (!open) showDeleteConfirm = false;
+	}}
+>
+	<AlertDialogTitle>Hapus Transaksi?</AlertDialogTitle>
+	<AlertDialogDescription>
+		Transaksi yang dihapus tidak dapat dikembalikan. Apakah Anda yakin ingin melanjutkan?
+	</AlertDialogDescription>
+	<div class="flex gap-3 mt-6">
+		<AlertDialogCancel onclick={() => (showDeleteConfirm = false)}>Batal</AlertDialogCancel>
+		<AlertDialogAction onclick={handleDelete} loading={deleting}>
+			{deleting ? 'Menghapus...' : 'Hapus'}
+		</AlertDialogAction>
 	</div>
-{/if}
+</AlertDialog>

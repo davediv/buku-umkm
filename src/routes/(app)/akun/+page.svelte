@@ -12,6 +12,14 @@
 		ArrowLeftRight
 	} from '@lucide/svelte';
 	import { formatRupiah } from '$lib/utils';
+	import { toast } from '$lib/components/ui/toast';
+	import {
+		AlertDialog,
+		AlertDialogTitle,
+		AlertDialogDescription,
+		AlertDialogAction,
+		AlertDialogCancel
+	} from '$lib/components/ui/alert-dialog';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -21,6 +29,8 @@
 	let editingAccount = $state<{ id: string; name: string; type: string } | null>(null);
 	let loading = $state(false);
 	let deletingId = $state<string | null>(null);
+	let showDeleteConfirm = $state(false);
+	let deleteTargetId = $state<string | null>(null);
 
 	// Transfer modal state
 	let showTransferModal = $state(false);
@@ -195,11 +205,7 @@
 	// Handle form submission
 	function handleSubmit() {
 		loading = true;
-		return async ({
-			result
-		}: {
-			result: { type: string; data?: Record<string, unknown> };
-		}) => {
+		return async ({ result }: { result: { type: string; data?: Record<string, unknown> } }) => {
 			loading = false;
 			if (result.type === 'success' && result.data?.account) {
 				const newAccount = result.data.account as (typeof accounts)[number];
@@ -209,30 +215,40 @@
 		};
 	}
 
-	// Handle delete
-	async function handleDelete(accountId: string) {
-		if (!confirm('Apakah Anda yakin ingin menghapus akun ini?')) {
-			return;
-		}
+	function closeDeleteDialog() {
+		showDeleteConfirm = false;
+		deleteTargetId = null;
+	}
 
-		deletingId = accountId;
+	// Prompt delete confirmation
+	function promptDelete(accountId: string) {
+		deleteTargetId = accountId;
+		showDeleteConfirm = true;
+	}
+
+	// Handle delete (called from confirmation dialog)
+	async function handleDelete() {
+		if (!deleteTargetId) return;
+
+		deletingId = deleteTargetId;
+		showDeleteConfirm = false;
 		try {
-			const response = await fetch(`/api/accounts/${accountId}`, {
+			const response = await fetch(`/api/accounts/${deleteTargetId}`, {
 				method: 'DELETE'
 			});
 
 			if (response.ok) {
-				// Reload the page to get updated data
 				goto('/akun', { invalidateAll: true });
 			} else {
 				const resData = (await response.json()) as { error?: string };
-				alert(resData.error || 'Gagal menghapus akun');
+				toast.error(resData.error || 'Gagal menghapus akun');
 			}
 		} catch (error) {
 			console.error('Error deleting account:', error);
-			alert('Terjadi kesalahan server');
+			toast.error('Terjadi kesalahan server');
 		} finally {
 			deletingId = null;
+			deleteTargetId = null;
 		}
 	}
 </script>
@@ -312,7 +328,7 @@
 								<Pencil class="w-4 h-4" />
 							</button>
 							<button
-								onclick={() => handleDelete(account.id)}
+								onclick={() => promptDelete(account.id)}
 								disabled={deletingId === account.id}
 								class="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors disabled:opacity-50"
 								aria-label="Hapus akun"
@@ -584,3 +600,20 @@
 		</div>
 	</div>
 {/if}
+
+<!-- Delete Confirmation Dialog -->
+<AlertDialog
+	open={showDeleteConfirm}
+	onopenchange={(open) => {
+		if (!open) closeDeleteDialog();
+	}}
+>
+	<AlertDialogTitle>Hapus Akun?</AlertDialogTitle>
+	<AlertDialogDescription>
+		Akun yang dihapus tidak dapat dikembalikan. Apakah Anda yakin ingin melanjutkan?
+	</AlertDialogDescription>
+	<div class="flex gap-3 mt-6">
+		<AlertDialogCancel onclick={closeDeleteDialog}>Batal</AlertDialogCancel>
+		<AlertDialogAction onclick={handleDelete}>Hapus</AlertDialogAction>
+	</div>
+</AlertDialog>

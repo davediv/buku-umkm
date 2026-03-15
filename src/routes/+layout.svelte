@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { initStores, destroyStores } from '$lib/db/stores.svelte';
+	import { toast } from '$lib/components/ui/toast';
 
 	let { children } = $props();
 
@@ -25,11 +26,8 @@
 						if (newWorker) {
 							newWorker.addEventListener('statechange', () => {
 								if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-									// New version available
-									if (confirm('Versi baru tersedia. Muat ulang untuk memperbarui?')) {
-										newWorker.postMessage({ type: 'SKIP_WAITING' });
-										window.location.reload();
-									}
+									toast.info('Versi baru tersedia', 'Muat ulang halaman untuk memperbarui.');
+									newWorker.postMessage({ type: 'SKIP_WAITING' });
 								}
 							});
 						}

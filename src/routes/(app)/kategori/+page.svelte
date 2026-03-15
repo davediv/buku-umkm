@@ -13,6 +13,14 @@
 		ToggleRight,
 		Shield
 	} from '@lucide/svelte';
+	import { toast } from '$lib/components/ui/toast';
+	import {
+		AlertDialog,
+		AlertDialogTitle,
+		AlertDialogDescription,
+		AlertDialogAction,
+		AlertDialogCancel
+	} from '$lib/components/ui/alert-dialog';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -23,6 +31,8 @@
 	let loading = $state(false);
 	let deletingId = $state<string | null>(null);
 	let togglingId = $state<string | null>(null);
+	let showDeleteConfirm = $state(false);
+	let deleteTargetId = $state<string | null>(null);
 	let activeTab = $state<'income' | 'expense'>('income');
 
 	// Form data
@@ -90,11 +100,7 @@
 	// Handle form submission
 	function handleSubmit() {
 		loading = true;
-		return async ({
-			result
-		}: {
-			result: { type: string; data?: Record<string, unknown> };
-		}) => {
+		return async ({ result }: { result: { type: string; data?: Record<string, unknown> } }) => {
 			loading = false;
 			if (result.type === 'success' && result.data?.category) {
 				const newCat = result.data.category as (typeof incomeCategories.all)[number];
@@ -127,26 +133,36 @@
 				goto('/kategori', { invalidateAll: true });
 			} else {
 				const resData = (await response.json()) as { error?: string };
-				alert(resData.error || 'Gagal mengubah status');
+				toast.error(resData.error || 'Gagal mengubah status');
 			}
 		} catch (error) {
 			console.error('Error toggling category:', error);
-			alert('Terjadi kesalahan server');
+			toast.error('Terjadi kesalahan server');
 		} finally {
 			togglingId = null;
 		}
 	}
 
-	// Handle delete
-	async function handleDelete(categoryId: string) {
-		if (!confirm('Apakah Anda yakin ingin menghapus kategori ini?')) {
-			return;
-		}
+	function closeDeleteDialog() {
+		showDeleteConfirm = false;
+		deleteTargetId = null;
+	}
 
-		deletingId = categoryId;
+	// Prompt delete confirmation
+	function promptDelete(categoryId: string) {
+		deleteTargetId = categoryId;
+		showDeleteConfirm = true;
+	}
+
+	// Handle delete (called from confirmation dialog)
+	async function handleDelete() {
+		if (!deleteTargetId) return;
+
+		deletingId = deleteTargetId;
+		showDeleteConfirm = false;
 		try {
 			const formData = new FormData();
-			formData.append('id', categoryId);
+			formData.append('id', deleteTargetId);
 
 			const response = await fetch('?/delete', {
 				method: 'POST',
@@ -157,13 +173,14 @@
 				goto('/kategori', { invalidateAll: true });
 			} else {
 				const resData = (await response.json()) as { error?: string };
-				alert(resData.error || 'Gagal menghapus kategori');
+				toast.error(resData.error || 'Gagal menghapus kategori');
 			}
 		} catch (error) {
 			console.error('Error deleting category:', error);
-			alert('Terjadi kesalahan server');
+			toast.error('Terjadi kesalahan server');
 		} finally {
 			deletingId = null;
+			deleteTargetId = null;
 		}
 	}
 </script>
@@ -286,7 +303,7 @@
 											<Pencil class="w-4 h-4" />
 										</button>
 										<button
-											onclick={() => handleDelete(category.id)}
+											onclick={() => promptDelete(category.id)}
 											disabled={deletingId === category.id}
 											class="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors disabled:opacity-50"
 											aria-label="Hapus kategori"
@@ -417,3 +434,20 @@
 		</div>
 	</div>
 {/if}
+
+<!-- Delete Confirmation Dialog -->
+<AlertDialog
+	open={showDeleteConfirm}
+	onopenchange={(open) => {
+		if (!open) closeDeleteDialog();
+	}}
+>
+	<AlertDialogTitle>Hapus Kategori?</AlertDialogTitle>
+	<AlertDialogDescription>
+		Kategori yang dihapus tidak dapat dikembalikan. Apakah Anda yakin ingin melanjutkan?
+	</AlertDialogDescription>
+	<div class="flex gap-3 mt-6">
+		<AlertDialogCancel onclick={closeDeleteDialog}>Batal</AlertDialogCancel>
+		<AlertDialogAction onclick={handleDelete}>Hapus</AlertDialogAction>
+	</div>
+</AlertDialog>

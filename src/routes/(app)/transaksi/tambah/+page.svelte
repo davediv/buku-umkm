@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { ArrowLeft, Camera, Check, X, Image, Trash2, Link } from '@lucide/svelte';
 	import { formatIdr, compressImage } from '$lib/utils';
+	import { toast } from '$lib/components/ui/toast';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -41,13 +42,13 @@
 
 		// Validate type
 		if (!['image/jpeg', 'image/png'].includes(file.type)) {
-			alert('Format file harus JPEG atau PNG');
+			toast.error('Format file harus JPEG atau PNG');
 			return;
 		}
 
 		// Validate size (before compression)
 		if (file.size > 5 * 1024 * 1024) {
-			alert('Ukuran file maksimal adalah 5MB');
+			toast.error('Ukuran file maksimal adalah 5MB');
 			return;
 		}
 
@@ -68,7 +69,7 @@
 			];
 		} catch (error) {
 			console.error('Error compressing image:', error);
-			alert('Gagal memproses gambar');
+			toast.error('Gagal memproses gambar');
 		}
 
 		// Reset input
@@ -171,12 +172,12 @@
 
 		// Validation
 		if (!amount || parseInt(amount.replace(/\D/g, ''), 10) <= 0) {
-			alert('Jumlah harus lebih dari 0');
+			toast.warning('Jumlah harus lebih dari 0');
 			return;
 		}
 
 		if (!accountId) {
-			alert('Pilih akun terlebih dahulu');
+			toast.warning('Pilih akun terlebih dahulu');
 			return;
 		}
 
@@ -222,11 +223,11 @@
 				// Show success feedback - navigate to transactions list
 				goto('/transaksi?success=true');
 			} else {
-				alert(result.error || 'Gagal menyimpan transaksi');
+				toast.error(result.error || 'Gagal menyimpan transaksi');
 			}
 		} catch (error) {
 			console.error('Error saving transaction:', error);
-			alert('Terjadi kesalahan server');
+			toast.error('Terjadi kesalahan server');
 		} finally {
 			loading = false;
 			uploading = false;
