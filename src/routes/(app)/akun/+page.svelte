@@ -51,13 +51,8 @@
 	let openingBalance = $state(0);
 
 	// Local mutable accounts state — syncs from load data, allows optimistic updates
-	let accounts = $state(data.accounts);
+	let accounts = $derived(data.accounts);
 	let totalBalance = $derived(accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0));
-
-	// Sync when load data changes (e.g., navigation, full reload)
-	$effect(() => {
-		accounts = data.accounts;
-	});
 
 	// Helper to get icon by type
 	function getIconByType(accountType: string) {
@@ -238,7 +233,7 @@
 			});
 
 			if (response.ok) {
-				goto('/akun', { invalidateAll: true });
+				accounts = accounts.filter((a) => a.id !== deleteTargetId);
 			} else {
 				const resData = (await response.json()) as { error?: string };
 				toast.error(resData.error || 'Gagal menghapus akun');
