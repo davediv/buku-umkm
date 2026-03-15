@@ -306,12 +306,17 @@
 	<div class="flex flex-col sm:flex-row gap-3">
 		<!-- Search -->
 		<div class="relative flex-1">
-			<Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+			<Search
+				class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
+				aria-hidden="true"
+			/>
 			<input
+				id="search-transaksi"
 				type="text"
 				placeholder="Cari transaksi..."
+				aria-label="Cari transaksi"
 				bind:value={searchQuery}
-				class="w-full pl-10 pr-4 py-2 bg-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+				class="w-full pl-10 pr-4 py-2 bg-muted rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 			/>
 		</div>
 
@@ -405,14 +410,14 @@
 				<table class="w-full">
 					<thead>
 						<tr class="border-b bg-muted/50">
-							<th class="text-left px-4 py-3 font-medium text-sm">Tanggal</th>
-							<th class="text-left px-4 py-3 font-medium text-sm">Kategori</th>
-							<th class="text-left px-4 py-3 font-medium text-sm">Akun</th>
-							<th class="text-left px-4 py-3 font-medium text-sm hidden md:table-cell"
+							<th scope="col" class="text-left px-4 py-3 font-medium text-sm">Tanggal</th>
+							<th scope="col" class="text-left px-4 py-3 font-medium text-sm">Kategori</th>
+							<th scope="col" class="text-left px-4 py-3 font-medium text-sm">Akun</th>
+							<th scope="col" class="text-left px-4 py-3 font-medium text-sm hidden md:table-cell"
 								>Keterangan</th
 							>
-							<th class="text-right px-4 py-3 font-medium text-sm">Jumlah</th>
-							<th class="text-right px-4 py-3 font-medium text-sm">Aksi</th>
+							<th scope="col" class="text-right px-4 py-3 font-medium text-sm">Jumlah</th>
+							<th scope="col" class="text-right px-4 py-3 font-medium text-sm">Aksi</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -454,7 +459,7 @@
 				<table class="w-full">
 					<thead>
 						<tr class="border-b bg-muted/50">
-							<th class="text-left px-4 py-3 font-medium text-sm">
+							<th scope="col" class="text-left px-4 py-3 font-medium text-sm">
 								<button
 									onclick={() => toggleSort('date')}
 									class="flex items-center gap-1 hover:text-foreground"
@@ -465,12 +470,12 @@
 									{/if}
 								</button>
 							</th>
-							<th class="text-left px-4 py-3 font-medium text-sm">Kategori</th>
-							<th class="text-left px-4 py-3 font-medium text-sm">Akun</th>
-							<th class="text-left px-4 py-3 font-medium text-sm hidden md:table-cell"
+							<th scope="col" class="text-left px-4 py-3 font-medium text-sm">Kategori</th>
+							<th scope="col" class="text-left px-4 py-3 font-medium text-sm">Akun</th>
+							<th scope="col" class="text-left px-4 py-3 font-medium text-sm hidden md:table-cell"
 								>Keterangan</th
 							>
-							<th class="text-right px-4 py-3 font-medium text-sm">
+							<th scope="col" class="text-right px-4 py-3 font-medium text-sm">
 								<button
 									onclick={() => toggleSort('amount')}
 									class="flex items-center gap-1 hover:text-foreground ml-auto"
@@ -481,7 +486,7 @@
 									{/if}
 								</button>
 							</th>
-							<th class="text-right px-4 py-3 font-medium text-sm">Aksi</th>
+							<th scope="col" class="text-right px-4 py-3 font-medium text-sm">Aksi</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -555,14 +560,16 @@
 					<button
 						onclick={() => currentPage--}
 						disabled={currentPage === 1}
-						class="p-1 rounded hover:bg-secondary disabled:opacity-50"
+						aria-label="Halaman sebelumnya"
+						class="p-2 min-h-[48px] min-w-[48px] flex items-center justify-center rounded hover:bg-secondary disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>
 						<ChevronLeft class="w-4 h-4" />
 					</button>
 					<button
 						onclick={() => currentPage++}
 						disabled={currentPage >= totalPages}
-						class="p-1 rounded hover:bg-secondary disabled:opacity-50"
+						aria-label="Halaman berikutnya"
+						class="p-2 min-h-[48px] min-w-[48px] flex items-center justify-center rounded hover:bg-secondary disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>
 						<ChevronRight class="w-4 h-4" />
 					</button>
@@ -575,7 +582,7 @@
 			<div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
 				<Plus class="w-8 h-8 text-muted-foreground" />
 			</div>
-			<h3 class="text-lg font-medium mb-2">Belum ada transaksi. Yuk, catat yang pertama!</h3>
+			<h2 class="text-lg font-medium mb-2">Belum ada transaksi. Yuk, catat yang pertama!</h2>
 			<p class="text-sm text-muted-foreground mb-6 max-w-sm">
 				Catat transaksi pertama Anda untuk memulai keuangan yang lebih tertata!
 			</p>

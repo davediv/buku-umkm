@@ -129,7 +129,7 @@
 					type="date"
 					bind:value={selectedDate}
 					onchange={handleDateInput}
-					class="bg-transparent border-none text-sm font-medium focus:outline-none focus:ring-0"
+					class="bg-transparent border-none text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
 				/>
 			</div>
 		</div>
