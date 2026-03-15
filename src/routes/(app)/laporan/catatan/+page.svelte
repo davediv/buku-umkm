@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { FileText, Loader2, ChevronLeft, Printer } from '@lucide/svelte';
+	import { FileText, ChevronLeft, Printer } from '@lucide/svelte';
 	import { formatDateLong } from '$lib/utils';
 	import type { PageData } from './$types';
 
@@ -102,13 +102,7 @@
 		</div>
 	</header>
 
-	<!-- Loading State -->
-	{#if loading}
-		<div class="flex items-center justify-center py-20">
-			<Loader2 class="w-8 h-8 animate-spin text-blue-600" />
-			<span class="ml-2 text-gray-600 dark:text-gray-400">Memuat data...</span>
-		</div>
-	{:else if hasError}
+	{#if hasError}
 		<!-- Error State -->
 		<div class="max-w-4xl mx-auto px-4 py-12">
 			<div
@@ -122,8 +116,12 @@
 			</div>
 		</div>
 	{:else if catatan}
-		<!-- Report Content -->
-		<main class="max-w-4xl mx-auto px-4 py-8">
+		<!-- Report Content: dims while loading to avoid layout shift -->
+		<main
+			class="max-w-4xl mx-auto px-4 py-8 transition-opacity duration-150 {loading
+				? 'opacity-50 pointer-events-none'
+				: ''}"
+		>
 			<!-- Print-friendly container -->
 			<div
 				class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8 print:shadow-none print:border-none print:p-0"

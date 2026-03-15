@@ -6,7 +6,6 @@
 		Wallet,
 		ArrowUpRight,
 		ArrowDownRight,
-		Loader2,
 		ChevronLeft,
 		Receipt
 	} from '@lucide/svelte';
@@ -196,230 +195,237 @@
 			</div>
 		</div>
 
-		<!-- Loading indicator when changing period -->
-		{#if loading}
-			<div class="flex justify-center py-2">
-				<Loader2 class="w-5 h-5 animate-spin text-muted-foreground" />
+		<!-- Content area: dims while loading to avoid layout shift -->
+		<div
+			class="space-y-6 transition-opacity duration-150 {loading
+				? 'opacity-50 pointer-events-none'
+				: ''}"
+		>
+			<!-- Period Label -->
+			<div class="text-center">
+				<p class="text-sm text-muted-foreground">{profitLoss.periodLabel}</p>
 			</div>
-		{/if}
 
-		<!-- Period Label -->
-		<div class="text-center">
-			<p class="text-sm text-muted-foreground">{profitLoss.periodLabel}</p>
-		</div>
-
-		<!-- Hero Card: Total Balance -->
-		<div class="bg-primary/5 border rounded-lg p-4 md:p-6">
-			<div class="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-				<Wallet class="w-4 h-4" />
-				<span>Total Saldo Saat Ini</span>
+			<!-- Hero Card: Total Balance -->
+			<div class="bg-primary/5 border rounded-lg p-4 md:p-6">
+				<div class="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+					<Wallet class="w-4 h-4" />
+					<span>Total Saldo Saat Ini</span>
+				</div>
+				<p class="text-3xl md:text-4xl font-bold">{formatRupiah(profitLoss.totalBalance)}</p>
 			</div>
-			<p class="text-3xl md:text-4xl font-bold">{formatRupiah(profitLoss.totalBalance)}</p>
-		</div>
 
-		<!-- Summary Cards -->
-		<div class="grid gap-4 md:grid-cols-3">
-			<!-- Pemasukan -->
-			<div class="bg-card border rounded-lg p-4">
-				<div class="flex items-center justify-between mb-2">
-					<div class="flex items-center gap-2 text-sm text-green-600">
-						<TrendingUp class="w-4 h-4" />
-						<span>Pemasukan</span>
+			<!-- Summary Cards -->
+			<div class="grid gap-4 md:grid-cols-3">
+				<!-- Pemasukan -->
+				<div class="bg-card border rounded-lg p-4">
+					<div class="flex items-center justify-between mb-2">
+						<div class="flex items-center gap-2 text-sm text-green-600">
+							<TrendingUp class="w-4 h-4" />
+							<span>Pemasukan</span>
+						</div>
+						{#if profitLoss.comparison.income.change !== 0}
+							{@const comparison = getComparisonText(profitLoss.comparison.income.change)}
+							<span
+								class="text-xs font-medium {comparison.isPositive
+									? 'text-green-600'
+									: 'text-red-600'}"
+							>
+								{comparison.text}
+							</span>
+						{/if}
 					</div>
-					{#if profitLoss.comparison.income.change !== 0}
-						{@const comparison = getComparisonText(profitLoss.comparison.income.change)}
-						<span
-							class="text-xs font-medium {comparison.isPositive
+					<p class="text-xl md:text-2xl font-semibold text-green-600">
+						{formatRupiah(profitLoss.income)}
+					</p>
+					<p class="text-xs text-muted-foreground mt-1">
+						{getPreviousPeriodText(
+							profitLoss.comparison.income.change,
+							profitLoss.comparison.income.previousValue
+						)}
+					</p>
+				</div>
+
+				<!-- Pengeluaran -->
+				<div class="bg-card border rounded-lg p-4">
+					<div class="flex items-center justify-between mb-2">
+						<div class="flex items-center gap-2 text-sm text-red-600">
+							<TrendingDown class="w-4 h-4" />
+							<span>Pengeluaran</span>
+						</div>
+						{#if profitLoss.comparison.expense.change !== 0}
+							{@const comparison = getComparisonText(profitLoss.comparison.expense.change)}
+							<span
+								class="text-xs font-medium {comparison.isPositive
+									? 'text-green-600'
+									: 'text-red-600'}"
+							>
+								{comparison.text}
+							</span>
+						{/if}
+					</div>
+					<p class="text-xl md:text-2xl font-semibold text-red-600">
+						{formatRupiah(profitLoss.expense)}
+					</p>
+					<p class="text-xs text-muted-foreground mt-1">
+						{getPreviousPeriodText(
+							profitLoss.comparison.expense.change,
+							profitLoss.comparison.expense.previousValue
+						)}
+					</p>
+				</div>
+
+				<!-- Laba/Rugi -->
+				<div class="bg-card border rounded-lg p-4">
+					<div class="flex items-center justify-between mb-2">
+						<div
+							class="flex items-center gap-2 text-sm {profitLoss.profit >= 0
 								? 'text-green-600'
 								: 'text-red-600'}"
 						>
-							{comparison.text}
-						</span>
-					{/if}
-				</div>
-				<p class="text-xl md:text-2xl font-semibold text-green-600">
-					{formatRupiah(profitLoss.income)}
-				</p>
-				<p class="text-xs text-muted-foreground mt-1">
-					{getPreviousPeriodText(
-						profitLoss.comparison.income.change,
-						profitLoss.comparison.income.previousValue
-					)}
-				</p>
-			</div>
-
-			<!-- Pengeluaran -->
-			<div class="bg-card border rounded-lg p-4">
-				<div class="flex items-center justify-between mb-2">
-					<div class="flex items-center gap-2 text-sm text-red-600">
-						<TrendingDown class="w-4 h-4" />
-						<span>Pengeluaran</span>
+							{#if profitLoss.profit >= 0}
+								<TrendingUp class="w-4 h-4" />
+								<span>Laba</span>
+							{:else}
+								<TrendingDown class="w-4 h-4" />
+								<span>Rugi</span>
+							{/if}
+						</div>
+						{#if profitLoss.comparison.profit.change !== 0}
+							{@const comparison = getComparisonText(profitLoss.comparison.profit.change)}
+							<span
+								class="text-xs font-medium {comparison.isPositive
+									? 'text-green-600'
+									: 'text-red-600'}"
+							>
+								{comparison.text}
+							</span>
+						{/if}
 					</div>
-					{#if profitLoss.comparison.expense.change !== 0}
-						{@const comparison = getComparisonText(profitLoss.comparison.expense.change)}
-						<span
-							class="text-xs font-medium {comparison.isPositive
-								? 'text-green-600'
-								: 'text-red-600'}"
-						>
-							{comparison.text}
-						</span>
-					{/if}
-				</div>
-				<p class="text-xl md:text-2xl font-semibold text-red-600">
-					{formatRupiah(profitLoss.expense)}
-				</p>
-				<p class="text-xs text-muted-foreground mt-1">
-					{getPreviousPeriodText(
-						profitLoss.comparison.expense.change,
-						profitLoss.comparison.expense.previousValue
-					)}
-				</p>
-			</div>
-
-			<!-- Laba/Rugi -->
-			<div class="bg-card border rounded-lg p-4">
-				<div class="flex items-center justify-between mb-2">
-					<div
-						class="flex items-center gap-2 text-sm {profitLoss.profit >= 0
+					<p
+						class="text-xl md:text-2xl font-semibold {profitLoss.profit >= 0
 							? 'text-green-600'
 							: 'text-red-600'}"
 					>
-						{#if profitLoss.profit >= 0}
-							<TrendingUp class="w-4 h-4" />
-							<span>Laba</span>
+						{formatRupiah(Math.abs(profitLoss.profit))}
+					</p>
+					<p class="text-xs text-muted-foreground mt-1">
+						{getPreviousPeriodText(
+							profitLoss.comparison.profit.change,
+							profitLoss.comparison.profit.previousValue
+						)}
+					</p>
+				</div>
+			</div>
+
+			<!-- Category Breakdown Charts -->
+			{#if profitLoss.categoryBreakdown.income.length > 0 || profitLoss.categoryBreakdown.expense.length > 0}
+				<div class="grid gap-4 md:grid-cols-2">
+					<!-- Pemasukan by Category -->
+					<div class="bg-card border rounded-lg p-4">
+						<h3 class="text-sm font-medium mb-4 flex items-center gap-2">
+							<ArrowUpRight class="w-4 h-4 text-green-600" />
+							<span>Pemasukan per Kategori</span>
+						</h3>
+
+						{#if profitLoss.categoryBreakdown.income.length > 0}
+							{@const maxIncome = getMaxCategoryValue(profitLoss.categoryBreakdown.income)}
+							<div class="space-y-3">
+								{#each profitLoss.categoryBreakdown.income as category (category.categoryId)}
+									<div class="space-y-1">
+										<div class="flex items-center justify-between text-sm">
+											<span class="font-medium">
+												{#if category.categoryCode}
+													<span class="text-muted-foreground font-mono text-xs mr-1"
+														>{category.categoryCode}</span
+													>
+												{/if}
+												{category.categoryName}
+											</span>
+											<span class="text-muted-foreground">
+												{formatRupiah(category.total)} ({category.percentage.toFixed(1)}%)
+											</span>
+										</div>
+										<div class="h-2 bg-muted rounded-full overflow-hidden">
+											<div
+												class="h-full bg-green-500 rounded-full transition-all"
+												style="width: {(category.total / maxIncome) * 100}%"
+											></div>
+										</div>
+									</div>
+								{/each}
+							</div>
 						{:else}
-							<TrendingDown class="w-4 h-4" />
-							<span>Rugi</span>
+							<p class="text-sm text-muted-foreground text-center py-4">Tidak ada data pemasukan</p>
 						{/if}
 					</div>
-					{#if profitLoss.comparison.profit.change !== 0}
-						{@const comparison = getComparisonText(profitLoss.comparison.profit.change)}
-						<span
-							class="text-xs font-medium {comparison.isPositive
-								? 'text-green-600'
-								: 'text-red-600'}"
-						>
-							{comparison.text}
-						</span>
-					{/if}
-				</div>
-				<p
-					class="text-xl md:text-2xl font-semibold {profitLoss.profit >= 0
-						? 'text-green-600'
-						: 'text-red-600'}"
-				>
-					{formatRupiah(Math.abs(profitLoss.profit))}
-				</p>
-				<p class="text-xs text-muted-foreground mt-1">
-					{getPreviousPeriodText(
-						profitLoss.comparison.profit.change,
-						profitLoss.comparison.profit.previousValue
-					)}
-				</p>
-			</div>
-		</div>
 
-		<!-- Category Breakdown Charts -->
-		{#if profitLoss.categoryBreakdown.income.length > 0 || profitLoss.categoryBreakdown.expense.length > 0}
-			<div class="grid gap-4 md:grid-cols-2">
-				<!-- Pemasukan by Category -->
-				<div class="bg-card border rounded-lg p-4">
-					<h3 class="text-sm font-medium mb-4 flex items-center gap-2">
-						<ArrowUpRight class="w-4 h-4 text-green-600" />
-						<span>Pemasukan per Kategori</span>
-					</h3>
+					<!-- Pengeluaran by Category -->
+					<div class="bg-card border rounded-lg p-4">
+						<h3 class="text-sm font-medium mb-4 flex items-center gap-2">
+							<ArrowDownRight class="w-4 h-4 text-red-600" />
+							<span>Pengeluaran per Kategori</span>
+						</h3>
 
-					{#if profitLoss.categoryBreakdown.income.length > 0}
-						{@const maxIncome = getMaxCategoryValue(profitLoss.categoryBreakdown.income)}
-						<div class="space-y-3">
-							{#each profitLoss.categoryBreakdown.income as category (category.categoryId)}
-								<div class="space-y-1">
-									<div class="flex items-center justify-between text-sm">
-										<span class="font-medium">
-											{#if category.categoryCode}
-												<span class="text-muted-foreground font-mono text-xs mr-1"
-													>{category.categoryCode}</span
-												>
-											{/if}
-											{category.categoryName}
-										</span>
-										<span class="text-muted-foreground">
-											{formatRupiah(category.total)} ({category.percentage.toFixed(1)}%)
-										</span>
+						{#if profitLoss.categoryBreakdown.expense.length > 0}
+							{@const maxExpense = getMaxCategoryValue(profitLoss.categoryBreakdown.expense)}
+							<div class="space-y-3">
+								{#each profitLoss.categoryBreakdown.expense as category (category.categoryId)}
+									<div class="space-y-1">
+										<div class="flex items-center justify-between text-sm">
+											<span class="font-medium">
+												{#if category.categoryCode}
+													<span class="text-muted-foreground font-mono text-xs mr-1"
+														>{category.categoryCode}</span
+													>
+												{/if}
+												{category.categoryName}
+											</span>
+											<span class="text-muted-foreground">
+												{formatRupiah(category.total)} ({category.percentage.toFixed(1)}%)
+											</span>
+										</div>
+										<div class="h-2 bg-muted rounded-full overflow-hidden">
+											<div
+												class="h-full bg-red-500 rounded-full transition-all"
+												style="width: {(category.total / maxExpense) * 100}%"
+											></div>
+										</div>
 									</div>
-									<div class="h-2 bg-muted rounded-full overflow-hidden">
-										<div
-											class="h-full bg-green-500 rounded-full transition-all"
-											style="width: {(category.total / maxIncome) * 100}%"
-										></div>
-									</div>
-								</div>
-							{/each}
-						</div>
-					{:else}
-						<p class="text-sm text-muted-foreground text-center py-4">Tidak ada data pemasukan</p>
-					{/if}
+								{/each}
+							</div>
+						{:else}
+							<p class="text-sm text-muted-foreground text-center py-4">
+								Tidak ada data pengeluaran
+							</p>
+						{/if}
+					</div>
 				</div>
+			{:else}
+				<!-- Empty State -->
+				<div class="bg-card border rounded-lg p-8 text-center">
+					<div
+						class="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3"
+					>
+						<Receipt class="w-6 h-6 text-muted-foreground" />
+					</div>
+					<p class="text-muted-foreground text-sm">Belum ada transaksi untuk periode ini</p>
+					<a
+						href="/transaksi/tambah"
+						class="text-primary text-sm hover:underline mt-2 inline-block"
+					>
+						Tambah transaksi pertama
+					</a>
+				</div>
+			{/if}
 
-				<!-- Pengeluaran by Category -->
-				<div class="bg-card border rounded-lg p-4">
-					<h3 class="text-sm font-medium mb-4 flex items-center gap-2">
-						<ArrowDownRight class="w-4 h-4 text-red-600" />
-						<span>Pengeluaran per Kategori</span>
-					</h3>
-
-					{#if profitLoss.categoryBreakdown.expense.length > 0}
-						{@const maxExpense = getMaxCategoryValue(profitLoss.categoryBreakdown.expense)}
-						<div class="space-y-3">
-							{#each profitLoss.categoryBreakdown.expense as category (category.categoryId)}
-								<div class="space-y-1">
-									<div class="flex items-center justify-between text-sm">
-										<span class="font-medium">
-											{#if category.categoryCode}
-												<span class="text-muted-foreground font-mono text-xs mr-1"
-													>{category.categoryCode}</span
-												>
-											{/if}
-											{category.categoryName}
-										</span>
-										<span class="text-muted-foreground">
-											{formatRupiah(category.total)} ({category.percentage.toFixed(1)}%)
-										</span>
-									</div>
-									<div class="h-2 bg-muted rounded-full overflow-hidden">
-										<div
-											class="h-full bg-red-500 rounded-full transition-all"
-											style="width: {(category.total / maxExpense) * 100}%"
-										></div>
-									</div>
-								</div>
-							{/each}
-						</div>
-					{:else}
-						<p class="text-sm text-muted-foreground text-center py-4">Tidak ada data pengeluaran</p>
-					{/if}
-				</div>
-			</div>
-		{:else}
-			<!-- Empty State -->
-			<div class="bg-card border rounded-lg p-8 text-center">
-				<div class="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
-					<Receipt class="w-6 h-6 text-muted-foreground" />
-				</div>
-				<p class="text-muted-foreground text-sm">Belum ada transaksi untuk periode ini</p>
-				<a href="/transaksi/tambah" class="text-primary text-sm hover:underline mt-2 inline-block">
-					Tambah transaksi pertama
+			<!-- Quick Link to Dashboard -->
+			<div class="flex justify-center">
+				<a href="/beranda" class="text-sm text-primary hover:underline flex items-center gap-1">
+					Lihat ringkasan di dashboard
+					<ChevronLeft class="w-4 h-4 rotate-180" />
 				</a>
 			</div>
-		{/if}
-
-		<!-- Quick Link to Dashboard -->
-		<div class="flex justify-center">
-			<a href="/beranda" class="text-sm text-primary hover:underline flex items-center gap-1">
-				Lihat ringkasan di dashboard
-				<ChevronLeft class="w-4 h-4 rotate-180" />
-			</a>
 		</div>
 	{/if}
 </div>
