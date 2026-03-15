@@ -29,9 +29,15 @@
 	let name = $state('');
 	let type = $state<'income' | 'expense'>('expense');
 
-	// Derived
-	let incomeCategories = $derived(data.categories.income);
-	let expenseCategories = $derived(data.categories.expense);
+	// Local mutable categories state — syncs from load data, allows optimistic updates
+	let incomeCategories = $state(data.categories.income);
+	let expenseCategories = $state(data.categories.expense);
+
+	// Sync when load data changes (e.g., navigation, full reload)
+	$effect(() => {
+		incomeCategories = data.categories.income;
+		expenseCategories = data.categories.expense;
+	});
 
 	// Get current categories based on tab
 	let currentCategories = $derived(activeTab === 'income' ? incomeCategories : expenseCategories);
@@ -68,14 +74,38 @@
 		type = activeTab;
 	}
 
+	// Helper to group categories by SAK EMKM code prefix
+	function groupByCodePrefix<T extends { code: string }>(cats: T[]) {
+		const groups: Record<string, T[]> = {};
+		for (const cat of cats) {
+			const prefix = cat.code.charAt(0);
+			if (!groups[prefix]) {
+				groups[prefix] = [];
+			}
+			groups[prefix].push(cat);
+		}
+		return groups;
+	}
+
 	// Handle form submission
 	function handleSubmit() {
 		loading = true;
-		return async ({ result }: { result: { type: string } }) => {
+		return async ({
+			result
+		}: {
+			result: { type: string; data?: Record<string, unknown> };
+		}) => {
 			loading = false;
-			if (result.type === 'success') {
+			if (result.type === 'success' && result.data?.category) {
+				const newCat = result.data.category as (typeof incomeCategories.all)[number];
+				if (newCat.type === 'income') {
+					const all = [...incomeCategories.all, newCat];
+					incomeCategories = { all, groups: groupByCodePrefix(all) };
+				} else {
+					const all = [...expenseCategories.all, newCat];
+					expenseCategories = { all, groups: groupByCodePrefix(all) };
+				}
 				closeModal();
-				goto('/kategori', { invalidateAll: true });
 			}
 		};
 	}

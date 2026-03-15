@@ -30,10 +30,16 @@
 	let paymentAccount = $state('');
 	let paymentNotes = $state('');
 
-	// Derived
-	let debt = $derived(data.debt);
-	let payments = $derived(data.payments);
+	// Local mutable state — syncs from load data, allows optimistic updates
+	let debt = $state(data.debt);
+	let payments = $state(data.payments);
 	let accounts = $derived(data.accounts);
+
+	// Sync when load data changes (e.g., navigation, full reload)
+	$effect(() => {
+		debt = data.debt;
+		payments = data.payments;
+	});
 	let statusBadge = $derived(getDebtStatusBadge(debt.status));
 
 	// Pre-fill payment amount with remaining balance
@@ -109,7 +115,12 @@
 				})
 			});
 
-			const result = (await response.json()) as { error?: string; message?: string };
+			const result = (await response.json()) as {
+				error?: string;
+				message?: string;
+				payment?: Record<string, unknown>;
+				debt?: Record<string, unknown>;
+			};
 
 			if (!response.ok) {
 				error = result.error || 'Terjadi kesalahan';
@@ -117,9 +128,17 @@
 				return;
 			}
 
+			// Optimistically update local state
+			if (result.payment) {
+				payments = [...payments, result.payment as (typeof payments)[number]];
+			}
+			if (result.debt) {
+				const updatedDebt = result.debt as Partial<typeof debt>;
+				debt = { ...debt, ...updatedDebt };
+			}
+
 			success = result.message ?? null;
 			closePaymentModal();
-			goto(`/hutang-piutang/${debt.id}`, { invalidateAll: true });
 		} catch (err) {
 			error = 'Terjadi kesalahan server';
 			console.error(err);

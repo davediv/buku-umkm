@@ -84,9 +84,17 @@
 		};
 	}
 
+	// Local mutable transactions state — syncs from load data, allows optimistic updates
+	let transactions = $state(data.transactions);
+
+	// Sync when load data changes (e.g., navigation, full reload)
+	$effect(() => {
+		transactions = data.transactions;
+	});
+
 	// Filter and sort transactions - computed once and cached
 	let filteredTransactions = $derived.by(() => {
-		let result = [...data.transactions];
+		let result = [...transactions];
 
 		// Search filter (client-side)
 		if (searchQuery) {
@@ -152,8 +160,8 @@
 			});
 
 			if (response.ok) {
-				// Refresh data
-				goto('/transaksi', { invalidateAll: true });
+				// Optimistically remove from local state
+				transactions = transactions.filter((t) => t.id !== txnId);
 			} else {
 				const result = (await response.json()) as { error?: string };
 				toast.error('Gagal menghapus', result.error || 'Gagal menghapus transaksi');
