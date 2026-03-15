@@ -271,7 +271,7 @@
 			<div class="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
 				<AlertCircle class="w-8 h-8 text-destructive" />
 			</div>
-			<h3 class="text-lg font-medium mb-2">Gagal memuat data</h3>
+			<h2 class="text-lg font-medium mb-2">Gagal memuat data</h2>
 			<p class="text-sm text-muted-foreground mb-6 max-w-sm">
 				{data.error || 'Terjadi kesalahan saat memuat data laporan'}
 			</p>
@@ -386,7 +386,7 @@
 						type="date"
 						bind:value={selectedDate}
 						onchange={changeDate}
-						class="bg-transparent border-none text-sm font-medium focus:outline-none focus:ring-0"
+						class="bg-transparent border-none text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
 					/>
 				</div>
 			</div>
@@ -1136,7 +1136,7 @@
 					<Calendar class="w-4 h-4 text-muted-foreground" />
 					<select
 						bind:value={sptYear}
-						class="bg-transparent border-none text-sm font-medium focus:outline-none focus:ring-0 cursor-pointer"
+						class="bg-transparent border-none text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
 					>
 						{#each availableYears as year (year)}
 							<option value={year}>{year}</option>
@@ -1214,11 +1214,11 @@
 							<table class="w-full text-sm">
 								<thead>
 									<tr class="border-b">
-										<th class="text-left py-2 px-3">Bulan</th>
-										<th class="text-right py-2 px-3">Pendapatan Kotor</th>
-										<th class="text-right py-2 px-3">Pendapatan Kena Pajak</th>
-										<th class="text-right py-2 px-3">PPh Final</th>
-										<th class="text-center py-2 px-3">Status</th>
+										<th scope="col" class="text-left py-2 px-3">Bulan</th>
+										<th scope="col" class="text-right py-2 px-3">Pendapatan Kotor</th>
+										<th scope="col" class="text-right py-2 px-3">Pendapatan Kena Pajak</th>
+										<th scope="col" class="text-right py-2 px-3">PPh Final</th>
+										<th scope="col" class="text-center py-2 px-3">Status</th>
 									</tr>
 								</thead>
 								<tbody>

@@ -238,26 +238,32 @@
 					<thead class="bg-muted/50 border-b">
 						<tr>
 							<th
+								scope="col"
 								class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>Nama Kontak</th
 							>
 							<th
+								scope="col"
 								class="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>Jumlah</th
 							>
 							<th
+								scope="col"
 								class="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>Sisa</th
 							>
 							<th
+								scope="col"
 								class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>Jatuh Tempo</th
 							>
 							<th
+								scope="col"
 								class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>Status</th
 							>
 							<th
+								scope="col"
 								class="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>Aksi</th
 							>

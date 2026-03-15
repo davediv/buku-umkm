@@ -74,7 +74,7 @@
 			<div class="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
 				<Receipt class="w-8 h-8 text-destructive" />
 			</div>
-			<h3 class="text-lg font-medium mb-2">Gagal memuat data</h3>
+			<h2 class="text-lg font-medium mb-2">Gagal memuat data</h2>
 			<p class="text-sm text-muted-foreground mb-6 max-w-sm">
 				{data.error || 'Terjadi kesalahan saat memuat data dashboard'}
 			</p>
@@ -240,7 +240,7 @@
 		<!-- Cash Flow Chart -->
 		{#if dashboard.chartData && dashboard.chartData.length > 0}
 			<div class="bg-card border rounded-lg p-4">
-				<h3 class="text-sm font-medium mb-4">Tren Arus Kas (6 Bulan Terakhir)</h3>
+				<h2 class="text-sm font-medium mb-4">Tren Arus Kas (6 Bulan Terakhir)</h2>
 				<CashFlowChart data={dashboard.chartData} height={250} />
 			</div>
 		{:else}
@@ -252,7 +252,7 @@
 
 		<!-- Tax Status Widget -->
 		<div class="bg-card border rounded-lg p-4">
-			<h3 class="text-sm font-medium mb-3">Status Pajak (PPh Final 0.5%)</h3>
+			<h2 class="text-sm font-medium mb-3">Status Pajak (PPh Final 0.5%)</h2>
 
 			{#if dashboard.annualRevenue >= dashboard.taxThreshold}
 				<!-- Amount Due (for high revenue) -->
@@ -330,7 +330,7 @@
 		<!-- Recent Transactions -->
 		<div class="bg-card border rounded-lg">
 			<div class="flex items-center justify-between p-4 border-b">
-				<h3 class="font-medium">Transaksi Terbaru</h3>
+				<h2 class="font-medium">Transaksi Terbaru</h2>
 				<a href="/transaksi" class="text-sm text-primary hover:underline flex items-center gap-1">
 					Lihat semua
 					<ChevronRight class="w-4 h-4" />
@@ -389,7 +389,7 @@
 					<div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
 						<Receipt class="w-8 h-8 text-muted-foreground" />
 					</div>
-					<h3 class="text-lg font-medium mb-2">Selamat datang!</h3>
+					<h2 class="text-lg font-medium mb-2">Selamat datang!</h2>
 					<p class="text-sm text-muted-foreground mb-6 max-w-sm">
 						Yuk, catat transaksi pertamamu untuk memulai keuangan yang lebih tertata!
 					</p>
