@@ -23,6 +23,7 @@
 	} from '@lucide/svelte';
 	import { APP_VERSION, BUSINESS_TYPES } from '$lib/constants';
 	import { getBusinessTypeLabel, formatDateTime } from '$lib/utils';
+	import { toast } from '$lib/components/ui/toast';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
@@ -250,8 +251,10 @@
 			alert('Data berhasil dipulihkan!');
 		} catch (error) {
 			console.error('Restore error:', error);
-			restoreError =
+			const errorMessage =
 				error instanceof Error ? error.message : 'Terjadi kesalahan saat memulihkan data';
+			restoreError = errorMessage;
+			toast.error('Gagal memulihkan data', errorMessage);
 		} finally {
 			restoring = false;
 		}
@@ -683,7 +686,11 @@
 </div>
 
 <!-- Restore Confirmation Dialog -->
-<AlertDialog open={showRestoreConfirm} onopenchange={(open) => !open && cancelRestore()}>
+<AlertDialog
+	open={showRestoreConfirm}
+	closeOnExternalClick={!restoring}
+	onopenchange={(open) => !open && cancelRestore()}
+>
 	<div class="flex items-center gap-2 mb-4">
 		<AlertTriangle class="w-5 h-5 text-amber-500" />
 		<AlertDialogTitle>Peringatan</AlertDialogTitle>

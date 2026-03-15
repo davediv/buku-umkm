@@ -11,6 +11,7 @@
 	} from '$lib/components/ui/table';
 	import { TAX_STATUS, TAXPAYER_TYPE, getIndonesianMonthName } from '$lib/tax/config';
 	import { formatRupiah } from '$lib/utils';
+	import { toast } from '$lib/components/ui/toast';
 	import {
 		AlertDialog,
 		AlertDialogTitle,
@@ -131,7 +132,9 @@
 			goto('/pajak', { invalidateAll: true });
 		} catch (err) {
 			console.error('Error marking tax as paid:', err);
-			error = 'Failed to mark tax as paid';
+			const errorMessage = err instanceof Error ? err.message : 'Failed to mark tax as paid';
+			error = errorMessage;
+			toast.error('Gagal menandai pajak', errorMessage);
 		} finally {
 			loading = false;
 		}
@@ -369,6 +372,7 @@
 	<!-- Confirmation Dialog -->
 	<AlertDialog
 		open={showConfirmDialog}
+		closeOnExternalClick={!loading}
 		onopenchange={(open) => {
 			if (!open) {
 				showConfirmDialog = false;

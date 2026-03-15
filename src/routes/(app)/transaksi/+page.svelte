@@ -593,6 +593,7 @@
 <!-- Delete Confirmation Dialog -->
 <AlertDialog
 	open={!!showDeleteConfirm}
+	closeOnExternalClick={deletingId === null}
 	onopenchange={(open) => !open && (showDeleteConfirm = null)}
 >
 	<AlertDialogTitle>Hapus Transaksi?</AlertDialogTitle>
