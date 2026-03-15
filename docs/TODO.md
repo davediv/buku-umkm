@@ -970,7 +970,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
     - Verify no spinners are used
   - **Dependencies**: All UI tasks
 
-- [ ] **UI-P3-012**: Implement confirmation dialogs for destructive actions
+- [x] **UI-P3-012**: Implement confirmation dialogs for destructive actions
   - **Success Criteria**:
     - Confirmation dialog before: delete transaction, delete debt, restore backup, mark tax as paid
     - Dialog uses shadcn-svelte AlertDialog component

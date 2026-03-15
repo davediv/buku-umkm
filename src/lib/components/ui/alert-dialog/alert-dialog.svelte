@@ -6,25 +6,38 @@
 	type Props = HTMLAttributes<HTMLDivElement> & {
 		open?: boolean;
 		onopenchange?: (open: boolean) => void;
+		closeOnExternalClick?: boolean;
 		children: Snippet;
 	};
 
-	let { class: className, children, open, onopenchange }: Props = $props();
+	let {
+		class: className,
+		children,
+		open,
+		onopenchange,
+		closeOnExternalClick = true
+	}: Props = $props();
 
 	function handleBackdropClick(e: MouseEvent) {
-		if (e.target === e.currentTarget) {
+		if (closeOnExternalClick && e.target === e.currentTarget) {
 			onopenchange?.(false);
 		}
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') {
+		if (closeOnExternalClick && e.key === 'Escape') {
 			onopenchange?.(false);
 		}
 	}
-</script>
 
-<svelte:window onkeydown={handleKeydown} />
+	// Fix memory leak - only add listener when dialog is open
+	$effect(() => {
+		if (open) {
+			window.addEventListener('keydown', handleKeydown);
+			return () => window.removeEventListener('keydown', handleKeydown);
+		}
+	});
+</script>
 
 {#if open}
 	<div
@@ -34,6 +47,7 @@
 		aria-labelledby="alert-dialog-title"
 		aria-describedby="alert-dialog-description"
 		onclick={handleBackdropClick}
+		onkeydown={handleKeydown}
 	>
 		<div class={cn('bg-background border rounded-lg shadow-lg w-full max-w-md p-6', className)}>
 			{@render children()}
