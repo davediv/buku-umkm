@@ -543,13 +543,11 @@
 <!-- Category Picker Modal -->
 {#if showCategoryPicker}
 	<div
-		class="fixed inset-0 z-[55] flex flex-col bg-background md:left-20"
+		class="fixed inset-0 z-[55] flex flex-col bg-white md:left-20"
 		role="dialog"
 		aria-modal="true"
 	>
-		<header
-			class="sticky top-0 z-10 bg-background border-b px-4 py-3 flex items-center justify-between"
-		>
+		<header class="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
 			<h2 class="text-lg font-semibold">Pilih Kategori</h2>
 			<button
 				onclick={() => (showCategoryPicker = false)}
@@ -641,13 +639,11 @@
 <!-- Account Picker Modal -->
 {#if showAccountPicker}
 	<div
-		class="fixed inset-0 z-[55] flex flex-col bg-background md:left-20"
+		class="fixed inset-0 z-[55] flex flex-col bg-white md:left-20"
 		role="dialog"
 		aria-modal="true"
 	>
-		<header
-			class="sticky top-0 z-10 bg-background border-b px-4 py-3 flex items-center justify-between"
-		>
+		<header class="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
 			<h2 class="text-lg font-semibold">Pilih Akun</h2>
 			<button
 				onclick={() => (showAccountPicker = false)}
