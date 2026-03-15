@@ -8,8 +8,6 @@
 		Database,
 		Calendar,
 		AlertTriangle,
-		CheckCircle,
-		X,
 		Loader2,
 		Store,
 		User,
@@ -28,6 +26,13 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import {
+		AlertDialog,
+		AlertDialogTitle,
+		AlertDialogDescription,
+		AlertDialogAction,
+		AlertDialogCancel
+	} from '$lib/components/ui/alert-dialog';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -678,76 +683,41 @@
 </div>
 
 <!-- Restore Confirmation Dialog -->
-{#if showRestoreConfirm}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="restore-dialog-title"
-	>
-		<div class="bg-background border rounded-lg shadow-lg w-full max-w-md">
-			<div class="flex items-center justify-between p-4 border-b">
-				<div class="flex items-center gap-2">
-					<AlertTriangle class="w-5 h-5 text-amber-500" />
-					<h2 id="restore-dialog-title" class="text-lg font-semibold">Peringatan</h2>
-				</div>
-				<button
-					type="button"
-					onclick={cancelRestore}
-					class="p-2 hover:bg-secondary rounded-full"
-					aria-label="Tutup"
-				>
-					<X class="w-5 h-5" />
-				</button>
-			</div>
-
-			<div class="p-4 space-y-4">
-				<p class="text-muted-foreground">Apakah Anda yakin ingin memulihkan data?</p>
-				<div
-					class="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg"
-				>
-					<p class="text-sm text-amber-800 dark:text-amber-200 font-medium">
-						Data saat ini akan ditimpa!
-					</p>
-					<p class="text-sm text-amber-700 dark:text-amber-300 mt-1">
-						{#if selectedFile}
-							File: {selectedFile.name}
-						{/if}
-					</p>
-				</div>
-
-				{#if restoreError}
-					<div
-						class="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg"
-					>
-						<p class="text-sm text-red-800 dark:text-red-200">{restoreError}</p>
-					</div>
-				{/if}
-
-				<div class="flex gap-3">
-					<button
-						type="button"
-						onclick={cancelRestore}
-						class="flex-1 py-3 min-h-[48px] text-base border rounded-lg font-medium hover:bg-secondary transition-colors"
-					>
-						Batal
-					</button>
-					<button
-						type="button"
-						onclick={confirmRestore}
-						disabled={restoring}
-						class="flex-1 py-3 min-h-[48px] text-base bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-					>
-						{#if restoring}
-							<Loader2 class="w-5 h-5 animate-spin" />
-							<span>Memulihkan...</span>
-						{:else}
-							<CheckCircle class="w-5 h-5" />
-							<span>Ya, Pulihkan</span>
-						{/if}
-					</button>
-				</div>
-			</div>
-		</div>
+<AlertDialog open={showRestoreConfirm} onopenchange={(open) => !open && cancelRestore()}>
+	<div class="flex items-center gap-2 mb-4">
+		<AlertTriangle class="w-5 h-5 text-amber-500" />
+		<AlertDialogTitle>Peringatan</AlertDialogTitle>
 	</div>
-{/if}
+	<AlertDialogDescription>Apakah Anda yakin ingin memulihkan data?</AlertDialogDescription>
+	<div
+		class="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg mt-4 mb-4"
+	>
+		<p class="text-sm text-amber-800 dark:text-amber-200 font-medium">
+			Data saat ini akan ditimpa!
+		</p>
+		<p class="text-sm text-amber-700 dark:text-amber-300 mt-1">
+			{#if selectedFile}
+				File: {selectedFile.name}
+			{/if}
+		</p>
+	</div>
+
+	{#if restoreError}
+		<div
+			class="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg mb-4"
+		>
+			<p class="text-sm text-red-800 dark:text-red-200">{restoreError}</p>
+		</div>
+	{/if}
+
+	<div class="flex gap-3 mt-6">
+		<AlertDialogCancel onclick={cancelRestore}>Batal</AlertDialogCancel>
+		<AlertDialogAction variant="warning" onclick={confirmRestore} loading={restoring}>
+			{#if restoring}
+				Memulihkan...
+			{:else}
+				Ya, Pulihkan
+			{/if}
+		</AlertDialogAction>
+	</div>
+</AlertDialog>

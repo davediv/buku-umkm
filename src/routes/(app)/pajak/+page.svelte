@@ -11,6 +11,13 @@
 	} from '$lib/components/ui/table';
 	import { TAX_STATUS, TAXPAYER_TYPE, getIndonesianMonthName } from '$lib/tax/config';
 	import { formatRupiah } from '$lib/utils';
+	import {
+		AlertDialog,
+		AlertDialogTitle,
+		AlertDialogDescription,
+		AlertDialogAction,
+		AlertDialogCancel
+	} from '$lib/components/ui/alert-dialog';
 	import type { TaxpayerType } from '$lib/tax/types';
 
 	interface TaxSummary {
@@ -360,57 +367,41 @@
 	{/if}
 
 	<!-- Confirmation Dialog -->
-	{#if showConfirmDialog}
-		<div
-			class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="tax-confirm-title"
-		>
-			<div class="bg-background border rounded-lg shadow-lg max-w-md w-full p-6">
-				<h3 id="tax-confirm-title" class="text-lg font-semibold mb-2">
-					Konfirmasi Pembayaran Pajak
-				</h3>
-				<p class="text-muted-foreground mb-4">
-					Apakah Anda yakin ingin menandai pajak bulan {data.summary
-						? getIndonesianMonthName(data.summary.month)
-						: ''}
-					{data.summary?.year || ''} sebagai sudah dibayar?
-				</p>
+	<AlertDialog
+		open={showConfirmDialog}
+		onopenchange={(open) => {
+			if (!open) {
+				showConfirmDialog = false;
+				error = null;
+			}
+		}}
+	>
+		<AlertDialogTitle>Konfirmasi Pembayaran Pajak</AlertDialogTitle>
+		<AlertDialogDescription>
+			Apakah Anda yakin ingin menandai pajak bulan {data.summary
+				? getIndonesianMonthName(data.summary.month)
+				: ''}
+			{data.summary?.year || ''} sebagai sudah dibayar?
+		</AlertDialogDescription>
 
-				{#if data.summary && !data.summary.isBelowThreshold}
-					<div class="bg-muted rounded-lg p-4 mb-4">
-						<p class="text-sm text-muted-foreground">Jumlah Pajak</p>
-						<p class="text-xl font-bold">{formatRupiah(data.summary.currentMonthTax)}</p>
-					</div>
-				{/if}
-
-				{#if error}
-					<div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-red-700 text-sm">
-						{error}
-					</div>
-				{/if}
-
-				<div class="flex gap-3 justify-end">
-					<button
-						onclick={() => {
-							showConfirmDialog = false;
-							error = null;
-						}}
-						class="px-4 py-2 border rounded-md hover:bg-muted transition-colors"
-						disabled={loading}
-					>
-						Batal
-					</button>
-					<button
-						onclick={handleMarkAsPaid}
-						class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
-						disabled={loading}
-					>
-						{loading ? 'Menyimpan...' : 'Ya, Tandai Sudah Dibayar'}
-					</button>
-				</div>
+		{#if data.summary && !data.summary.isBelowThreshold}
+			<div class="bg-muted rounded-lg p-4 mt-4 mb-4">
+				<p class="text-sm text-muted-foreground">Jumlah Pajak</p>
+				<p class="text-xl font-bold">{formatRupiah(data.summary.currentMonthTax)}</p>
 			</div>
+		{/if}
+
+		{#if error}
+			<div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-red-700 text-sm">
+				{error}
+			</div>
+		{/if}
+
+		<div class="flex gap-3 justify-end mt-6">
+			<AlertDialogCancel disabled={loading}>Batal</AlertDialogCancel>
+			<AlertDialogAction variant="default" onclick={handleMarkAsPaid} {loading}>
+				{loading ? 'Menyimpan...' : 'Ya, Tandai Sudah Dibayar'}
+			</AlertDialogAction>
 		</div>
-	{/if}
+	</AlertDialog>
 </div>

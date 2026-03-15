@@ -18,6 +18,13 @@
 	import { formatTransactionAmount, formatDate, formatDateShort } from '$lib/utils';
 	import { toast } from '$lib/components/ui/toast';
 	import {
+		AlertDialog,
+		AlertDialogTitle,
+		AlertDialogDescription,
+		AlertDialogAction,
+		AlertDialogCancel
+	} from '$lib/components/ui/alert-dialog';
+	import {
 		exportTransactions,
 		generateExportFilename,
 		type ExportFormat,
@@ -584,33 +591,21 @@
 </div>
 
 <!-- Delete Confirmation Dialog -->
-{#if showDeleteConfirm}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="delete-dialog-title"
-	>
-		<div class="bg-background border rounded-lg shadow-lg w-full max-w-md p-6">
-			<h2 id="delete-dialog-title" class="text-lg font-semibold mb-2">Hapus Transaksi?</h2>
-			<p class="text-sm text-muted-foreground mb-6">
-				Transaksi yang dihapus tidak dapat dikembalikan. Apakah Anda yakin ingin melanjutkan?
-			</p>
-			<div class="flex gap-3">
-				<button
-					onclick={() => (showDeleteConfirm = null)}
-					class="flex-1 px-4 py-3 min-h-[48px] text-base border rounded-md font-medium hover:bg-secondary transition-colors"
-				>
-					Batal
-				</button>
-				<button
-					onclick={() => handleDelete(showDeleteConfirm!)}
-					disabled={deletingId !== null}
-					class="flex-1 px-4 py-3 min-h-[48px] text-base bg-destructive text-destructive-foreground rounded-md font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50"
-				>
-					{deletingId ? 'Menghapus...' : 'Hapus'}
-				</button>
-			</div>
-		</div>
+<AlertDialog
+	open={!!showDeleteConfirm}
+	onopenchange={(open) => !open && (showDeleteConfirm = null)}
+>
+	<AlertDialogTitle>Hapus Transaksi?</AlertDialogTitle>
+	<AlertDialogDescription>
+		Transaksi yang dihapus tidak dapat dikembalikan. Apakah Anda yakin ingin melanjutkan?
+	</AlertDialogDescription>
+	<div class="flex gap-3 mt-6">
+		<AlertDialogCancel onclick={() => (showDeleteConfirm = null)}>Batal</AlertDialogCancel>
+		<AlertDialogAction
+			onclick={() => handleDelete(showDeleteConfirm!)}
+			loading={deletingId !== null}
+		>
+			{deletingId ? 'Menghapus...' : 'Hapus'}
+		</AlertDialogAction>
 	</div>
-{/if}
+</AlertDialog>
