@@ -9,7 +9,6 @@
 		Clock,
 		Receipt,
 		ChevronRight,
-		Loader2,
 		Plus
 	} from '@lucide/svelte';
 	import { CashFlowChart } from '$lib/components/ui/charts';
@@ -168,15 +167,13 @@
 			</div>
 		</div>
 
-		<!-- Loading indicator when changing period -->
-		{#if loading}
-			<div class="flex justify-center py-2">
-				<Loader2 class="h-5 w-5 animate-spin text-muted-foreground" />
-			</div>
-		{/if}
-
 		<!-- Summary Cards -->
-		<div class="grid gap-4 md:grid-cols-3">
+		<div
+			class="grid gap-4 transition-opacity duration-150 md:grid-cols-3 {loading
+				? 'opacity-40'
+				: ''}"
+			aria-busy={loading}
+		>
 			<!-- Pemasukan -->
 			<div class="rounded-xl border bg-card p-4">
 				<div class="mb-1 flex items-center gap-2 text-sm text-green-600">
