@@ -266,7 +266,7 @@
 
 				{#if showExportMenu}
 					<div
-						class="export-menu absolute top-full right-0 mt-2 z-10 bg-card border rounded-lg shadow-lg p-2 min-w-[180px]"
+						class="export-menu absolute top-full right-0 mt-2 z-10 bg-white border rounded-lg shadow-xl p-2 min-w-[180px]"
 					>
 						<button
 							onclick={() => handleExport('xlsx')}
@@ -333,7 +333,7 @@
 
 			{#if showDateFilter}
 				<div
-					class="absolute top-full right-0 mt-2 z-10 bg-card border rounded-lg shadow-lg p-3 min-w-[200px]"
+					class="absolute top-full right-0 mt-2 z-10 bg-white border rounded-lg shadow-xl p-3 min-w-[200px]"
 				>
 					<div class="space-y-2">
 						<button

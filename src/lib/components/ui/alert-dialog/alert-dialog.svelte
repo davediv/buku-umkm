@@ -49,7 +49,7 @@
 		onclick={handleBackdropClick}
 		onkeydown={handleKeydown}
 	>
-		<div class={cn('bg-card border rounded-lg shadow-lg w-full max-w-md p-6', className)}>
+		<div class={cn('bg-white border rounded-lg shadow-xl w-full max-w-md p-6', className)}>
 			{@render children()}
 		</div>
 	</div>

@@ -149,7 +149,7 @@
 		<!-- Popover Detail -->
 		{#if showPopover}
 			<div
-				class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 bg-card border border-border rounded-lg shadow-lg z-[60] overflow-hidden md:bottom-0 md:left-full md:translate-x-0 md:ml-2 md:mb-0"
+				class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 bg-white border border-border rounded-lg shadow-xl z-[60] overflow-hidden md:bottom-0 md:left-full md:translate-x-0 md:ml-2 md:mb-0"
 			>
 				<!-- Header -->
 				<div
