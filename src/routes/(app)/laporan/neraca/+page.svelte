@@ -7,8 +7,7 @@
 		Wallet,
 		CreditCard,
 		TrendingUp,
-		AlertCircle,
-		Loader2
+		AlertCircle
 	} from '@lucide/svelte';
 	import { formatRupiah } from '$lib/utils';
 	import type { PageData } from './$types';
@@ -134,314 +133,316 @@
 			</div>
 		</div>
 
-		<!-- Loading indicator when changing date -->
-		{#if loading}
-			<div class="flex justify-center py-2">
-				<Loader2 class="w-5 h-5 animate-spin text-muted-foreground" />
+		<!-- Content area: dims while loading to avoid layout shift -->
+		<div
+			class="space-y-6 transition-opacity duration-150 {loading
+				? 'opacity-50 pointer-events-none'
+				: ''}"
+		>
+			<!-- Date Label -->
+			<div class="text-center">
+				<p class="text-sm text-muted-foreground">Per Tanggal {data.balanceSheet.dateLabel}</p>
 			</div>
-		{/if}
 
-		<!-- Date Label -->
-		<div class="text-center">
-			<p class="text-sm text-muted-foreground">Per Tanggal {data.balanceSheet.dateLabel}</p>
-		</div>
+			<!-- Balance Sheet -->
+			<div class="space-y-4">
+				<!-- Assets Section -->
+				<div class="bg-card border rounded-lg p-4">
+					<div class="flex items-center gap-2 mb-4">
+						<Wallet class="w-5 h-5 text-blue-600" />
+						<h2 class="text-lg font-semibold">ASET</h2>
+						<span class="text-sm text-muted-foreground">(Aktiva)</span>
+					</div>
 
-		<!-- Balance Sheet -->
-		<div class="space-y-4">
-			<!-- Assets Section -->
-			<div class="bg-card border rounded-lg p-4">
-				<div class="flex items-center gap-2 mb-4">
-					<Wallet class="w-5 h-5 text-blue-600" />
-					<h2 class="text-lg font-semibold">ASET</h2>
-					<span class="text-sm text-muted-foreground">(Aktiva)</span>
-				</div>
-
-				<div class="space-y-3">
-					<!-- Kas -->
-					{#if data.balanceSheet.assets.breakdown.kas.items.length > 0}
-						<div class="pl-4 border-l-2 border-blue-200">
-							<div class="flex justify-between items-center mb-2">
-								<span class="font-medium text-sm"
-									>{data.balanceSheet.assets.breakdown.kas.label}</span
-								>
-								<span class="text-sm font-semibold">
-									{formatRupiah(data.balanceSheet.assets.breakdown.kas.subtotal)}
-								</span>
-							</div>
-							{#each data.balanceSheet.assets.breakdown.kas.items as item (item.id)}
-								<div class="flex justify-between text-sm text-muted-foreground pl-2">
-									<span>
-										<span class="font-mono text-xs mr-2">{item.code}</span>
-										{item.name}
+					<div class="space-y-3">
+						<!-- Kas -->
+						{#if data.balanceSheet.assets.breakdown.kas.items.length > 0}
+							<div class="pl-4 border-l-2 border-blue-200">
+								<div class="flex justify-between items-center mb-2">
+									<span class="font-medium text-sm"
+										>{data.balanceSheet.assets.breakdown.kas.label}</span
+									>
+									<span class="text-sm font-semibold">
+										{formatRupiah(data.balanceSheet.assets.breakdown.kas.subtotal)}
 									</span>
-									<span>{formatRupiah(item.balance)}</span>
 								</div>
-							{/each}
-						</div>
-					{/if}
-
-					<!-- Bank -->
-					{#if data.balanceSheet.assets.breakdown.bank.items.length > 0}
-						<div class="pl-4 border-l-2 border-blue-200">
-							<div class="flex justify-between items-center mb-2">
-								<span class="font-medium text-sm"
-									>{data.balanceSheet.assets.breakdown.bank.label}</span
-								>
-								<span class="text-sm font-semibold">
-									{formatRupiah(data.balanceSheet.assets.breakdown.bank.subtotal)}
-								</span>
+								{#each data.balanceSheet.assets.breakdown.kas.items as item (item.id)}
+									<div class="flex justify-between text-sm text-muted-foreground pl-2">
+										<span>
+											<span class="font-mono text-xs mr-2">{item.code}</span>
+											{item.name}
+										</span>
+										<span>{formatRupiah(item.balance)}</span>
+									</div>
+								{/each}
 							</div>
-							{#each data.balanceSheet.assets.breakdown.bank.items as item (item.id)}
-								<div class="flex justify-between text-sm text-muted-foreground pl-2">
-									<span>
-										<span class="font-mono text-xs mr-2">{item.code}</span>
-										{item.name}
+						{/if}
+
+						<!-- Bank -->
+						{#if data.balanceSheet.assets.breakdown.bank.items.length > 0}
+							<div class="pl-4 border-l-2 border-blue-200">
+								<div class="flex justify-between items-center mb-2">
+									<span class="font-medium text-sm"
+										>{data.balanceSheet.assets.breakdown.bank.label}</span
+									>
+									<span class="text-sm font-semibold">
+										{formatRupiah(data.balanceSheet.assets.breakdown.bank.subtotal)}
 									</span>
-									<span>{formatRupiah(item.balance)}</span>
 								</div>
-							{/each}
-						</div>
-					{/if}
-
-					<!-- Piutang Usaha (from accounts) -->
-					{#if data.balanceSheet.assets.breakdown.piutangUsaha.items.length > 0}
-						<div class="pl-4 border-l-2 border-blue-200">
-							<div class="flex justify-between items-center mb-2">
-								<span class="font-medium text-sm"
-									>{data.balanceSheet.assets.breakdown.piutangUsaha.label}</span
-								>
-								<span class="text-sm font-semibold">
-									{formatRupiah(data.balanceSheet.assets.breakdown.piutangUsaha.subtotal)}
-								</span>
+								{#each data.balanceSheet.assets.breakdown.bank.items as item (item.id)}
+									<div class="flex justify-between text-sm text-muted-foreground pl-2">
+										<span>
+											<span class="font-mono text-xs mr-2">{item.code}</span>
+											{item.name}
+										</span>
+										<span>{formatRupiah(item.balance)}</span>
+									</div>
+								{/each}
 							</div>
-							{#each data.balanceSheet.assets.breakdown.piutangUsaha.items as item (item.id)}
-								<div class="flex justify-between text-sm text-muted-foreground pl-2">
-									<span>
-										<span class="font-mono text-xs mr-2">{item.code}</span>
-										{item.name}
+						{/if}
+
+						<!-- Piutang Usaha (from accounts) -->
+						{#if data.balanceSheet.assets.breakdown.piutangUsaha.items.length > 0}
+							<div class="pl-4 border-l-2 border-blue-200">
+								<div class="flex justify-between items-center mb-2">
+									<span class="font-medium text-sm"
+										>{data.balanceSheet.assets.breakdown.piutangUsaha.label}</span
+									>
+									<span class="text-sm font-semibold">
+										{formatRupiah(data.balanceSheet.assets.breakdown.piutangUsaha.subtotal)}
 									</span>
-									<span>{formatRupiah(item.balance)}</span>
 								</div>
-							{/each}
-						</div>
-					{/if}
-
-					<!-- Piutang (Detail from debt table) -->
-					{#if data.balanceSheet.assets.breakdown.piutangDetail.items.length > 0}
-						<div class="pl-4 border-l-2 border-blue-300">
-							<div class="flex justify-between items-center mb-2">
-								<span class="font-medium text-sm"
-									>{data.balanceSheet.assets.breakdown.piutangDetail.label}</span
-								>
-								<span class="text-sm font-semibold">
-									{formatRupiah(data.balanceSheet.assets.breakdown.piutangDetail.subtotal)}
-								</span>
+								{#each data.balanceSheet.assets.breakdown.piutangUsaha.items as item (item.id)}
+									<div class="flex justify-between text-sm text-muted-foreground pl-2">
+										<span>
+											<span class="font-mono text-xs mr-2">{item.code}</span>
+											{item.name}
+										</span>
+										<span>{formatRupiah(item.balance)}</span>
+									</div>
+								{/each}
 							</div>
-							{#each data.balanceSheet.assets.breakdown.piutangDetail.items as item (item.id)}
-								<div class="flex justify-between text-sm text-muted-foreground pl-2">
-									<span>{item.name}</span>
-									<span>{formatRupiah(item.remainingAmount)}</span>
-								</div>
-							{/each}
-						</div>
-					{/if}
+						{/if}
 
-					<!-- Persediaan -->
-					{#if data.balanceSheet.assets.breakdown.persediaan.items.length > 0}
-						<div class="pl-4 border-l-2 border-blue-200">
-							<div class="flex justify-between items-center mb-2">
-								<span class="font-medium text-sm"
-									>{data.balanceSheet.assets.breakdown.persediaan.label}</span
-								>
-								<span class="text-sm font-semibold">
-									{formatRupiah(data.balanceSheet.assets.breakdown.persediaan.subtotal)}
-								</span>
-							</div>
-							{#each data.balanceSheet.assets.breakdown.persediaan.items as item (item.id)}
-								<div class="flex justify-between text-sm text-muted-foreground pl-2">
-									<span>
-										<span class="font-mono text-xs mr-2">{item.code}</span>
-										{item.name}
+						<!-- Piutang (Detail from debt table) -->
+						{#if data.balanceSheet.assets.breakdown.piutangDetail.items.length > 0}
+							<div class="pl-4 border-l-2 border-blue-300">
+								<div class="flex justify-between items-center mb-2">
+									<span class="font-medium text-sm"
+										>{data.balanceSheet.assets.breakdown.piutangDetail.label}</span
+									>
+									<span class="text-sm font-semibold">
+										{formatRupiah(data.balanceSheet.assets.breakdown.piutangDetail.subtotal)}
 									</span>
-									<span>{formatRupiah(item.balance)}</span>
 								</div>
-							{/each}
-						</div>
-					{/if}
-
-					<!-- Aktiva Tetap -->
-					{#if data.balanceSheet.assets.breakdown.aktivaTetap.items.length > 0}
-						<div class="pl-4 border-l-2 border-blue-200">
-							<div class="flex justify-between items-center mb-2">
-								<span class="font-medium text-sm"
-									>{data.balanceSheet.assets.breakdown.aktivaTetap.label}</span
-								>
-								<span class="text-sm font-semibold">
-									{formatRupiah(data.balanceSheet.assets.breakdown.aktivaTetap.subtotal)}
-								</span>
+								{#each data.balanceSheet.assets.breakdown.piutangDetail.items as item (item.id)}
+									<div class="flex justify-between text-sm text-muted-foreground pl-2">
+										<span>{item.name}</span>
+										<span>{formatRupiah(item.remainingAmount)}</span>
+									</div>
+								{/each}
 							</div>
-							{#each data.balanceSheet.assets.breakdown.aktivaTetap.items as item (item.id)}
-								<div class="flex justify-between text-sm text-muted-foreground pl-2">
-									<span>
-										<span class="font-mono text-xs mr-2">{item.code}</span>
-										{item.name}
-									</span>
-									<span>{formatRupiah(item.balance)}</span>
-								</div>
-							{/each}
-						</div>
-					{/if}
+						{/if}
 
-					<!-- Lainnya -->
-					{#if data.balanceSheet.assets.breakdown.lainnya.items.length > 0}
-						<div class="pl-4 border-l-2 border-blue-200">
-							<div class="flex justify-between items-center mb-2">
-								<span class="font-medium text-sm"
-									>{data.balanceSheet.assets.breakdown.lainnya.label}</span
-								>
-								<span class="text-sm font-semibold">
-									{formatRupiah(data.balanceSheet.assets.breakdown.lainnya.subtotal)}
-								</span>
+						<!-- Persediaan -->
+						{#if data.balanceSheet.assets.breakdown.persediaan.items.length > 0}
+							<div class="pl-4 border-l-2 border-blue-200">
+								<div class="flex justify-between items-center mb-2">
+									<span class="font-medium text-sm"
+										>{data.balanceSheet.assets.breakdown.persediaan.label}</span
+									>
+									<span class="text-sm font-semibold">
+										{formatRupiah(data.balanceSheet.assets.breakdown.persediaan.subtotal)}
+									</span>
+								</div>
+								{#each data.balanceSheet.assets.breakdown.persediaan.items as item (item.id)}
+									<div class="flex justify-between text-sm text-muted-foreground pl-2">
+										<span>
+											<span class="font-mono text-xs mr-2">{item.code}</span>
+											{item.name}
+										</span>
+										<span>{formatRupiah(item.balance)}</span>
+									</div>
+								{/each}
 							</div>
-							{#each data.balanceSheet.assets.breakdown.lainnya.items as item (item.id)}
-								<div class="flex justify-between text-sm text-muted-foreground pl-2">
-									<span>
-										<span class="font-mono text-xs mr-2">{item.code}</span>
-										{item.name}
-									</span>
-									<span>{formatRupiah(item.balance)}</span>
-								</div>
-							{/each}
-						</div>
-					{/if}
+						{/if}
 
-					<!-- Total Assets -->
-					<div class="border-t pt-3 mt-3">
-						<div class="flex justify-between items-center font-semibold">
-							<span>TOTAL ASET</span>
-							<span class="text-lg">{formatRupiah(data.balanceSheet.assets.total)}</span>
+						<!-- Aktiva Tetap -->
+						{#if data.balanceSheet.assets.breakdown.aktivaTetap.items.length > 0}
+							<div class="pl-4 border-l-2 border-blue-200">
+								<div class="flex justify-between items-center mb-2">
+									<span class="font-medium text-sm"
+										>{data.balanceSheet.assets.breakdown.aktivaTetap.label}</span
+									>
+									<span class="text-sm font-semibold">
+										{formatRupiah(data.balanceSheet.assets.breakdown.aktivaTetap.subtotal)}
+									</span>
+								</div>
+								{#each data.balanceSheet.assets.breakdown.aktivaTetap.items as item (item.id)}
+									<div class="flex justify-between text-sm text-muted-foreground pl-2">
+										<span>
+											<span class="font-mono text-xs mr-2">{item.code}</span>
+											{item.name}
+										</span>
+										<span>{formatRupiah(item.balance)}</span>
+									</div>
+								{/each}
+							</div>
+						{/if}
+
+						<!-- Lainnya -->
+						{#if data.balanceSheet.assets.breakdown.lainnya.items.length > 0}
+							<div class="pl-4 border-l-2 border-blue-200">
+								<div class="flex justify-between items-center mb-2">
+									<span class="font-medium text-sm"
+										>{data.balanceSheet.assets.breakdown.lainnya.label}</span
+									>
+									<span class="text-sm font-semibold">
+										{formatRupiah(data.balanceSheet.assets.breakdown.lainnya.subtotal)}
+									</span>
+								</div>
+								{#each data.balanceSheet.assets.breakdown.lainnya.items as item (item.id)}
+									<div class="flex justify-between text-sm text-muted-foreground pl-2">
+										<span>
+											<span class="font-mono text-xs mr-2">{item.code}</span>
+											{item.name}
+										</span>
+										<span>{formatRupiah(item.balance)}</span>
+									</div>
+								{/each}
+							</div>
+						{/if}
+
+						<!-- Total Assets -->
+						<div class="border-t pt-3 mt-3">
+							<div class="flex justify-between items-center font-semibold">
+								<span>TOTAL ASET</span>
+								<span class="text-lg">{formatRupiah(data.balanceSheet.assets.total)}</span>
+							</div>
 						</div>
 					</div>
 				</div>
-			</div>
 
-			<!-- Liabilities Section -->
-			<div class="bg-card border rounded-lg p-4">
-				<div class="flex items-center gap-2 mb-4">
-					<CreditCard class="w-5 h-5 text-red-600" />
-					<h2 class="text-lg font-semibold">KEWAJIBAN</h2>
-					<span class="text-sm text-muted-foreground">(Liabilities)</span>
+				<!-- Liabilities Section -->
+				<div class="bg-card border rounded-lg p-4">
+					<div class="flex items-center gap-2 mb-4">
+						<CreditCard class="w-5 h-5 text-red-600" />
+						<h2 class="text-lg font-semibold">KEWAJIBAN</h2>
+						<span class="text-sm text-muted-foreground">(Liabilities)</span>
+					</div>
+
+					<div class="space-y-3">
+						<!-- Hutang (Detail from debt table) -->
+						{#if data.balanceSheet.liabilities.breakdown.hutangDetail.items.length > 0}
+							<div class="pl-4 border-l-2 border-red-200">
+								<div class="flex justify-between items-center mb-2">
+									<span class="font-medium text-sm"
+										>{data.balanceSheet.liabilities.breakdown.hutangDetail.label}</span
+									>
+									<span class="text-sm font-semibold">
+										{formatRupiah(data.balanceSheet.liabilities.breakdown.hutangDetail.subtotal)}
+									</span>
+								</div>
+								{#each data.balanceSheet.liabilities.breakdown.hutangDetail.items as item (item.id)}
+									<div class="flex justify-between text-sm text-muted-foreground pl-2">
+										<span>{item.name}</span>
+										<span>{formatRupiah(item.remainingAmount)}</span>
+									</div>
+								{/each}
+							</div>
+						{:else}
+							<p class="text-sm text-muted-foreground pl-4">Tidak ada kewajiban</p>
+						{/if}
+
+						<!-- Total Liabilities -->
+						<div class="border-t pt-3 mt-3">
+							<div class="flex justify-between items-center font-semibold">
+								<span>TOTAL KEWAJIBAN</span>
+								<span class="text-lg">{formatRupiah(data.balanceSheet.liabilities.total)}</span>
+							</div>
+						</div>
+					</div>
 				</div>
 
-				<div class="space-y-3">
-					<!-- Hutang (Detail from debt table) -->
-					{#if data.balanceSheet.liabilities.breakdown.hutangDetail.items.length > 0}
-						<div class="pl-4 border-l-2 border-red-200">
-							<div class="flex justify-between items-center mb-2">
-								<span class="font-medium text-sm"
-									>{data.balanceSheet.liabilities.breakdown.hutangDetail.label}</span
-								>
-								<span class="text-sm font-semibold">
-									{formatRupiah(data.balanceSheet.liabilities.breakdown.hutangDetail.subtotal)}
+				<!-- Equity Section -->
+				<div class="bg-card border rounded-lg p-4">
+					<div class="flex items-center gap-2 mb-4">
+						<TrendingUp class="w-5 h-5 text-green-600" />
+						<h2 class="text-lg font-semibold">EKUITAS</h2>
+						<span class="text-sm text-muted-foreground">(Equity)</span>
+					</div>
+
+					<div class="space-y-3">
+						{#each data.balanceSheet.equity.components as component (component.name)}
+							<div class="flex justify-between text-sm">
+								<span>{component.name}</span>
+								<span>{formatRupiah(component.amount)}</span>
+							</div>
+						{/each}
+
+						<!-- Total Equity -->
+						<div class="border-t pt-3 mt-3">
+							<div class="flex justify-between items-center font-semibold">
+								<span>TOTAL EKUITAS</span>
+								<span class="text-lg">{formatRupiah(data.balanceSheet.equity.total)}</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Balance Sheet Equation Validation -->
+				<div class="bg-muted/50 border rounded-lg p-4">
+					<div class="flex items-center gap-2 mb-3">
+						<Scale class="w-5 h-5" />
+						<h3 class="font-medium">Validasi Neraca</h3>
+					</div>
+
+					<div class="text-sm space-y-2">
+						<div class="flex justify-between">
+							<span class="text-muted-foreground">Total Aset</span>
+							<span class="font-medium">{formatRupiah(data.balanceSheet.equation.assets)}</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-muted-foreground">Total Kewajiban + Ekuitas</span>
+							<span class="font-medium">{formatRupiah(data.balanceSheet.equation.expected)}</span>
+						</div>
+						<div class="border-t pt-2 mt-2">
+							<div class="flex justify-between font-semibold">
+								<span>Selisih</span>
+								<span class={data.balanceSheet.isBalanced ? 'text-green-600' : 'text-red-600'}>
+									{formatRupiah(
+										Math.abs(
+											data.balanceSheet.equation.result - data.balanceSheet.equation.expected
+										)
+									)}
 								</span>
 							</div>
-							{#each data.balanceSheet.liabilities.breakdown.hutangDetail.items as item (item.id)}
-								<div class="flex justify-between text-sm text-muted-foreground pl-2">
-									<span>{item.name}</span>
-									<span>{formatRupiah(item.remainingAmount)}</span>
-								</div>
-							{/each}
+						</div>
+					</div>
+
+					{#if data.balanceSheet.isBalanced}
+						<div
+							class="mt-3 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700 text-center"
+						>
+							Neraca seimbang (Aset = Kewajiban + Ekuitas)
 						</div>
 					{:else}
-						<p class="text-sm text-muted-foreground pl-4">Tidak ada kewajiban</p>
+						<div
+							class="mt-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700 text-center"
+						>
+							Neraca tidak seimbang - periksa kembali data
+						</div>
 					{/if}
-
-					<!-- Total Liabilities -->
-					<div class="border-t pt-3 mt-3">
-						<div class="flex justify-between items-center font-semibold">
-							<span>TOTAL KEWAJIBAN</span>
-							<span class="text-lg">{formatRupiah(data.balanceSheet.liabilities.total)}</span>
-						</div>
-					</div>
 				</div>
 			</div>
 
-			<!-- Equity Section -->
-			<div class="bg-card border rounded-lg p-4">
-				<div class="flex items-center gap-2 mb-4">
-					<TrendingUp class="w-5 h-5 text-green-600" />
-					<h2 class="text-lg font-semibold">EKUITAS</h2>
-					<span class="text-sm text-muted-foreground">(Equity)</span>
-				</div>
-
-				<div class="space-y-3">
-					{#each data.balanceSheet.equity.components as component (component.name)}
-						<div class="flex justify-between text-sm">
-							<span>{component.name}</span>
-							<span>{formatRupiah(component.amount)}</span>
-						</div>
-					{/each}
-
-					<!-- Total Equity -->
-					<div class="border-t pt-3 mt-3">
-						<div class="flex justify-between items-center font-semibold">
-							<span>TOTAL EKUITAS</span>
-							<span class="text-lg">{formatRupiah(data.balanceSheet.equity.total)}</span>
-						</div>
-					</div>
-				</div>
+			<!-- Quick Link to Dashboard -->
+			<div class="flex justify-center">
+				<a href="/beranda" class="text-sm text-primary hover:underline flex items-center gap-1">
+					Lihat ringkasan di dashboard
+					<ChevronLeft class="w-4 h-4 rotate-180" />
+				</a>
 			</div>
-
-			<!-- Balance Sheet Equation Validation -->
-			<div class="bg-muted/50 border rounded-lg p-4">
-				<div class="flex items-center gap-2 mb-3">
-					<Scale class="w-5 h-5" />
-					<h3 class="font-medium">Validasi Neraca</h3>
-				</div>
-
-				<div class="text-sm space-y-2">
-					<div class="flex justify-between">
-						<span class="text-muted-foreground">Total Aset</span>
-						<span class="font-medium">{formatRupiah(data.balanceSheet.equation.assets)}</span>
-					</div>
-					<div class="flex justify-between">
-						<span class="text-muted-foreground">Total Kewajiban + Ekuitas</span>
-						<span class="font-medium">{formatRupiah(data.balanceSheet.equation.expected)}</span>
-					</div>
-					<div class="border-t pt-2 mt-2">
-						<div class="flex justify-between font-semibold">
-							<span>Selisih</span>
-							<span class={data.balanceSheet.isBalanced ? 'text-green-600' : 'text-red-600'}>
-								{formatRupiah(
-									Math.abs(data.balanceSheet.equation.result - data.balanceSheet.equation.expected)
-								)}
-							</span>
-						</div>
-					</div>
-				</div>
-
-				{#if data.balanceSheet.isBalanced}
-					<div
-						class="mt-3 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700 text-center"
-					>
-						Neraca seimbang (Aset = Kewajiban + Ekuitas)
-					</div>
-				{:else}
-					<div
-						class="mt-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700 text-center"
-					>
-						Neraca tidak seimbang - periksa kembali data
-					</div>
-				{/if}
-			</div>
-		</div>
-
-		<!-- Quick Link to Dashboard -->
-		<div class="flex justify-center">
-			<a href="/beranda" class="text-sm text-primary hover:underline flex items-center gap-1">
-				Lihat ringkasan di dashboard
-				<ChevronLeft class="w-4 h-4 rotate-180" />
-			</a>
 		</div>
 	{/if}
 </div>

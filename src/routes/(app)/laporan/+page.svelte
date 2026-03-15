@@ -424,888 +424,832 @@
 			</div>
 		{/if}
 
-		<!-- Loading / Skeleton State -->
-		{#if loading}
-			<div class="space-y-6 animate-pulse">
-				<!-- Period Label Skeleton -->
+		<!-- Content area: dims while loading to avoid layout shift -->
+		<div
+			class="space-y-6 transition-opacity duration-150 {loading
+				? 'opacity-50 pointer-events-none'
+				: ''}"
+		>
+			<!-- Export Buttons -->
+			<div class="flex justify-end gap-2 print:hidden">
+				<button
+					onclick={printReport}
+					class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-muted hover:bg-muted/80 transition-colors"
+				>
+					<Printer class="w-4 h-4" />
+					Cetak
+				</button>
+				<button
+					onclick={exportPDF}
+					class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-muted hover:bg-muted/80 transition-colors"
+				>
+					<Download class="w-4 h-4" />
+					Ekspor PDF
+				</button>
+				<button
+					onclick={exportExcel}
+					class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-muted hover:bg-muted/80 transition-colors"
+				>
+					<FileSpreadsheet class="w-4 h-4" />
+					Ekspor Excel
+				</button>
+			</div>
+
+			<!-- Report Content -->
+			{#if selectedReportType === 'laba-rugi' && data.profitLoss}
+				<!-- Period Label -->
 				<div class="text-center">
-					<div class="h-4 w-48 bg-muted rounded mx-auto"></div>
+					<p class="text-sm text-muted-foreground">{data.profitLoss.periodLabel}</p>
 				</div>
 
-				<!-- Summary Cards Skeleton -->
-				<div class="grid gap-4 md:grid-cols-3">
-					{#each [0, 1, 2] as i (i)}
+				{#if data.profitLoss.income === 0 && data.profitLoss.expense === 0}
+					<!-- Empty State -->
+					<div class="bg-card border rounded-lg p-8 text-center">
+						<div
+							class="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3"
+						>
+							<FileText class="w-6 h-6 text-muted-foreground" />
+						</div>
+						<p class="text-muted-foreground text-sm">Belum ada transaksi untuk periode ini</p>
+						<a
+							href="/transaksi/tambah"
+							class="text-primary text-sm hover:underline mt-2 inline-block"
+						>
+							Tambah transaksi pertama
+						</a>
+					</div>
+				{:else}
+					<!-- Hero Card: Total Balance -->
+					<div class="bg-primary/5 border rounded-lg p-4 md:p-6">
+						<div class="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+							<Wallet class="w-4 h-4" />
+							<span>Total Saldo Saat Ini</span>
+						</div>
+						<p class="text-3xl md:text-4xl font-bold">
+							{formatRupiah(data.profitLoss.totalBalance)}
+						</p>
+					</div>
+
+					<!-- Summary Cards -->
+					<div class="grid gap-4 md:grid-cols-3">
+						<!-- Pemasukan -->
 						<div class="bg-card border rounded-lg p-4">
-							<div class="h-4 w-20 bg-muted rounded mb-2"></div>
-							<div class="h-8 w-32 bg-muted rounded"></div>
-						</div>
-					{/each}
-				</div>
-
-				<!-- Category Breakdown Skeleton -->
-				<div class="grid gap-4 md:grid-cols-2">
-					<div class="bg-card border rounded-lg p-4">
-						<div class="h-4 w-32 bg-muted rounded mb-4"></div>
-						<div class="space-y-3">
-							{#each [0, 1, 2] as i (i)}
-								<div class="flex items-center justify-between">
-									<div class="flex items-center gap-2">
-										<div class="w-8 h-8 bg-muted rounded-full"></div>
-										<div class="h-4 w-24 bg-muted rounded"></div>
-									</div>
-									<div class="h-4 w-20 bg-muted rounded"></div>
+							<div class="flex items-center justify-between mb-2">
+								<div class="flex items-center gap-2 text-sm text-green-600">
+									<TrendingUp class="w-4 h-4" />
+									<span>Pemasukan</span>
 								</div>
-							{/each}
-						</div>
-					</div>
-					<div class="bg-card border rounded-lg p-4">
-						<div class="h-4 w-32 bg-muted rounded mb-4"></div>
-						<div class="space-y-3">
-							{#each [0, 1, 2] as i (i)}
-								<div class="flex items-center justify-between">
-									<div class="flex items-center gap-2">
-										<div class="w-8 h-8 bg-muted rounded-full"></div>
-										<div class="h-4 w-24 bg-muted rounded"></div>
-									</div>
-									<div class="h-4 w-20 bg-muted rounded"></div>
-								</div>
-							{/each}
-						</div>
-					</div>
-				</div>
-
-				<!-- Balance Sheet Skeleton (for neraca tab) -->
-				<div class="bg-card border rounded-lg p-4">
-					<div class="h-4 w-32 bg-muted rounded mb-4"></div>
-					<div class="space-y-4">
-						<div>
-							<div class="h-4 w-24 bg-muted rounded mb-2"></div>
-							<div class="space-y-2 pl-4">
-								<div class="flex justify-between">
-									<div class="h-4 w-32 bg-muted rounded"></div>
-									<div class="h-4 w-24 bg-muted rounded"></div>
-								</div>
-								<div class="flex justify-between">
-									<div class="h-4 w-32 bg-muted rounded"></div>
-									<div class="h-4 w-24 bg-muted rounded"></div>
-								</div>
+								{#if data.profitLoss.comparison.income.change !== 0}
+									{@const comparison = getComparisonText(data.profitLoss.comparison.income.change)}
+									<span
+										class="text-xs font-medium {comparison.isPositive
+											? 'text-green-600'
+											: 'text-red-600'}"
+									>
+										{comparison.text}
+									</span>
+								{/if}
 							</div>
+							<p class="text-xl md:text-2xl font-semibold text-green-600">
+								{formatRupiah(data.profitLoss.income)}
+							</p>
 						</div>
-						<div>
-							<div class="h-4 w-24 bg-muted rounded mb-2"></div>
-							<div class="space-y-2 pl-4">
-								<div class="flex justify-between">
-									<div class="h-4 w-32 bg-muted rounded"></div>
-									<div class="h-4 w-24 bg-muted rounded"></div>
+
+						<!-- Pengeluaran -->
+						<div class="bg-card border rounded-lg p-4">
+							<div class="flex items-center justify-between mb-2">
+								<div class="flex items-center gap-2 text-sm text-red-600">
+									<TrendingDown class="w-4 h-4" />
+									<span>Pengeluaran</span>
 								</div>
+								{#if data.profitLoss.comparison.expense.change !== 0}
+									{@const comparison = getComparisonText(data.profitLoss.comparison.expense.change)}
+									<span
+										class="text-xs font-medium {comparison.isPositive
+											? 'text-green-600'
+											: 'text-red-600'}"
+									>
+										{comparison.text}
+									</span>
+								{/if}
 							</div>
+							<p class="text-xl md:text-2xl font-semibold text-red-600">
+								{formatRupiah(data.profitLoss.expense)}
+							</p>
 						</div>
-					</div>
-				</div>
-			</div>
-		{/if}
 
-		<!-- Export Buttons -->
-		<div class="flex justify-end gap-2 print:hidden">
-			<button
-				onclick={printReport}
-				class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-muted hover:bg-muted/80 transition-colors"
-			>
-				<Printer class="w-4 h-4" />
-				Cetak
-			</button>
-			<button
-				onclick={exportPDF}
-				class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-muted hover:bg-muted/80 transition-colors"
-			>
-				<Download class="w-4 h-4" />
-				Ekspor PDF
-			</button>
-			<button
-				onclick={exportExcel}
-				class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-muted hover:bg-muted/80 transition-colors"
-			>
-				<FileSpreadsheet class="w-4 h-4" />
-				Ekspor Excel
-			</button>
-		</div>
-
-		<!-- Report Content -->
-		{#if selectedReportType === 'laba-rugi' && data.profitLoss}
-			<!-- Period Label -->
-			<div class="text-center">
-				<p class="text-sm text-muted-foreground">{data.profitLoss.periodLabel}</p>
-			</div>
-
-			{#if data.profitLoss.income === 0 && data.profitLoss.expense === 0}
-				<!-- Empty State -->
-				<div class="bg-card border rounded-lg p-8 text-center">
-					<div
-						class="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3"
-					>
-						<FileText class="w-6 h-6 text-muted-foreground" />
-					</div>
-					<p class="text-muted-foreground text-sm">Belum ada transaksi untuk periode ini</p>
-					<a
-						href="/transaksi/tambah"
-						class="text-primary text-sm hover:underline mt-2 inline-block"
-					>
-						Tambah transaksi pertama
-					</a>
-				</div>
-			{:else}
-				<!-- Hero Card: Total Balance -->
-				<div class="bg-primary/5 border rounded-lg p-4 md:p-6">
-					<div class="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-						<Wallet class="w-4 h-4" />
-						<span>Total Saldo Saat Ini</span>
-					</div>
-					<p class="text-3xl md:text-4xl font-bold">
-						{formatRupiah(data.profitLoss.totalBalance)}
-					</p>
-				</div>
-
-				<!-- Summary Cards -->
-				<div class="grid gap-4 md:grid-cols-3">
-					<!-- Pemasukan -->
-					<div class="bg-card border rounded-lg p-4">
-						<div class="flex items-center justify-between mb-2">
-							<div class="flex items-center gap-2 text-sm text-green-600">
-								<TrendingUp class="w-4 h-4" />
-								<span>Pemasukan</span>
-							</div>
-							{#if data.profitLoss.comparison.income.change !== 0}
-								{@const comparison = getComparisonText(data.profitLoss.comparison.income.change)}
-								<span
-									class="text-xs font-medium {comparison.isPositive
+						<!-- Laba/Rugi -->
+						<div class="bg-card border rounded-lg p-4">
+							<div class="flex items-center justify-between mb-2">
+								<div
+									class="flex items-center gap-2 text-sm {data.profitLoss.profit >= 0
 										? 'text-green-600'
 										: 'text-red-600'}"
 								>
-									{comparison.text}
-								</span>
-							{/if}
-						</div>
-						<p class="text-xl md:text-2xl font-semibold text-green-600">
-							{formatRupiah(data.profitLoss.income)}
-						</p>
-					</div>
-
-					<!-- Pengeluaran -->
-					<div class="bg-card border rounded-lg p-4">
-						<div class="flex items-center justify-between mb-2">
-							<div class="flex items-center gap-2 text-sm text-red-600">
-								<TrendingDown class="w-4 h-4" />
-								<span>Pengeluaran</span>
+									{#if data.profitLoss.profit >= 0}
+										<TrendingUp class="w-4 h-4" />
+										<span>Laba</span>
+									{:else}
+										<TrendingDown class="w-4 h-4" />
+										<span>Rugi</span>
+									{/if}
+								</div>
 							</div>
-							{#if data.profitLoss.comparison.expense.change !== 0}
-								{@const comparison = getComparisonText(data.profitLoss.comparison.expense.change)}
-								<span
-									class="text-xs font-medium {comparison.isPositive
-										? 'text-green-600'
-										: 'text-red-600'}"
-								>
-									{comparison.text}
-								</span>
-							{/if}
-						</div>
-						<p class="text-xl md:text-2xl font-semibold text-red-600">
-							{formatRupiah(data.profitLoss.expense)}
-						</p>
-					</div>
-
-					<!-- Laba/Rugi -->
-					<div class="bg-card border rounded-lg p-4">
-						<div class="flex items-center justify-between mb-2">
-							<div
-								class="flex items-center gap-2 text-sm {data.profitLoss.profit >= 0
+							<p
+								class="text-xl md:text-2xl font-semibold {data.profitLoss.profit >= 0
 									? 'text-green-600'
 									: 'text-red-600'}"
 							>
-								{#if data.profitLoss.profit >= 0}
-									<TrendingUp class="w-4 h-4" />
-									<span>Laba</span>
-								{:else}
-									<TrendingDown class="w-4 h-4" />
-									<span>Rugi</span>
-								{/if}
-							</div>
-						</div>
-						<p
-							class="text-xl md:text-2xl font-semibold {data.profitLoss.profit >= 0
-								? 'text-green-600'
-								: 'text-red-600'}"
-						>
-							{formatRupiah(Math.abs(data.profitLoss.profit))}
-						</p>
-					</div>
-				</div>
-
-				<!-- Category Breakdown -->
-				{#if data.profitLoss.categoryBreakdown.income.length > 0 || data.profitLoss.categoryBreakdown.expense.length > 0}
-					<div class="grid gap-4 md:grid-cols-2">
-						<!-- Pemasukan by Category -->
-						<div class="bg-card border rounded-lg p-4">
-							<h3 class="text-sm font-medium mb-4 flex items-center gap-2">
-								<ArrowUpRight class="w-4 h-4 text-green-600" />
-								<span>Pemasukan per Kategori</span>
-							</h3>
-
-							{#if data.profitLoss.categoryBreakdown.income.length > 0}
-								{@const maxIncome = getMaxCategoryValue(data.profitLoss.categoryBreakdown.income)}
-								<div class="space-y-3">
-									{#each data.profitLoss.categoryBreakdown.income as category (category.categoryId)}
-										<div class="space-y-1">
-											<div class="flex items-center justify-between text-sm">
-												<span class="font-medium">
-													{#if category.categoryCode}
-														<span class="text-muted-foreground font-mono text-xs mr-1"
-															>{category.categoryCode}</span
-														>
-													{/if}
-													{category.categoryName}
-												</span>
-												<span class="text-muted-foreground">
-													{formatRupiah(category.total)} ({category.percentage.toFixed(1)}%)
-												</span>
-											</div>
-											<div class="h-2 bg-muted rounded-full overflow-hidden">
-												<div
-													class="h-full bg-green-500 rounded-full transition-all"
-													style="width: {(category.total / maxIncome) * 100}%"
-												></div>
-											</div>
-										</div>
-									{/each}
-								</div>
-							{:else}
-								<p class="text-sm text-muted-foreground text-center py-4">
-									Tidak ada data pemasukan
-								</p>
-							{/if}
-						</div>
-
-						<!-- Pengeluaran by Category -->
-						<div class="bg-card border rounded-lg p-4">
-							<h3 class="text-sm font-medium mb-4 flex items-center gap-2">
-								<ArrowDownRight class="w-4 h-4 text-red-600" />
-								<span>Pengeluaran per Kategori</span>
-							</h3>
-
-							{#if data.profitLoss.categoryBreakdown.expense.length > 0}
-								{@const maxExpense = getMaxCategoryValue(data.profitLoss.categoryBreakdown.expense)}
-								<div class="space-y-3">
-									{#each data.profitLoss.categoryBreakdown.expense as category (category.categoryId)}
-										<div class="space-y-1">
-											<div class="flex items-center justify-between text-sm">
-												<span class="font-medium">
-													{#if category.categoryCode}
-														<span class="text-muted-foreground font-mono text-xs mr-1"
-															>{category.categoryCode}</span
-														>
-													{/if}
-													{category.categoryName}
-												</span>
-												<span class="text-muted-foreground">
-													{formatRupiah(category.total)} ({category.percentage.toFixed(1)}%)
-												</span>
-											</div>
-											<div class="h-2 bg-muted rounded-full overflow-hidden">
-												<div
-													class="h-full bg-red-500 rounded-full transition-all"
-													style="width: {(category.total / maxExpense) * 100}%"
-												></div>
-											</div>
-										</div>
-									{/each}
-								</div>
-							{:else}
-								<p class="text-sm text-muted-foreground text-center py-4">
-									Tidak ada data pengeluaran
-								</p>
-							{/if}
-						</div>
-					</div>
-				{/if}
-			{/if}
-		{:else if selectedReportType === 'neraca' && data.balanceSheet}
-			<!-- Date Label -->
-			<div class="text-center">
-				<p class="text-sm text-muted-foreground">Per Tanggal {data.balanceSheet.dateLabel}</p>
-			</div>
-
-			{#if data.balanceSheet.assets.total === 0}
-				<!-- Empty State -->
-				<div class="bg-card border rounded-lg p-8 text-center">
-					<div
-						class="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3"
-					>
-						<Scale class="w-6 h-6 text-muted-foreground" />
-					</div>
-					<p class="text-muted-foreground text-sm">Belum ada data posisi keuangan</p>
-					<a
-						href="/transaksi/tambah"
-						class="text-primary text-sm hover:underline mt-2 inline-block"
-					>
-						Tambah transaksi pertama
-					</a>
-				</div>
-			{:else}
-				<!-- Balance Sheet -->
-				<div class="space-y-4">
-					<!-- Assets Section -->
-					<div class="bg-card border rounded-lg p-4">
-						<div class="flex items-center gap-2 mb-4">
-							<Wallet class="w-5 h-5 text-blue-600" />
-							<h2 class="text-lg font-semibold">ASET</h2>
-							<span class="text-sm text-muted-foreground">(Aktiva)</span>
-						</div>
-
-						<div class="space-y-3">
-							{#if data.balanceSheet.assets.breakdown.kas.items.length > 0}
-								<div class="pl-4 border-l-2 border-blue-200">
-									<div class="flex justify-between items-center mb-2">
-										<span class="font-medium text-sm"
-											>{data.balanceSheet.assets.breakdown.kas.label}</span
-										>
-										<span class="text-sm font-semibold"
-											>{formatRupiah(data.balanceSheet.assets.breakdown.kas.subtotal)}</span
-										>
-									</div>
-									{#each data.balanceSheet.assets.breakdown.kas.items as item (item.id)}
-										<div class="flex justify-between text-sm text-muted-foreground pl-2">
-											<span><span class="font-mono text-xs mr-2">{item.code}</span>{item.name}</span
-											>
-											<span>{formatRupiah(item.balance)}</span>
-										</div>
-									{/each}
-								</div>
-							{/if}
-
-							{#if data.balanceSheet.assets.breakdown.bank.items.length > 0}
-								<div class="pl-4 border-l-2 border-blue-200">
-									<div class="flex justify-between items-center mb-2">
-										<span class="font-medium text-sm"
-											>{data.balanceSheet.assets.breakdown.bank.label}</span
-										>
-										<span class="text-sm font-semibold"
-											>{formatRupiah(data.balanceSheet.assets.breakdown.bank.subtotal)}</span
-										>
-									</div>
-									{#each data.balanceSheet.assets.breakdown.bank.items as item (item.id)}
-										<div class="flex justify-between text-sm text-muted-foreground pl-2">
-											<span><span class="font-mono text-xs mr-2">{item.code}</span>{item.name}</span
-											>
-											<span>{formatRupiah(item.balance)}</span>
-										</div>
-									{/each}
-								</div>
-							{/if}
-
-							{#if data.balanceSheet.assets.breakdown.piutangUsaha.items.length > 0}
-								<div class="pl-4 border-l-2 border-blue-200">
-									<div class="flex justify-between items-center mb-2">
-										<span class="font-medium text-sm"
-											>{data.balanceSheet.assets.breakdown.piutangUsaha.label}</span
-										>
-										<span class="text-sm font-semibold"
-											>{formatRupiah(
-												data.balanceSheet.assets.breakdown.piutangUsaha.subtotal
-											)}</span
-										>
-									</div>
-									{#each data.balanceSheet.assets.breakdown.piutangUsaha.items as item (item.id)}
-										<div class="flex justify-between text-sm text-muted-foreground pl-2">
-											<span><span class="font-mono text-xs mr-2">{item.code}</span>{item.name}</span
-											>
-											<span>{formatRupiah(item.balance)}</span>
-										</div>
-									{/each}
-								</div>
-							{/if}
-
-							{#if data.balanceSheet.assets.breakdown.piutangDetail.items.length > 0}
-								<div class="pl-4 border-l-2 border-blue-300">
-									<div class="flex justify-between items-center mb-2">
-										<span class="font-medium text-sm"
-											>{data.balanceSheet.assets.breakdown.piutangDetail.label}</span
-										>
-										<span class="text-sm font-semibold"
-											>{formatRupiah(
-												data.balanceSheet.assets.breakdown.piutangDetail.subtotal
-											)}</span
-										>
-									</div>
-									{#each data.balanceSheet.assets.breakdown.piutangDetail.items as item (item.id)}
-										<div class="flex justify-between text-sm text-muted-foreground pl-2">
-											<span>{item.name}</span>
-											<span>{formatRupiah(item.remainingAmount)}</span>
-										</div>
-									{/each}
-								</div>
-							{/if}
-
-							{#if data.balanceSheet.assets.breakdown.persediaan.items.length > 0}
-								<div class="pl-4 border-l-2 border-blue-200">
-									<div class="flex justify-between items-center mb-2">
-										<span class="font-medium text-sm"
-											>{data.balanceSheet.assets.breakdown.persediaan.label}</span
-										>
-										<span class="text-sm font-semibold"
-											>{formatRupiah(data.balanceSheet.assets.breakdown.persediaan.subtotal)}</span
-										>
-									</div>
-									{#each data.balanceSheet.assets.breakdown.persediaan.items as item (item.id)}
-										<div class="flex justify-between text-sm text-muted-foreground pl-2">
-											<span><span class="font-mono text-xs mr-2">{item.code}</span>{item.name}</span
-											>
-											<span>{formatRupiah(item.balance)}</span>
-										</div>
-									{/each}
-								</div>
-							{/if}
-
-							{#if data.balanceSheet.assets.breakdown.aktivaTetap.items.length > 0}
-								<div class="pl-4 border-l-2 border-blue-200">
-									<div class="flex justify-between items-center mb-2">
-										<span class="font-medium text-sm"
-											>{data.balanceSheet.assets.breakdown.aktivaTetap.label}</span
-										>
-										<span class="text-sm font-semibold"
-											>{formatRupiah(data.balanceSheet.assets.breakdown.aktivaTetap.subtotal)}</span
-										>
-									</div>
-									{#each data.balanceSheet.assets.breakdown.aktivaTetap.items as item (item.id)}
-										<div class="flex justify-between text-sm text-muted-foreground pl-2">
-											<span><span class="font-mono text-xs mr-2">{item.code}</span>{item.name}</span
-											>
-											<span>{formatRupiah(item.balance)}</span>
-										</div>
-									{/each}
-								</div>
-							{/if}
-
-							<!-- Total Assets -->
-							<div class="border-t pt-3 mt-3">
-								<div class="flex justify-between items-center font-semibold">
-									<span>TOTAL ASET</span>
-									<span class="text-lg">{formatRupiah(data.balanceSheet.assets.total)}</span>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<!-- Liabilities Section -->
-					<div class="bg-card border rounded-lg p-4">
-						<div class="flex items-center gap-2 mb-4">
-							<CreditCard class="w-5 h-5 text-red-600" />
-							<h2 class="text-lg font-semibold">KEWAJIBAN</h2>
-							<span class="text-sm text-muted-foreground">(Liabilities)</span>
-						</div>
-
-						<div class="space-y-3">
-							{#if data.balanceSheet.liabilities.breakdown.hutangDetail.items.length > 0}
-								<div class="pl-4 border-l-2 border-red-200">
-									<div class="flex justify-between items-center mb-2">
-										<span class="font-medium text-sm"
-											>{data.balanceSheet.liabilities.breakdown.hutangDetail.label}</span
-										>
-										<span class="text-sm font-semibold"
-											>{formatRupiah(
-												data.balanceSheet.liabilities.breakdown.hutangDetail.subtotal
-											)}</span
-										>
-									</div>
-									{#each data.balanceSheet.liabilities.breakdown.hutangDetail.items as item (item.id)}
-										<div class="flex justify-between text-sm text-muted-foreground pl-2">
-											<span>{item.name}</span>
-											<span>{formatRupiah(item.remainingAmount)}</span>
-										</div>
-									{/each}
-								</div>
-							{:else}
-								<p class="text-sm text-muted-foreground pl-4">Tidak ada kewajiban</p>
-							{/if}
-
-							<div class="border-t pt-3 mt-3">
-								<div class="flex justify-between items-center font-semibold">
-									<span>TOTAL KEWAJIBAN</span>
-									<span class="text-lg">{formatRupiah(data.balanceSheet.liabilities.total)}</span>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<!-- Equity Section -->
-					<div class="bg-card border rounded-lg p-4">
-						<div class="flex items-center gap-2 mb-4">
-							<TrendingUp class="w-5 h-5 text-green-600" />
-							<h2 class="text-lg font-semibold">EKUITAS</h2>
-							<span class="text-sm text-muted-foreground">(Equity)</span>
-						</div>
-
-						<div class="space-y-3">
-							{#each data.balanceSheet.equity.components as component (component.name)}
-								<div class="flex justify-between text-sm">
-									<span>{component.name}</span>
-									<span>{formatRupiah(component.amount)}</span>
-								</div>
-							{/each}
-
-							<div class="border-t pt-3 mt-3">
-								<div class="flex justify-between items-center font-semibold">
-									<span>TOTAL EKUITAS</span>
-									<span class="text-lg">{formatRupiah(data.balanceSheet.equity.total)}</span>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<!-- Balance Sheet Equation Validation -->
-					<div class="bg-muted/50 border rounded-lg p-4">
-						<div class="flex items-center gap-2 mb-3">
-							<Scale class="w-5 h-5" />
-							<h3 class="font-medium">Validasi Neraca</h3>
-						</div>
-
-						<div class="text-sm space-y-2">
-							<div class="flex justify-between">
-								<span class="text-muted-foreground">Total Aset</span>
-								<span class="font-medium">{formatRupiah(data.balanceSheet.equation.assets)}</span>
-							</div>
-							<div class="flex justify-between">
-								<span class="text-muted-foreground">Total Kewajiban + Ekuitas</span>
-								<span class="font-medium">{formatRupiah(data.balanceSheet.equation.expected)}</span>
-							</div>
-							<div class="border-t pt-2 mt-2">
-								<div class="flex justify-between font-semibold">
-									<span>Selisih</span>
-									<span class={data.balanceSheet.isBalanced ? 'text-green-600' : 'text-red-600'}>
-										{formatRupiah(
-											Math.abs(
-												data.balanceSheet.equation.result - data.balanceSheet.equation.expected
-											)
-										)}
-									</span>
-								</div>
-							</div>
-						</div>
-
-						{#if data.balanceSheet.isBalanced}
-							<div
-								class="mt-3 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700 text-center"
-							>
-								Neraca seimbang (Aset = Kewajiban + Ekuitas)
-							</div>
-						{:else}
-							<div
-								class="mt-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700 text-center"
-							>
-								Neraca tidak seimbang - periksa kembali data
-							</div>
-						{/if}
-					</div>
-				</div>
-			{/if}
-		{:else if selectedReportType === 'catatan' && data.catatan}
-			<!-- Period Label -->
-			<div class="text-center">
-				<p class="text-sm text-muted-foreground">Periode: {data.catatan.periodLabel}</p>
-			</div>
-
-			{#if !data.catatan.businessProfile}
-				<!-- Empty State -->
-				<div class="bg-card border rounded-lg p-8 text-center">
-					<div
-						class="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3"
-					>
-						<FileText class="w-6 h-6 text-muted-foreground" />
-					</div>
-					<p class="text-muted-foreground text-sm">
-						Silakan lengkapi profil usaha Anda terlebih dahulu
-					</p>
-					<a href="/pengaturan" class="text-primary text-sm hover:underline mt-2 inline-block">
-						Pengaturan Usaha
-					</a>
-				</div>
-			{:else}
-				<!-- Catatan Report -->
-				<div
-					class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 print:shadow-none print:border-none print:p-0"
-				>
-					<!-- Report Header -->
-					<div class="text-center mb-6">
-						<h2 class="text-lg font-semibold">CATATAN ATAS LAPORAN KEUANGAN</h2>
-						<p class="text-sm text-muted-foreground mt-1">Notes to Financial Statements</p>
-						<div class="mt-4 pt-4 border-t">
-							<h3 class="text-xl font-bold">
-								{data.catatan.businessProfile.name || '[Nama Usaha]'}
-							</h3>
-							<p class="text-sm text-muted-foreground mt-1">Periode: {data.catatan.periodLabel}</p>
-							<p class="text-xs text-muted-foreground mt-1">
-								({formatDateLong(data.catatan.startDate)} - {formatDateLong(data.catatan.endDate)})
+								{formatRupiah(Math.abs(data.profitLoss.profit))}
 							</p>
 						</div>
 					</div>
 
-					<!-- Business Profile Info -->
-					{#if data.catatan.businessProfile}
-						<div class="mb-4 p-3 bg-muted/50 rounded-lg">
-							<h4 class="font-semibold text-sm mb-2">Informasi Usaha</h4>
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
-								{#if data.catatan.businessProfile.address}
-									<div>
-										<span class="text-muted-foreground">Alamat:</span>
-										{data.catatan.businessProfile.address}
+					<!-- Category Breakdown -->
+					{#if data.profitLoss.categoryBreakdown.income.length > 0 || data.profitLoss.categoryBreakdown.expense.length > 0}
+						<div class="grid gap-4 md:grid-cols-2">
+							<!-- Pemasukan by Category -->
+							<div class="bg-card border rounded-lg p-4">
+								<h3 class="text-sm font-medium mb-4 flex items-center gap-2">
+									<ArrowUpRight class="w-4 h-4 text-green-600" />
+									<span>Pemasukan per Kategori</span>
+								</h3>
+
+								{#if data.profitLoss.categoryBreakdown.income.length > 0}
+									{@const maxIncome = getMaxCategoryValue(data.profitLoss.categoryBreakdown.income)}
+									<div class="space-y-3">
+										{#each data.profitLoss.categoryBreakdown.income as category (category.categoryId)}
+											<div class="space-y-1">
+												<div class="flex items-center justify-between text-sm">
+													<span class="font-medium">
+														{#if category.categoryCode}
+															<span class="text-muted-foreground font-mono text-xs mr-1"
+																>{category.categoryCode}</span
+															>
+														{/if}
+														{category.categoryName}
+													</span>
+													<span class="text-muted-foreground">
+														{formatRupiah(category.total)} ({category.percentage.toFixed(1)}%)
+													</span>
+												</div>
+												<div class="h-2 bg-muted rounded-full overflow-hidden">
+													<div
+														class="h-full bg-green-500 rounded-full transition-all"
+														style="width: {(category.total / maxIncome) * 100}%"
+													></div>
+												</div>
+											</div>
+										{/each}
 									</div>
+								{:else}
+									<p class="text-sm text-muted-foreground text-center py-4">
+										Tidak ada data pemasukan
+									</p>
 								{/if}
-								{#if data.catatan.businessProfile.phone}
-									<div>
-										<span class="text-muted-foreground">Telepon:</span>
-										{data.catatan.businessProfile.phone}
+							</div>
+
+							<!-- Pengeluaran by Category -->
+							<div class="bg-card border rounded-lg p-4">
+								<h3 class="text-sm font-medium mb-4 flex items-center gap-2">
+									<ArrowDownRight class="w-4 h-4 text-red-600" />
+									<span>Pengeluaran per Kategori</span>
+								</h3>
+
+								{#if data.profitLoss.categoryBreakdown.expense.length > 0}
+									{@const maxExpense = getMaxCategoryValue(
+										data.profitLoss.categoryBreakdown.expense
+									)}
+									<div class="space-y-3">
+										{#each data.profitLoss.categoryBreakdown.expense as category (category.categoryId)}
+											<div class="space-y-1">
+												<div class="flex items-center justify-between text-sm">
+													<span class="font-medium">
+														{#if category.categoryCode}
+															<span class="text-muted-foreground font-mono text-xs mr-1"
+																>{category.categoryCode}</span
+															>
+														{/if}
+														{category.categoryName}
+													</span>
+													<span class="text-muted-foreground">
+														{formatRupiah(category.total)} ({category.percentage.toFixed(1)}%)
+													</span>
+												</div>
+												<div class="h-2 bg-muted rounded-full overflow-hidden">
+													<div
+														class="h-full bg-red-500 rounded-full transition-all"
+														style="width: {(category.total / maxExpense) * 100}%"
+													></div>
+												</div>
+											</div>
+										{/each}
 									</div>
-								{/if}
-								{#if data.catatan.businessProfile.npwp}
-									<div>
-										<span class="text-muted-foreground">NPWP:</span>
-										{data.catatan.businessProfile.npwp}
-									</div>
-								{/if}
-								{#if data.catatan.businessProfile.ownerName}
-									<div>
-										<span class="text-muted-foreground">Pemilik:</span>
-										{data.catatan.businessProfile.ownerName}
-									</div>
+								{:else}
+									<p class="text-sm text-muted-foreground text-center py-4">
+										Tidak ada data pengeluaran
+									</p>
 								{/if}
 							</div>
 						</div>
 					{/if}
+				{/if}
+			{:else if selectedReportType === 'neraca' && data.balanceSheet}
+				<!-- Date Label -->
+				<div class="text-center">
+					<p class="text-sm text-muted-foreground">Per Tanggal {data.balanceSheet.dateLabel}</p>
+				</div>
 
-					<!-- Accounting Policies -->
-					<div
-						class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
-					>
-						<h4 class="font-semibold text-sm mb-2">Kebijakan Akuntansi / Accounting Policies</h4>
-						<div class="space-y-1 text-xs">
-							<div>
-								<span class="text-blue-700">Dasar Akuntansi:</span>
-								{data.catatan.accountingPolicies.basisAccounting}
-							</div>
-							<div>
-								<span class="text-blue-700">Kerangka Akuntansi:</span>
-								{data.catatan.accountingPolicies.framework}
-							</div>
-							<div>
-								<span class="text-blue-700">Mata Uang:</span>
-								{data.catatan.accountingPolicies.currency}
-							</div>
+				{#if data.balanceSheet.assets.total === 0}
+					<!-- Empty State -->
+					<div class="bg-card border rounded-lg p-8 text-center">
+						<div
+							class="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3"
+						>
+							<Scale class="w-6 h-6 text-muted-foreground" />
 						</div>
+						<p class="text-muted-foreground text-sm">Belum ada data posisi keuangan</p>
+						<a
+							href="/transaksi/tambah"
+							class="text-primary text-sm hover:underline mt-2 inline-block"
+						>
+							Tambah transaksi pertama
+						</a>
 					</div>
-
-					<!-- Notes Sections -->
+				{:else}
+					<!-- Balance Sheet -->
 					<div class="space-y-4">
-						{#each data.catatan.notesSections as section (section.title)}
-							<div>
-								<h4 class="font-semibold text-sm mb-1">{section.title}</h4>
-								<p class="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
-									{section.content}
-								</p>
+						<!-- Assets Section -->
+						<div class="bg-card border rounded-lg p-4">
+							<div class="flex items-center gap-2 mb-4">
+								<Wallet class="w-5 h-5 text-blue-600" />
+								<h2 class="text-lg font-semibold">ASET</h2>
+								<span class="text-sm text-muted-foreground">(Aktiva)</span>
 							</div>
-						{/each}
-					</div>
 
-					<!-- Footer -->
-					<div class="mt-6 pt-4 border-t">
-						<p class="text-xs text-muted-foreground text-center">
-							Dokumen ini dihasilkan secara otomatis oleh Buku UMKM
-						</p>
-						<p class="text-xs text-muted-foreground text-center mt-1">
-							Tanggal cetak: {formatDateLong(new Date().toISOString().split('T')[0])}
-						</p>
-					</div>
-				</div>
-			{/if}
-		{:else if selectedReportType === 'spt-tahunan'}
-			<!-- SPT Tahunan Content -->
-			<div class="text-center">
-				<p class="text-sm text-muted-foreground">SPT Tahunan PPh Final 0.5%</p>
-			</div>
-
-			<!-- Year Selector -->
-			<div class="flex justify-center">
-				<div class="flex items-center gap-2 bg-muted rounded-lg p-2">
-					<Calendar class="w-4 h-4 text-muted-foreground" />
-					<select
-						bind:value={sptYear}
-						class="bg-transparent border-none text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
-					>
-						{#each availableYears as year (year)}
-							<option value={year}>{year}</option>
-						{/each}
-					</select>
-				</div>
-			</div>
-
-			{#if sptLoading}
-				<!-- Loading State -->
-				<div class="flex justify-center py-12">
-					<Loader2 class="w-8 h-8 animate-spin text-muted-foreground" />
-				</div>
-			{:else if sptData}
-				<!-- SPT Data Display -->
-				<div class="space-y-4">
-					<!-- Summary Card -->
-					<div class="bg-card border rounded-lg p-4">
-						<h3 class="font-semibold mb-4 flex items-center gap-2">
-							<Wallet class="w-5 h-5" />
-							Ringkasan Tahun {sptData.year}
-						</h3>
-						<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-							<div class="p-3 bg-muted/50 rounded-lg">
-								<p class="text-sm text-muted-foreground">Total Pendapatan Kotor</p>
-								<p class="text-xl font-semibold">
-									{formatRupiah(sptData.summary.totalGrossRevenue)}
-								</p>
-							</div>
-							<div class="p-3 bg-muted/50 rounded-lg">
-								<p class="text-sm text-muted-foreground">Total PPh Final Terutang</p>
-								<p class="text-xl font-semibold">
-									{formatRupiah(sptData.summary.totalTaxDue)}
-								</p>
-							</div>
-							<div class="p-3 bg-muted/50 rounded-lg">
-								<p class="text-sm text-muted-foreground">Total PPh Final Dibayar</p>
-								<p class="text-xl font-semibold">
-									{formatRupiah(sptData.summary.totalTaxPaid)}
-								</p>
-							</div>
-							<div class="p-3 bg-muted/50 rounded-lg">
-								<p class="text-sm text-muted-foreground">Total Pengeluaran</p>
-								<p class="text-xl font-semibold">
-									{formatRupiah(sptData.summary.totalExpenses)}
-								</p>
-							</div>
-							<div class="p-3 bg-muted/50 rounded-lg">
-								<p class="text-sm text-muted-foreground">Pendapatan Bersih</p>
-								<p
-									class="text-xl font-semibold {sptData.summary.netIncome >= 0
-										? 'text-green-600'
-										: 'text-red-600'}"
-								>
-									{formatRupiah(sptData.summary.netIncome)}
-								</p>
-							</div>
-							<div class="p-3 bg-muted/50 rounded-lg">
-								<p class="text-sm text-muted-foreground">Status Threshold</p>
-								<p
-									class="text-xl font-semibold {sptData.summary.thresholdExceeded
-										? 'text-red-600'
-										: 'text-green-600'}"
-								>
-									{sptData.summary.thresholdExceeded ? 'Terlewati' : 'Belum Terlewati'}
-								</p>
-							</div>
-						</div>
-					</div>
-
-					<!-- Monthly Breakdown -->
-					<div class="bg-card border rounded-lg p-4">
-						<h3 class="font-semibold mb-4">Rekapitulasi Bulanan</h3>
-						<div class="overflow-x-auto">
-							<table class="w-full text-sm">
-								<thead>
-									<tr class="border-b">
-										<th scope="col" class="text-left py-2 px-3">Bulan</th>
-										<th scope="col" class="text-right py-2 px-3">Pendapatan Kotor</th>
-										<th scope="col" class="text-right py-2 px-3">Pendapatan Kena Pajak</th>
-										<th scope="col" class="text-right py-2 px-3">PPh Final</th>
-										<th scope="col" class="text-center py-2 px-3">Status</th>
-									</tr>
-								</thead>
-								<tbody>
-									{#each sptData.months as month (month.month)}
-										<tr class="border-b hover:bg-muted/30">
-											<td class="py-2 px-3">{month.monthName}</td>
-											<td class="text-right py-2 px-3">{formatRupiah(month.grossRevenue)}</td>
-											<td class="text-right py-2 px-3">{formatRupiah(month.taxableRevenue)}</td>
-											<td class="text-right py-2 px-3">{formatRupiah(month.taxAmount)}</td>
-											<td class="text-center py-2 px-3">
+							<div class="space-y-3">
+								{#if data.balanceSheet.assets.breakdown.kas.items.length > 0}
+									<div class="pl-4 border-l-2 border-blue-200">
+										<div class="flex justify-between items-center mb-2">
+											<span class="font-medium text-sm"
+												>{data.balanceSheet.assets.breakdown.kas.label}</span
+											>
+											<span class="text-sm font-semibold"
+												>{formatRupiah(data.balanceSheet.assets.breakdown.kas.subtotal)}</span
+											>
+										</div>
+										{#each data.balanceSheet.assets.breakdown.kas.items as item (item.id)}
+											<div class="flex justify-between text-sm text-muted-foreground pl-2">
 												<span
-													class="inline-block px-2 py-1 text-xs rounded-full {month.taxStatus ===
-													'PAID'
-														? 'bg-green-100 text-green-800'
-														: 'bg-yellow-100 text-yellow-800'}"
+													><span class="font-mono text-xs mr-2">{item.code}</span>{item.name}</span
 												>
-													{month.taxStatus === 'PAID' ? 'Lunas' : 'Belum Lunas'}
-												</span>
-											</td>
-										</tr>
-									{/each}
-								</tbody>
-								<tfoot>
-									<tr class="font-semibold bg-muted/50">
-										<td class="py-2 px-3">TOTAL</td>
-										<td class="text-right py-2 px-3"
-											>{formatRupiah(sptData.summary.totalGrossRevenue)}</td
-										>
-										<td class="text-right py-2 px-3"
-											>{formatRupiah(sptData.summary.totalTaxableRevenue)}</td
-										>
-										<td class="text-right py-2 px-3">{formatRupiah(sptData.summary.totalTaxDue)}</td
-										>
-										<td class="text-center py-2 px-3"></td>
-									</tr>
-								</tfoot>
-							</table>
+												<span>{formatRupiah(item.balance)}</span>
+											</div>
+										{/each}
+									</div>
+								{/if}
+
+								{#if data.balanceSheet.assets.breakdown.bank.items.length > 0}
+									<div class="pl-4 border-l-2 border-blue-200">
+										<div class="flex justify-between items-center mb-2">
+											<span class="font-medium text-sm"
+												>{data.balanceSheet.assets.breakdown.bank.label}</span
+											>
+											<span class="text-sm font-semibold"
+												>{formatRupiah(data.balanceSheet.assets.breakdown.bank.subtotal)}</span
+											>
+										</div>
+										{#each data.balanceSheet.assets.breakdown.bank.items as item (item.id)}
+											<div class="flex justify-between text-sm text-muted-foreground pl-2">
+												<span
+													><span class="font-mono text-xs mr-2">{item.code}</span>{item.name}</span
+												>
+												<span>{formatRupiah(item.balance)}</span>
+											</div>
+										{/each}
+									</div>
+								{/if}
+
+								{#if data.balanceSheet.assets.breakdown.piutangUsaha.items.length > 0}
+									<div class="pl-4 border-l-2 border-blue-200">
+										<div class="flex justify-between items-center mb-2">
+											<span class="font-medium text-sm"
+												>{data.balanceSheet.assets.breakdown.piutangUsaha.label}</span
+											>
+											<span class="text-sm font-semibold"
+												>{formatRupiah(
+													data.balanceSheet.assets.breakdown.piutangUsaha.subtotal
+												)}</span
+											>
+										</div>
+										{#each data.balanceSheet.assets.breakdown.piutangUsaha.items as item (item.id)}
+											<div class="flex justify-between text-sm text-muted-foreground pl-2">
+												<span
+													><span class="font-mono text-xs mr-2">{item.code}</span>{item.name}</span
+												>
+												<span>{formatRupiah(item.balance)}</span>
+											</div>
+										{/each}
+									</div>
+								{/if}
+
+								{#if data.balanceSheet.assets.breakdown.piutangDetail.items.length > 0}
+									<div class="pl-4 border-l-2 border-blue-300">
+										<div class="flex justify-between items-center mb-2">
+											<span class="font-medium text-sm"
+												>{data.balanceSheet.assets.breakdown.piutangDetail.label}</span
+											>
+											<span class="text-sm font-semibold"
+												>{formatRupiah(
+													data.balanceSheet.assets.breakdown.piutangDetail.subtotal
+												)}</span
+											>
+										</div>
+										{#each data.balanceSheet.assets.breakdown.piutangDetail.items as item (item.id)}
+											<div class="flex justify-between text-sm text-muted-foreground pl-2">
+												<span>{item.name}</span>
+												<span>{formatRupiah(item.remainingAmount)}</span>
+											</div>
+										{/each}
+									</div>
+								{/if}
+
+								{#if data.balanceSheet.assets.breakdown.persediaan.items.length > 0}
+									<div class="pl-4 border-l-2 border-blue-200">
+										<div class="flex justify-between items-center mb-2">
+											<span class="font-medium text-sm"
+												>{data.balanceSheet.assets.breakdown.persediaan.label}</span
+											>
+											<span class="text-sm font-semibold"
+												>{formatRupiah(
+													data.balanceSheet.assets.breakdown.persediaan.subtotal
+												)}</span
+											>
+										</div>
+										{#each data.balanceSheet.assets.breakdown.persediaan.items as item (item.id)}
+											<div class="flex justify-between text-sm text-muted-foreground pl-2">
+												<span
+													><span class="font-mono text-xs mr-2">{item.code}</span>{item.name}</span
+												>
+												<span>{formatRupiah(item.balance)}</span>
+											</div>
+										{/each}
+									</div>
+								{/if}
+
+								{#if data.balanceSheet.assets.breakdown.aktivaTetap.items.length > 0}
+									<div class="pl-4 border-l-2 border-blue-200">
+										<div class="flex justify-between items-center mb-2">
+											<span class="font-medium text-sm"
+												>{data.balanceSheet.assets.breakdown.aktivaTetap.label}</span
+											>
+											<span class="text-sm font-semibold"
+												>{formatRupiah(
+													data.balanceSheet.assets.breakdown.aktivaTetap.subtotal
+												)}</span
+											>
+										</div>
+										{#each data.balanceSheet.assets.breakdown.aktivaTetap.items as item (item.id)}
+											<div class="flex justify-between text-sm text-muted-foreground pl-2">
+												<span
+													><span class="font-mono text-xs mr-2">{item.code}</span>{item.name}</span
+												>
+												<span>{formatRupiah(item.balance)}</span>
+											</div>
+										{/each}
+									</div>
+								{/if}
+
+								<!-- Total Assets -->
+								<div class="border-t pt-3 mt-3">
+									<div class="flex justify-between items-center font-semibold">
+										<span>TOTAL ASET</span>
+										<span class="text-lg">{formatRupiah(data.balanceSheet.assets.total)}</span>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Liabilities Section -->
+						<div class="bg-card border rounded-lg p-4">
+							<div class="flex items-center gap-2 mb-4">
+								<CreditCard class="w-5 h-5 text-red-600" />
+								<h2 class="text-lg font-semibold">KEWAJIBAN</h2>
+								<span class="text-sm text-muted-foreground">(Liabilities)</span>
+							</div>
+
+							<div class="space-y-3">
+								{#if data.balanceSheet.liabilities.breakdown.hutangDetail.items.length > 0}
+									<div class="pl-4 border-l-2 border-red-200">
+										<div class="flex justify-between items-center mb-2">
+											<span class="font-medium text-sm"
+												>{data.balanceSheet.liabilities.breakdown.hutangDetail.label}</span
+											>
+											<span class="text-sm font-semibold"
+												>{formatRupiah(
+													data.balanceSheet.liabilities.breakdown.hutangDetail.subtotal
+												)}</span
+											>
+										</div>
+										{#each data.balanceSheet.liabilities.breakdown.hutangDetail.items as item (item.id)}
+											<div class="flex justify-between text-sm text-muted-foreground pl-2">
+												<span>{item.name}</span>
+												<span>{formatRupiah(item.remainingAmount)}</span>
+											</div>
+										{/each}
+									</div>
+								{:else}
+									<p class="text-sm text-muted-foreground pl-4">Tidak ada kewajiban</p>
+								{/if}
+
+								<div class="border-t pt-3 mt-3">
+									<div class="flex justify-between items-center font-semibold">
+										<span>TOTAL KEWAJIBAN</span>
+										<span class="text-lg">{formatRupiah(data.balanceSheet.liabilities.total)}</span>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Equity Section -->
+						<div class="bg-card border rounded-lg p-4">
+							<div class="flex items-center gap-2 mb-4">
+								<TrendingUp class="w-5 h-5 text-green-600" />
+								<h2 class="text-lg font-semibold">EKUITAS</h2>
+								<span class="text-sm text-muted-foreground">(Equity)</span>
+							</div>
+
+							<div class="space-y-3">
+								{#each data.balanceSheet.equity.components as component (component.name)}
+									<div class="flex justify-between text-sm">
+										<span>{component.name}</span>
+										<span>{formatRupiah(component.amount)}</span>
+									</div>
+								{/each}
+
+								<div class="border-t pt-3 mt-3">
+									<div class="flex justify-between items-center font-semibold">
+										<span>TOTAL EKUITAS</span>
+										<span class="text-lg">{formatRupiah(data.balanceSheet.equity.total)}</span>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Balance Sheet Equation Validation -->
+						<div class="bg-muted/50 border rounded-lg p-4">
+							<div class="flex items-center gap-2 mb-3">
+								<Scale class="w-5 h-5" />
+								<h3 class="font-medium">Validasi Neraca</h3>
+							</div>
+
+							<div class="text-sm space-y-2">
+								<div class="flex justify-between">
+									<span class="text-muted-foreground">Total Aset</span>
+									<span class="font-medium">{formatRupiah(data.balanceSheet.equation.assets)}</span>
+								</div>
+								<div class="flex justify-between">
+									<span class="text-muted-foreground">Total Kewajiban + Ekuitas</span>
+									<span class="font-medium"
+										>{formatRupiah(data.balanceSheet.equation.expected)}</span
+									>
+								</div>
+								<div class="border-t pt-2 mt-2">
+									<div class="flex justify-between font-semibold">
+										<span>Selisih</span>
+										<span class={data.balanceSheet.isBalanced ? 'text-green-600' : 'text-red-600'}>
+											{formatRupiah(
+												Math.abs(
+													data.balanceSheet.equation.result - data.balanceSheet.equation.expected
+												)
+											)}
+										</span>
+									</div>
+								</div>
+							</div>
+
+							{#if data.balanceSheet.isBalanced}
+								<div
+									class="mt-3 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700 text-center"
+								>
+									Neraca seimbang (Aset = Kewajiban + Ekuitas)
+								</div>
+							{:else}
+								<div
+									class="mt-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700 text-center"
+								>
+									Neraca tidak seimbang - periksa kembali data
+								</div>
+							{/if}
 						</div>
 					</div>
-
-					<!-- Export Buttons for SPT -->
-					<div class="flex justify-center gap-4">
-						<button
-							onclick={exportSPTExcel}
-							disabled={sptExportLoading}
-							class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-green-600 hover:bg-green-700 text-white transition-colors disabled:opacity-50"
-						>
-							{#if sptExportLoading}
-								<Loader2 class="w-4 h-4 animate-spin" />
-							{:else}
-								<FileSpreadsheet class="w-4 h-4" />
-							{/if}
-							Ekspor Excel
-						</button>
-						<button
-							onclick={exportSPTPDF}
-							disabled={sptExportLoading}
-							class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50"
-						>
-							{#if sptExportLoading}
-								<Loader2 class="w-4 h-4 animate-spin" />
-							{:else}
-								<Download class="w-4 h-4" />
-							{/if}
-							Ekspor PDF
-						</button>
-					</div>
+				{/if}
+			{:else if selectedReportType === 'catatan' && data.catatan}
+				<!-- Period Label -->
+				<div class="text-center">
+					<p class="text-sm text-muted-foreground">Periode: {data.catatan.periodLabel}</p>
 				</div>
-			{:else}
-				<!-- Empty State -->
-				<div class="bg-card border rounded-lg p-8 text-center">
+
+				{#if !data.catatan.businessProfile}
+					<!-- Empty State -->
+					<div class="bg-card border rounded-lg p-8 text-center">
+						<div
+							class="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3"
+						>
+							<FileText class="w-6 h-6 text-muted-foreground" />
+						</div>
+						<p class="text-muted-foreground text-sm">
+							Silakan lengkapi profil usaha Anda terlebih dahulu
+						</p>
+						<a href="/pengaturan" class="text-primary text-sm hover:underline mt-2 inline-block">
+							Pengaturan Usaha
+						</a>
+					</div>
+				{:else}
+					<!-- Catatan Report -->
 					<div
-						class="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3"
+						class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 print:shadow-none print:border-none print:p-0"
 					>
-						<FolderArchive class="w-6 h-6 text-muted-foreground" />
-					</div>
-					<p class="text-muted-foreground text-sm">Pilih tahun untuk melihat data SPT Tahunan</p>
-				</div>
-			{/if}
-		{/if}
+						<!-- Report Header -->
+						<div class="text-center mb-6">
+							<h2 class="text-lg font-semibold">CATATAN ATAS LAPORAN KEUANGAN</h2>
+							<p class="text-sm text-muted-foreground mt-1">Notes to Financial Statements</p>
+							<div class="mt-4 pt-4 border-t">
+								<h3 class="text-xl font-bold">
+									{data.catatan.businessProfile.name || '[Nama Usaha]'}
+								</h3>
+								<p class="text-sm text-muted-foreground mt-1">
+									Periode: {data.catatan.periodLabel}
+								</p>
+								<p class="text-xs text-muted-foreground mt-1">
+									({formatDateLong(data.catatan.startDate)} - {formatDateLong(
+										data.catatan.endDate
+									)})
+								</p>
+							</div>
+						</div>
 
-		<!-- Quick Link to Dashboard -->
-		<div class="flex justify-center print:hidden">
-			<a href="/beranda" class="text-sm text-primary hover:underline flex items-center gap-1">
-				Lihat ringkasan di dashboard
-				<ChevronLeft class="w-4 h-4 rotate-180" />
-			</a>
+						<!-- Business Profile Info -->
+						{#if data.catatan.businessProfile}
+							<div class="mb-4 p-3 bg-muted/50 rounded-lg">
+								<h4 class="font-semibold text-sm mb-2">Informasi Usaha</h4>
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
+									{#if data.catatan.businessProfile.address}
+										<div>
+											<span class="text-muted-foreground">Alamat:</span>
+											{data.catatan.businessProfile.address}
+										</div>
+									{/if}
+									{#if data.catatan.businessProfile.phone}
+										<div>
+											<span class="text-muted-foreground">Telepon:</span>
+											{data.catatan.businessProfile.phone}
+										</div>
+									{/if}
+									{#if data.catatan.businessProfile.npwp}
+										<div>
+											<span class="text-muted-foreground">NPWP:</span>
+											{data.catatan.businessProfile.npwp}
+										</div>
+									{/if}
+									{#if data.catatan.businessProfile.ownerName}
+										<div>
+											<span class="text-muted-foreground">Pemilik:</span>
+											{data.catatan.businessProfile.ownerName}
+										</div>
+									{/if}
+								</div>
+							</div>
+						{/if}
+
+						<!-- Accounting Policies -->
+						<div
+							class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+						>
+							<h4 class="font-semibold text-sm mb-2">Kebijakan Akuntansi / Accounting Policies</h4>
+							<div class="space-y-1 text-xs">
+								<div>
+									<span class="text-blue-700">Dasar Akuntansi:</span>
+									{data.catatan.accountingPolicies.basisAccounting}
+								</div>
+								<div>
+									<span class="text-blue-700">Kerangka Akuntansi:</span>
+									{data.catatan.accountingPolicies.framework}
+								</div>
+								<div>
+									<span class="text-blue-700">Mata Uang:</span>
+									{data.catatan.accountingPolicies.currency}
+								</div>
+							</div>
+						</div>
+
+						<!-- Notes Sections -->
+						<div class="space-y-4">
+							{#each data.catatan.notesSections as section (section.title)}
+								<div>
+									<h4 class="font-semibold text-sm mb-1">{section.title}</h4>
+									<p class="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
+										{section.content}
+									</p>
+								</div>
+							{/each}
+						</div>
+
+						<!-- Footer -->
+						<div class="mt-6 pt-4 border-t">
+							<p class="text-xs text-muted-foreground text-center">
+								Dokumen ini dihasilkan secara otomatis oleh Buku UMKM
+							</p>
+							<p class="text-xs text-muted-foreground text-center mt-1">
+								Tanggal cetak: {formatDateLong(new Date().toISOString().split('T')[0])}
+							</p>
+						</div>
+					</div>
+				{/if}
+			{:else if selectedReportType === 'spt-tahunan'}
+				<!-- SPT Tahunan Content -->
+				<div class="text-center">
+					<p class="text-sm text-muted-foreground">SPT Tahunan PPh Final 0.5%</p>
+				</div>
+
+				<!-- Year Selector -->
+				<div class="flex justify-center">
+					<div class="flex items-center gap-2 bg-muted rounded-lg p-2">
+						<Calendar class="w-4 h-4 text-muted-foreground" />
+						<select
+							bind:value={sptYear}
+							class="bg-transparent border-none text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+						>
+							{#each availableYears as year (year)}
+								<option value={year}>{year}</option>
+							{/each}
+						</select>
+					</div>
+				</div>
+
+				{#if sptLoading}
+					<!-- Loading State -->
+					<div class="flex justify-center py-12">
+						<Loader2 class="w-8 h-8 animate-spin text-muted-foreground" />
+					</div>
+				{:else if sptData}
+					<!-- SPT Data Display -->
+					<div class="space-y-4">
+						<!-- Summary Card -->
+						<div class="bg-card border rounded-lg p-4">
+							<h3 class="font-semibold mb-4 flex items-center gap-2">
+								<Wallet class="w-5 h-5" />
+								Ringkasan Tahun {sptData.year}
+							</h3>
+							<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+								<div class="p-3 bg-muted/50 rounded-lg">
+									<p class="text-sm text-muted-foreground">Total Pendapatan Kotor</p>
+									<p class="text-xl font-semibold">
+										{formatRupiah(sptData.summary.totalGrossRevenue)}
+									</p>
+								</div>
+								<div class="p-3 bg-muted/50 rounded-lg">
+									<p class="text-sm text-muted-foreground">Total PPh Final Terutang</p>
+									<p class="text-xl font-semibold">
+										{formatRupiah(sptData.summary.totalTaxDue)}
+									</p>
+								</div>
+								<div class="p-3 bg-muted/50 rounded-lg">
+									<p class="text-sm text-muted-foreground">Total PPh Final Dibayar</p>
+									<p class="text-xl font-semibold">
+										{formatRupiah(sptData.summary.totalTaxPaid)}
+									</p>
+								</div>
+								<div class="p-3 bg-muted/50 rounded-lg">
+									<p class="text-sm text-muted-foreground">Total Pengeluaran</p>
+									<p class="text-xl font-semibold">
+										{formatRupiah(sptData.summary.totalExpenses)}
+									</p>
+								</div>
+								<div class="p-3 bg-muted/50 rounded-lg">
+									<p class="text-sm text-muted-foreground">Pendapatan Bersih</p>
+									<p
+										class="text-xl font-semibold {sptData.summary.netIncome >= 0
+											? 'text-green-600'
+											: 'text-red-600'}"
+									>
+										{formatRupiah(sptData.summary.netIncome)}
+									</p>
+								</div>
+								<div class="p-3 bg-muted/50 rounded-lg">
+									<p class="text-sm text-muted-foreground">Status Threshold</p>
+									<p
+										class="text-xl font-semibold {sptData.summary.thresholdExceeded
+											? 'text-red-600'
+											: 'text-green-600'}"
+									>
+										{sptData.summary.thresholdExceeded ? 'Terlewati' : 'Belum Terlewati'}
+									</p>
+								</div>
+							</div>
+						</div>
+
+						<!-- Monthly Breakdown -->
+						<div class="bg-card border rounded-lg p-4">
+							<h3 class="font-semibold mb-4">Rekapitulasi Bulanan</h3>
+							<div class="overflow-x-auto">
+								<table class="w-full text-sm">
+									<thead>
+										<tr class="border-b">
+											<th scope="col" class="text-left py-2 px-3">Bulan</th>
+											<th scope="col" class="text-right py-2 px-3">Pendapatan Kotor</th>
+											<th scope="col" class="text-right py-2 px-3">Pendapatan Kena Pajak</th>
+											<th scope="col" class="text-right py-2 px-3">PPh Final</th>
+											<th scope="col" class="text-center py-2 px-3">Status</th>
+										</tr>
+									</thead>
+									<tbody>
+										{#each sptData.months as month (month.month)}
+											<tr class="border-b hover:bg-muted/30">
+												<td class="py-2 px-3">{month.monthName}</td>
+												<td class="text-right py-2 px-3">{formatRupiah(month.grossRevenue)}</td>
+												<td class="text-right py-2 px-3">{formatRupiah(month.taxableRevenue)}</td>
+												<td class="text-right py-2 px-3">{formatRupiah(month.taxAmount)}</td>
+												<td class="text-center py-2 px-3">
+													<span
+														class="inline-block px-2 py-1 text-xs rounded-full {month.taxStatus ===
+														'PAID'
+															? 'bg-green-100 text-green-800'
+															: 'bg-yellow-100 text-yellow-800'}"
+													>
+														{month.taxStatus === 'PAID' ? 'Lunas' : 'Belum Lunas'}
+													</span>
+												</td>
+											</tr>
+										{/each}
+									</tbody>
+									<tfoot>
+										<tr class="font-semibold bg-muted/50">
+											<td class="py-2 px-3">TOTAL</td>
+											<td class="text-right py-2 px-3"
+												>{formatRupiah(sptData.summary.totalGrossRevenue)}</td
+											>
+											<td class="text-right py-2 px-3"
+												>{formatRupiah(sptData.summary.totalTaxableRevenue)}</td
+											>
+											<td class="text-right py-2 px-3"
+												>{formatRupiah(sptData.summary.totalTaxDue)}</td
+											>
+											<td class="text-center py-2 px-3"></td>
+										</tr>
+									</tfoot>
+								</table>
+							</div>
+						</div>
+
+						<!-- Export Buttons for SPT -->
+						<div class="flex justify-center gap-4">
+							<button
+								onclick={exportSPTExcel}
+								disabled={sptExportLoading}
+								class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-green-600 hover:bg-green-700 text-white transition-colors disabled:opacity-50"
+							>
+								{#if sptExportLoading}
+									<Loader2 class="w-4 h-4 animate-spin" />
+								{:else}
+									<FileSpreadsheet class="w-4 h-4" />
+								{/if}
+								Ekspor Excel
+							</button>
+							<button
+								onclick={exportSPTPDF}
+								disabled={sptExportLoading}
+								class="inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] text-base font-medium rounded-md bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50"
+							>
+								{#if sptExportLoading}
+									<Loader2 class="w-4 h-4 animate-spin" />
+								{:else}
+									<Download class="w-4 h-4" />
+								{/if}
+								Ekspor PDF
+							</button>
+						</div>
+					</div>
+				{:else}
+					<!-- Empty State -->
+					<div class="bg-card border rounded-lg p-8 text-center">
+						<div
+							class="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3"
+						>
+							<FolderArchive class="w-6 h-6 text-muted-foreground" />
+						</div>
+						<p class="text-muted-foreground text-sm">Pilih tahun untuk melihat data SPT Tahunan</p>
+					</div>
+				{/if}
+			{/if}
+
+			<!-- Quick Link to Dashboard -->
+			<div class="flex justify-center print:hidden">
+				<a href="/beranda" class="text-sm text-primary hover:underline flex items-center gap-1">
+					Lihat ringkasan di dashboard
+					<ChevronLeft class="w-4 h-4 rotate-180" />
+				</a>
+			</div>
 		</div>
 	{/if}
 </div>
