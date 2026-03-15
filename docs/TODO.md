@@ -981,7 +981,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 ### Accessibility (WCAG AA)
 
-- [ ] **UI-P3-013**: Implement WCAG AA accessibility compliance
+- [x] **UI-P3-013**: Implement WCAG AA accessibility compliance
   - **Success Criteria**:
     - Color contrast >= 4.5:1 for all text
     - ARIA labels on all interactive elements

@@ -1,22 +1,3 @@
-CREATE TABLE `account` (
-	`id` text PRIMARY KEY NOT NULL,
-	`user_id` text NOT NULL,
-	`code` text NOT NULL,
-	`name` text NOT NULL,
-	`type` text NOT NULL,
-	`sub_type` text,
-	`is_system` integer DEFAULT false NOT NULL,
-	`is_active` integer DEFAULT true NOT NULL,
-	`parent_id` text,
-	`balance` integer DEFAULT 0 NOT NULL,
-	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	`updated_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
-);
---> statement-breakpoint
-CREATE INDEX `account_userId_idx` ON `account` (`user_id`);--> statement-breakpoint
-CREATE INDEX `account_code_idx` ON `account` (`code`);--> statement-breakpoint
-CREATE INDEX `account_type_idx` ON `account` (`type`);--> statement-breakpoint
 CREATE TABLE `backup` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
@@ -27,7 +8,7 @@ CREATE TABLE `backup` (
 	`record_count` integer NOT NULL,
 	`includes` text NOT NULL,
 	`status` text DEFAULT 'completed' NOT NULL,
-	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
@@ -44,11 +25,12 @@ CREATE TABLE `business_profile` (
 	`business_type` text NOT NULL,
 	`owner_name` text,
 	`industry` text,
-	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	`updated_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE INDEX `business_profile_userId_idx` ON `business_profile` (`user_id`);--> statement-breakpoint
 CREATE TABLE `category` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
@@ -59,14 +41,33 @@ CREATE TABLE `category` (
 	`is_active` integer DEFAULT true NOT NULL,
 	`icon` text,
 	`color` text,
-	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	`updated_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE INDEX `category_userId_idx` ON `category` (`user_id`);--> statement-breakpoint
 CREATE INDEX `category_code_idx` ON `category` (`code`);--> statement-breakpoint
 CREATE INDEX `category_type_idx` ON `category` (`type`);--> statement-breakpoint
+CREATE TABLE `chart_of_account` (
+	`id` text PRIMARY KEY NOT NULL,
+	`user_id` text NOT NULL,
+	`code` text NOT NULL,
+	`name` text NOT NULL,
+	`type` text NOT NULL,
+	`sub_type` text,
+	`is_system` integer DEFAULT false NOT NULL,
+	`is_active` integer DEFAULT true NOT NULL,
+	`parent_id` text,
+	`balance` integer DEFAULT 0 NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `chart_of_account_userId_idx` ON `chart_of_account` (`user_id`);--> statement-breakpoint
+CREATE INDEX `chart_of_account_code_idx` ON `chart_of_account` (`code`);--> statement-breakpoint
+CREATE INDEX `chart_of_account_type_idx` ON `chart_of_account` (`type`);--> statement-breakpoint
 CREATE TABLE `debt` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
@@ -81,8 +82,9 @@ CREATE TABLE `debt` (
 	`due_date` text,
 	`description` text,
 	`status` text DEFAULT 'active' NOT NULL,
-	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	`updated_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	`is_active` integer DEFAULT true NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
@@ -90,6 +92,7 @@ CREATE INDEX `debt_userId_idx` ON `debt` (`user_id`);--> statement-breakpoint
 CREATE INDEX `debt_type_idx` ON `debt` (`type`);--> statement-breakpoint
 CREATE INDEX `debt_status_idx` ON `debt` (`status`);--> statement-breakpoint
 CREATE INDEX `debt_dueDate_idx` ON `debt` (`due_date`);--> statement-breakpoint
+CREATE INDEX `debt_isActive_idx` ON `debt` (`is_active`);--> statement-breakpoint
 CREATE TABLE `debt_payment` (
 	`id` text PRIMARY KEY NOT NULL,
 	`debt_id` text NOT NULL,
@@ -99,16 +102,17 @@ CREATE TABLE `debt_payment` (
 	`account_id` text NOT NULL,
 	`transaction_id` text,
 	`notes` text,
-	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
 	FOREIGN KEY (`debt_id`) REFERENCES `debt`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`account_id`) REFERENCES `account`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`account_id`) REFERENCES `chart_of_account`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`transaction_id`) REFERENCES `transaction`(`id`) ON UPDATE no action ON DELETE set null
 );
 --> statement-breakpoint
-CREATE INDEX `debtPayment_debtId_idx` ON `debt_payment` (`debt_id`);--> statement-breakpoint
-CREATE INDEX `debtPayment_userId_idx` ON `debt_payment` (`user_id`);--> statement-breakpoint
-CREATE INDEX `debtPayment_date_idx` ON `debt_payment` (`date`);--> statement-breakpoint
+CREATE INDEX `debt_payment_debtId_idx` ON `debt_payment` (`debt_id`);--> statement-breakpoint
+CREATE INDEX `debt_payment_userId_idx` ON `debt_payment` (`user_id`);--> statement-breakpoint
+CREATE INDEX `debt_payment_date_idx` ON `debt_payment` (`date`);--> statement-breakpoint
+CREATE INDEX `debt_payment_transactionId_idx` ON `debt_payment` (`transaction_id`);--> statement-breakpoint
 CREATE TABLE `tax_record` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
@@ -122,15 +126,15 @@ CREATE TABLE `tax_record` (
 	`billing_code` text,
 	`payment_date` text,
 	`notes` text,
-	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	`updated_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE INDEX `taxRecord_userId_idx` ON `tax_record` (`user_id`);--> statement-breakpoint
-CREATE INDEX `taxRecord_year_idx` ON `tax_record` (`year`);--> statement-breakpoint
-CREATE INDEX `taxRecord_month_idx` ON `tax_record` (`month`);--> statement-breakpoint
-CREATE INDEX `taxRecord_status_idx` ON `tax_record` (`status`);--> statement-breakpoint
+CREATE INDEX `tax_record_userId_idx` ON `tax_record` (`user_id`);--> statement-breakpoint
+CREATE INDEX `tax_record_year_idx` ON `tax_record` (`year`);--> statement-breakpoint
+CREATE INDEX `tax_record_month_idx` ON `tax_record` (`month`);--> statement-breakpoint
+CREATE INDEX `tax_record_status_idx` ON `tax_record` (`status`);--> statement-breakpoint
 CREATE TABLE `transaction` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
@@ -146,11 +150,12 @@ CREATE TABLE `transaction` (
 	`tax_amount` integer DEFAULT 0 NOT NULL,
 	`reference_number` text,
 	`notes` text,
-	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	`updated_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	`is_active` integer DEFAULT true NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`account_id`) REFERENCES `account`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`to_account_id`) REFERENCES `account`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`account_id`) REFERENCES `chart_of_account`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`to_account_id`) REFERENCES `chart_of_account`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`category_id`) REFERENCES `category`(`id`) ON UPDATE no action ON DELETE set null,
 	FOREIGN KEY (`debt_id`) REFERENCES `debt`(`id`) ON UPDATE no action ON DELETE set null
 );
@@ -159,6 +164,9 @@ CREATE INDEX `transaction_userId_idx` ON `transaction` (`user_id`);--> statement
 CREATE INDEX `transaction_date_idx` ON `transaction` (`date`);--> statement-breakpoint
 CREATE INDEX `transaction_type_idx` ON `transaction` (`type`);--> statement-breakpoint
 CREATE INDEX `transaction_accountId_idx` ON `transaction` (`account_id`);--> statement-breakpoint
+CREATE INDEX `transaction_toAccountId_idx` ON `transaction` (`to_account_id`);--> statement-breakpoint
+CREATE INDEX `transaction_categoryId_idx` ON `transaction` (`category_id`);--> statement-breakpoint
+CREATE INDEX `transaction_isActive_idx` ON `transaction` (`is_active`);--> statement-breakpoint
 CREATE TABLE `transaction_photo` (
 	`id` text PRIMARY KEY NOT NULL,
 	`transaction_id` text NOT NULL,
@@ -169,24 +177,62 @@ CREATE TABLE `transaction_photo` (
 	`r2_key` text NOT NULL,
 	`r2_url` text,
 	`caption` text,
-	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
 	FOREIGN KEY (`transaction_id`) REFERENCES `transaction`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE INDEX `transactionPhoto_transactionId_idx` ON `transaction_photo` (`transaction_id`);--> statement-breakpoint
-CREATE INDEX `transactionPhoto_userId_idx` ON `transaction_photo` (`user_id`);--> statement-breakpoint
+CREATE INDEX `transaction_photo_transactionId_idx` ON `transaction_photo` (`transaction_id`);--> statement-breakpoint
+CREATE INDEX `transaction_photo_userId_idx` ON `transaction_photo` (`user_id`);--> statement-breakpoint
+CREATE TABLE `transaction_template` (
+	`id` text PRIMARY KEY NOT NULL,
+	`user_id` text NOT NULL,
+	`name` text NOT NULL,
+	`type` text NOT NULL,
+	`category_id` text,
+	`description` text,
+	`is_system` integer DEFAULT false NOT NULL,
+	`is_active` integer DEFAULT true NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`category_id`) REFERENCES `category`(`id`) ON UPDATE no action ON DELETE set null
+);
+--> statement-breakpoint
+CREATE INDEX `transaction_template_userId_idx` ON `transaction_template` (`user_id`);--> statement-breakpoint
+CREATE INDEX `transaction_template_type_idx` ON `transaction_template` (`type`);--> statement-breakpoint
+CREATE INDEX `transaction_template_categoryId_idx` ON `transaction_template` (`category_id`);--> statement-breakpoint
+CREATE INDEX `transaction_template_isSystem_idx` ON `transaction_template` (`is_system`);--> statement-breakpoint
+CREATE INDEX `transaction_template_isActive_idx` ON `transaction_template` (`is_active`);--> statement-breakpoint
 CREATE TABLE `user_extension` (
 	`id` text PRIMARY KEY NOT NULL,
 	`npwp` text,
 	`npwp_type` text,
 	`business_name` text,
 	`business_type` text,
-	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	`updated_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
 	FOREIGN KEY (`id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE TABLE `account` (
+	`id` text PRIMARY KEY NOT NULL,
+	`account_id` text NOT NULL,
+	`provider_id` text NOT NULL,
+	`user_id` text NOT NULL,
+	`access_token` text,
+	`refresh_token` text,
+	`id_token` text,
+	`access_token_expires_at` integer,
+	`refresh_token_expires_at` integer,
+	`scope` text,
+	`password` text,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `account_userId_idx` ON `account` (`user_id`);--> statement-breakpoint
 CREATE TABLE `session` (
 	`id` text PRIMARY KEY NOT NULL,
 	`expires_at` integer NOT NULL,

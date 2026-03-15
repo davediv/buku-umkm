@@ -24,7 +24,7 @@
 	let { data }: { data: PageData } = $props();
 
 	// Get user ID from server data
-	const userId = data.userId;
+	let userId = $derived(data.userId);
 
 	// Wizard state
 	let currentStep = $state(1);

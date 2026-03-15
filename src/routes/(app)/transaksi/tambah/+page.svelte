@@ -351,7 +351,7 @@
 			{#if filteredTemplates.length > 0}
 				<div class="pt-4 space-y-2">
 					<div class="flex items-center justify-between">
-						<label class="text-sm font-medium text-muted-foreground">Template Cepat</label>
+						<span class="text-sm font-medium text-muted-foreground">Template Cepat</span>
 						<a
 							href="/pengaturan/template"
 							class="text-sm text-primary hover:underline flex items-center gap-1"
@@ -464,7 +464,7 @@
 		<!-- Receipt Photos -->
 		<div class="space-y-2">
 			<div class="flex items-center justify-between">
-				<label class="text-sm font-medium text-muted-foreground">Foto Nota</label>
+				<span class="text-sm font-medium text-muted-foreground">Foto Nota</span>
 				{#if canAddPhoto}
 					<button
 						type="button"

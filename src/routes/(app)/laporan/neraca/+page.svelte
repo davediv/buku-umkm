@@ -17,7 +17,7 @@
 
 	// State
 	let loading = $state(false);
-	let selectedDate = $state(data.balanceSheet?.date ?? new Date().toISOString().split('T')[0]);
+	let selectedDate = $state(new Date().toISOString().split('T')[0]);
 
 	// Keep selectedDate in sync with data after navigation
 	$effect(() => {

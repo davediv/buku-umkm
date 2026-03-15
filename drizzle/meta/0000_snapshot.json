@@ -1,144 +1,9 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "da482d40-0c67-4598-86fa-209bdf32c90d",
+  "id": "c3256e7e-7527-4f01-a310-1816c1d065d4",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
-    "account": {
-      "name": "account",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "code": {
-          "name": "code",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "type": {
-          "name": "type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "sub_type": {
-          "name": "sub_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "is_system": {
-          "name": "is_system",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": true
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "balance": {
-          "name": "balance",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
-        }
-      },
-      "indexes": {
-        "account_userId_idx": {
-          "name": "account_userId_idx",
-          "columns": [
-            "user_id"
-          ],
-          "isUnique": false
-        },
-        "account_code_idx": {
-          "name": "account_code_idx",
-          "columns": [
-            "code"
-          ],
-          "isUnique": false
-        },
-        "account_type_idx": {
-          "name": "account_type_idx",
-          "columns": [
-            "type"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "account_user_id_user_id_fk": {
-          "name": "account_user_id_user_id_fk",
-          "tableFrom": "account",
-          "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "backup": {
       "name": "backup",
       "columns": {
@@ -208,11 +73,11 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         }
       },
       "indexes": {
@@ -325,22 +190,30 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "business_profile_userId_idx": {
+          "name": "business_profile_userId_idx",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "business_profile_user_id_user_id_fk": {
           "name": "business_profile_user_id_user_id_fk",
@@ -430,19 +303,19 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         }
       },
       "indexes": {
@@ -472,6 +345,141 @@
         "category_user_id_user_id_fk": {
           "name": "category_user_id_user_id_fk",
           "tableFrom": "category",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "chart_of_account": {
+      "name": "chart_of_account",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sub_type": {
+          "name": "sub_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_system": {
+          "name": "is_system",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "balance": {
+          "name": "balance",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "chart_of_account_userId_idx": {
+          "name": "chart_of_account_userId_idx",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        },
+        "chart_of_account_code_idx": {
+          "name": "chart_of_account_code_idx",
+          "columns": [
+            "code"
+          ],
+          "isUnique": false
+        },
+        "chart_of_account_type_idx": {
+          "name": "chart_of_account_type_idx",
+          "columns": [
+            "type"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "chart_of_account_user_id_user_id_fk": {
+          "name": "chart_of_account_user_id_user_id_fk",
+          "tableFrom": "chart_of_account",
           "tableTo": "user",
           "columnsFrom": [
             "user_id"
@@ -583,21 +591,29 @@
           "autoincrement": false,
           "default": "'active'"
         },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
+        "is_active": {
+          "name": "is_active",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         }
       },
       "indexes": {
@@ -626,6 +642,13 @@
           "name": "debt_dueDate_idx",
           "columns": [
             "due_date"
+          ],
+          "isUnique": false
+        },
+        "debt_isActive_idx": {
+          "name": "debt_isActive_idx",
+          "columns": [
+            "is_active"
           ],
           "isUnique": false
         }
@@ -710,32 +733,39 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         }
       },
       "indexes": {
-        "debtPayment_debtId_idx": {
-          "name": "debtPayment_debtId_idx",
+        "debt_payment_debtId_idx": {
+          "name": "debt_payment_debtId_idx",
           "columns": [
             "debt_id"
           ],
           "isUnique": false
         },
-        "debtPayment_userId_idx": {
-          "name": "debtPayment_userId_idx",
+        "debt_payment_userId_idx": {
+          "name": "debt_payment_userId_idx",
           "columns": [
             "user_id"
           ],
           "isUnique": false
         },
-        "debtPayment_date_idx": {
-          "name": "debtPayment_date_idx",
+        "debt_payment_date_idx": {
+          "name": "debt_payment_date_idx",
           "columns": [
             "date"
+          ],
+          "isUnique": false
+        },
+        "debt_payment_transactionId_idx": {
+          "name": "debt_payment_transactionId_idx",
+          "columns": [
+            "transaction_id"
           ],
           "isUnique": false
         }
@@ -767,10 +797,10 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "debt_payment_account_id_account_id_fk": {
-          "name": "debt_payment_account_id_account_id_fk",
+        "debt_payment_account_id_chart_of_account_id_fk": {
+          "name": "debt_payment_account_id_chart_of_account_id_fk",
           "tableFrom": "debt_payment",
-          "tableTo": "account",
+          "tableTo": "chart_of_account",
           "columnsFrom": [
             "account_id"
           ],
@@ -888,45 +918,45 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         }
       },
       "indexes": {
-        "taxRecord_userId_idx": {
-          "name": "taxRecord_userId_idx",
+        "tax_record_userId_idx": {
+          "name": "tax_record_userId_idx",
           "columns": [
             "user_id"
           ],
           "isUnique": false
         },
-        "taxRecord_year_idx": {
-          "name": "taxRecord_year_idx",
+        "tax_record_year_idx": {
+          "name": "tax_record_year_idx",
           "columns": [
             "year"
           ],
           "isUnique": false
         },
-        "taxRecord_month_idx": {
-          "name": "taxRecord_month_idx",
+        "tax_record_month_idx": {
+          "name": "tax_record_month_idx",
           "columns": [
             "month"
           ],
           "isUnique": false
         },
-        "taxRecord_status_idx": {
-          "name": "taxRecord_status_idx",
+        "tax_record_status_idx": {
+          "name": "tax_record_status_idx",
           "columns": [
             "status"
           ],
@@ -1055,21 +1085,29 @@
           "notNull": false,
           "autoincrement": false
         },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
+        "is_active": {
+          "name": "is_active",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         }
       },
       "indexes": {
@@ -1100,6 +1138,27 @@
             "account_id"
           ],
           "isUnique": false
+        },
+        "transaction_toAccountId_idx": {
+          "name": "transaction_toAccountId_idx",
+          "columns": [
+            "to_account_id"
+          ],
+          "isUnique": false
+        },
+        "transaction_categoryId_idx": {
+          "name": "transaction_categoryId_idx",
+          "columns": [
+            "category_id"
+          ],
+          "isUnique": false
+        },
+        "transaction_isActive_idx": {
+          "name": "transaction_isActive_idx",
+          "columns": [
+            "is_active"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -1116,10 +1175,10 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "transaction_account_id_account_id_fk": {
-          "name": "transaction_account_id_account_id_fk",
+        "transaction_account_id_chart_of_account_id_fk": {
+          "name": "transaction_account_id_chart_of_account_id_fk",
           "tableFrom": "transaction",
-          "tableTo": "account",
+          "tableTo": "chart_of_account",
           "columnsFrom": [
             "account_id"
           ],
@@ -1129,10 +1188,10 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "transaction_to_account_id_account_id_fk": {
-          "name": "transaction_to_account_id_account_id_fk",
+        "transaction_to_account_id_chart_of_account_id_fk": {
+          "name": "transaction_to_account_id_chart_of_account_id_fk",
           "tableFrom": "transaction",
-          "tableTo": "account",
+          "tableTo": "chart_of_account",
           "columnsFrom": [
             "to_account_id"
           ],
@@ -1241,23 +1300,23 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         }
       },
       "indexes": {
-        "transactionPhoto_transactionId_idx": {
-          "name": "transactionPhoto_transactionId_idx",
+        "transaction_photo_transactionId_idx": {
+          "name": "transaction_photo_transactionId_idx",
           "columns": [
             "transaction_id"
           ],
           "isUnique": false
         },
-        "transactionPhoto_userId_idx": {
-          "name": "transactionPhoto_userId_idx",
+        "transaction_photo_userId_idx": {
+          "name": "transaction_photo_userId_idx",
           "columns": [
             "user_id"
           ],
@@ -1289,6 +1348,153 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "transaction_template": {
+      "name": "transaction_template",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_system": {
+          "name": "is_system",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "transaction_template_userId_idx": {
+          "name": "transaction_template_userId_idx",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        },
+        "transaction_template_type_idx": {
+          "name": "transaction_template_type_idx",
+          "columns": [
+            "type"
+          ],
+          "isUnique": false
+        },
+        "transaction_template_categoryId_idx": {
+          "name": "transaction_template_categoryId_idx",
+          "columns": [
+            "category_id"
+          ],
+          "isUnique": false
+        },
+        "transaction_template_isSystem_idx": {
+          "name": "transaction_template_isSystem_idx",
+          "columns": [
+            "is_system"
+          ],
+          "isUnique": false
+        },
+        "transaction_template_isActive_idx": {
+          "name": "transaction_template_isActive_idx",
+          "columns": [
+            "is_active"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "transaction_template_user_id_user_id_fk": {
+          "name": "transaction_template_user_id_user_id_fk",
+          "tableFrom": "transaction_template",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "transaction_template_category_id_category_id_fk": {
+          "name": "transaction_template_category_id_category_id_fk",
+          "tableFrom": "transaction_template",
+          "tableTo": "category",
+          "columnsFrom": [
+            "category_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -1336,19 +1542,19 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         }
       },
       "indexes": {},
@@ -1359,6 +1565,130 @@
           "tableTo": "user",
           "columnsFrom": [
             "id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "account": {
+      "name": "account",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "provider_id": {
+          "name": "provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "id_token": {
+          "name": "id_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "access_token_expires_at": {
+          "name": "access_token_expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "refresh_token_expires_at": {
+          "name": "refresh_token_expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "account_userId_idx": {
+          "name": "account_userId_idx",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "account_user_id_user_id_fk": {
+          "name": "account_user_id_user_id_fk",
+          "tableFrom": "account",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
           ],
           "columnsTo": [
             "id"

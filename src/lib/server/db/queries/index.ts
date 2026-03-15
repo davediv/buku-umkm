@@ -622,9 +622,9 @@ export const debtQueries = {
 			notes?: string;
 		}
 	) {
-		return db.transaction(async (tx) => {
+		return (async () => {
 			// Insert payment
-			await tx.insert(debtPayment).values({
+			await db.insert(debtPayment).values({
 				id: crypto.randomUUID(),
 				debtId: data.debtId,
 				userId: data.userId,
@@ -636,7 +636,7 @@ export const debtQueries = {
 			});
 
 			// Update debt remaining amount
-			await tx
+			await db
 				.update(debt)
 				.set({
 					paidAmount: sql`${debt.paidAmount} + ${data.amount}`,
@@ -644,7 +644,7 @@ export const debtQueries = {
 					status: sql`CASE WHEN ${debt.remainingAmount} - ${data.amount} <= 0 THEN 'paid' ELSE ${debt.status} END`
 				})
 				.where(eq(debt.id, data.debtId));
-		});
+		})();
 	},
 
 	/**
@@ -1019,9 +1019,9 @@ export const dashboardQueries = {
 	 * Get dashboard summary
 	 */
 	getSummary(db: SQLiteDb, userId: string) {
-		return db.transaction(async (tx) => {
+		return (async () => {
 			// Total assets
-			const assets = await tx
+			const assets = await db
 				.select({
 					total: sql`COALESCE(SUM(${chartOfAccount.balance}), 0)`
 				})
@@ -1030,7 +1030,7 @@ export const dashboardQueries = {
 				.then((rows) => Number(rows[0]?.total ?? 0));
 
 			// Total liabilities
-			const liabilities = await tx
+			const liabilities = await db
 				.select({
 					total: sql`COALESCE(SUM(${chartOfAccount.balance}), 0)`
 				})
@@ -1039,7 +1039,7 @@ export const dashboardQueries = {
 				.then((rows) => Number(rows[0]?.total ?? 0));
 
 			// Total equity
-			const equity = await tx
+			const equity = await db
 				.select({
 					total: sql`COALESCE(SUM(${chartOfAccount.balance}), 0)`
 				})
@@ -1055,7 +1055,7 @@ export const dashboardQueries = {
 					? `${now.getFullYear() + 1}-01-01`
 					: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
 
-			const monthlyIncome = await tx
+			const monthlyIncome = await db
 				.select({
 					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
 				})
@@ -1071,7 +1071,7 @@ export const dashboardQueries = {
 				.then((rows) => Number(rows[0]?.total ?? 0));
 
 			// This month expense
-			const monthlyExpense = await tx
+			const monthlyExpense = await db
 				.select({
 					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
 				})
@@ -1088,7 +1088,7 @@ export const dashboardQueries = {
 
 			// Year to date revenue
 			const startOfYear = `${now.getFullYear()}-01-01`;
-			const yearIncome = await tx
+			const yearIncome = await db
 				.select({
 					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
 				})
@@ -1102,7 +1102,7 @@ export const dashboardQueries = {
 				)
 				.then((rows) => Number(rows[0]?.total ?? 0));
 
-			const yearExpense = await tx
+			const yearExpense = await db
 				.select({
 					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
 				})
@@ -1117,14 +1117,14 @@ export const dashboardQueries = {
 				.then((rows) => Number(rows[0]?.total ?? 0));
 
 			// Active debts count
-			const activeDebts = await tx
+			const activeDebts = await db
 				.select({ count: sql`COUNT(*)` })
 				.from(debt)
 				.where(and(eq(debt.userId, userId), eq(debt.status, 'active')))
 				.then((rows) => Number(rows[0]?.count ?? 0));
 
 			// Unpaid taxes
-			const unpaidTaxes = await tx
+			const unpaidTaxes = await db
 				.select({ count: sql`COUNT(*)` })
 				.from(taxRecord)
 				.where(and(eq(taxRecord.userId, userId), eq(taxRecord.status, 'unpaid')))
@@ -1144,7 +1144,7 @@ export const dashboardQueries = {
 				activeDebtsCount: activeDebts,
 				unpaidTaxesCount: unpaidTaxes
 			};
-		});
+		})();
 	},
 
 	/**
@@ -1157,8 +1157,8 @@ export const dashboardQueries = {
 		tomorrow.setDate(tomorrow.getDate() + 1);
 		const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
-		return db.transaction(async (tx) => {
-			const income = await tx
+		return (async () => {
+			const income = await db
 				.select({
 					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
 				})
@@ -1173,7 +1173,7 @@ export const dashboardQueries = {
 				)
 				.then((rows) => Number(rows[0]?.total ?? 0));
 
-			const expense = await tx
+			const expense = await db
 				.select({
 					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
 				})
@@ -1193,7 +1193,7 @@ export const dashboardQueries = {
 				expense,
 				profit: income - expense
 			};
-		});
+		})();
 	},
 
 	/**
@@ -1251,8 +1251,8 @@ export const dashboardQueries = {
 			endDate = `${now.getFullYear() + 1}-01-01`;
 		}
 
-		return db.transaction(async (tx) => {
-			const income = await tx
+		return (async () => {
+			const income = await db
 				.select({
 					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
 				})
@@ -1267,7 +1267,7 @@ export const dashboardQueries = {
 				)
 				.then((rows) => Number(rows[0]?.total ?? 0));
 
-			const expense = await tx
+			const expense = await db
 				.select({
 					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
 				})
@@ -1290,16 +1290,16 @@ export const dashboardQueries = {
 				expense,
 				profit: income - expense
 			};
-		});
+		})();
 	},
 
 	/**
 	 * Get debt summary (total outstanding piutang and hutang)
 	 */
 	getDebtSummary(db: SQLiteDb, userId: string) {
-		return db.transaction(async (tx) => {
+		return (async () => {
 			// Total outstanding piutang (receivables)
-			const piutang = await tx
+			const piutang = await db
 				.select({
 					total: sql`COALESCE(SUM(${debt.remainingAmount}), 0)`
 				})
@@ -1308,7 +1308,7 @@ export const dashboardQueries = {
 				.then((rows) => Number(rows[0]?.total ?? 0));
 
 			// Total outstanding hutang (payables)
-			const hutang = await tx
+			const hutang = await db
 				.select({
 					total: sql`COALESCE(SUM(${debt.remainingAmount}), 0)`
 				})
@@ -1317,7 +1317,7 @@ export const dashboardQueries = {
 				.then((rows) => Number(rows[0]?.total ?? 0));
 
 			return { piutang, hutang };
-		});
+		})();
 	},
 
 	/**
@@ -1332,9 +1332,9 @@ export const dashboardQueries = {
 				? `${now.getFullYear() + 1}-01-01`
 				: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
 
-		return db.transaction(async (tx) => {
+		return (async () => {
 			// Get total income for the month
-			const monthlyIncome = await tx
+			const monthlyIncome = await db
 				.select({
 					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
 				})
@@ -1354,14 +1354,14 @@ export const dashboardQueries = {
 			const taxAmount = Math.floor(monthlyIncome * 0.005);
 
 			return { monthlyIncome, taxAmount };
-		});
+		})();
 	},
 
 	/**
 	 * Get cash flow data for chart
 	 */
 	getCashFlow(db: SQLiteDb, userId: string, months = 6) {
-		return db.transaction(async (tx) => {
+		return (async () => {
 			const now = new Date();
 			const results = [];
 
@@ -1374,7 +1374,7 @@ export const dashboardQueries = {
 				const endDate =
 					month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, '0')}-01`;
 
-				const income = await tx
+				const income = await db
 					.select({
 						total: sql`COALESCE(SUM(${transaction.amount}), 0)`
 					})
@@ -1389,7 +1389,7 @@ export const dashboardQueries = {
 					)
 					.then((rows) => Number(rows[0]?.total ?? 0));
 
-				const expense = await tx
+				const expense = await db
 					.select({
 						total: sql`COALESCE(SUM(${transaction.amount}), 0)`
 					})
@@ -1415,7 +1415,7 @@ export const dashboardQueries = {
 			}
 
 			return results;
-		});
+		})();
 	},
 
 	/**
@@ -1468,9 +1468,9 @@ export const dashboardQueries = {
 			endDate = `${now.getFullYear() + 1}-01-01`;
 		}
 
-		return db.transaction(async (tx) => {
+		return (async () => {
 			// Get income by category
-			const incomeByCategory = await tx
+			const incomeByCategory = await db
 				.select({
 					categoryId: transaction.categoryId,
 					categoryCode: category.code,
@@ -1491,7 +1491,7 @@ export const dashboardQueries = {
 				.groupBy(transaction.categoryId);
 
 			// Get expense by category
-			const expenseByCategory = await tx
+			const expenseByCategory = await db
 				.select({
 					categoryId: transaction.categoryId,
 					categoryCode: category.code,
@@ -1527,7 +1527,7 @@ export const dashboardQueries = {
 					total: Number(row.total)
 				}))
 			};
-		});
+		})();
 	},
 
 	/**
@@ -1612,9 +1612,9 @@ export const dashboardQueries = {
 			prevEndDate = startDate;
 		}
 
-		return db.transaction(async (tx) => {
+		return (async () => {
 			// Current period
-			const currentIncome = await tx
+			const currentIncome = await db
 				.select({
 					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
 				})
@@ -1629,7 +1629,7 @@ export const dashboardQueries = {
 				)
 				.then((rows) => Number(rows[0]?.total ?? 0));
 
-			const currentExpense = await tx
+			const currentExpense = await db
 				.select({
 					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
 				})
@@ -1645,7 +1645,7 @@ export const dashboardQueries = {
 				.then((rows) => Number(rows[0]?.total ?? 0));
 
 			// Previous period
-			const prevIncome = await tx
+			const prevIncome = await db
 				.select({
 					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
 				})
@@ -1660,7 +1660,7 @@ export const dashboardQueries = {
 				)
 				.then((rows) => Number(rows[0]?.total ?? 0));
 
-			const prevExpense = await tx
+			const prevExpense = await db
 				.select({
 					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
 				})
@@ -1687,7 +1687,7 @@ export const dashboardQueries = {
 					profit: prevIncome - prevExpense
 				}
 			};
-		});
+		})();
 	}
 };
 

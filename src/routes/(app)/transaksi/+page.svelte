@@ -421,7 +421,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each Array(5) as i (i)}
+						{#each [0, 1, 2, 3, 4] as i (i)}
 							<tr class="border-b">
 								<td class="px-4 py-3">
 									<div class="h-4 w-24 bg-muted rounded animate-pulse"></div>
