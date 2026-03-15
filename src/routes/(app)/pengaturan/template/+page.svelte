@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { invalidate } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
 	import {
 		FileText,
 		Plus,
@@ -91,17 +91,11 @@
 	// Handle form submission
 	function handleSubmit() {
 		loading = true;
-		return async ({
-			result,
-			update
-		}: {
-			result: { type: string };
-			update: () => Promise<void>;
-		}) => {
+		return async ({ result }: { result: { type: string } }) => {
 			loading = false;
 			if (result.type === 'success') {
 				closeModal();
-				await update();
+				goto('/pengaturan/template', { invalidateAll: true });
 			}
 		};
 	}
