@@ -203,10 +203,10 @@
 			localStorage.setItem('lastBackupDate', now);
 			lastBackupDate = now;
 
-			alert('Backup berhasil dibuat!');
+			toast.success('Backup berhasil dibuat!');
 		} catch (error) {
 			console.error('Backup error:', error);
-			alert(error instanceof Error ? error.message : 'Terjadi kesalahan saat membuat backup');
+			toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan saat membuat backup');
 		} finally {
 			backingUp = false;
 		}
@@ -255,7 +255,7 @@
 			// Invalidate all data
 			await invalidateAll();
 
-			alert('Data berhasil dipulihkan!');
+			toast.success('Data berhasil dipulihkan!');
 		} catch (error) {
 			console.error('Restore error:', error);
 			const errorMessage =
@@ -297,7 +297,7 @@
 			}
 		} catch (error) {
 			console.error('Logout error:', error);
-			alert('Gagal logout. Silakan coba lagi.');
+			toast.error('Gagal logout. Silakan coba lagi.');
 		} finally {
 			loggingOut = false;
 		}

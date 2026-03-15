@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { goto, invalidate } from '$app/navigation';
+	import { invalidate } from '$app/navigation';
 	import {
 		FileText,
 		Plus,
@@ -12,6 +12,14 @@
 		Shield,
 		ArrowLeft
 	} from '@lucide/svelte';
+	import { toast } from '$lib/components/ui/toast';
+	import {
+		AlertDialog,
+		AlertDialogTitle,
+		AlertDialogDescription,
+		AlertDialogAction,
+		AlertDialogCancel
+	} from '$lib/components/ui/alert-dialog';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -28,6 +36,8 @@
 	let loading = $state(false);
 	let deletingId = $state<string | null>(null);
 	let togglingId = $state<string | null>(null);
+	let showDeleteConfirm = $state(false);
+	let deleteTargetId = $state<string | null>(null);
 	let activeTab = $state<'income' | 'expense'>('income');
 
 	// Form data
@@ -98,11 +108,7 @@
 	// Handle form submission
 	function handleSubmit() {
 		loading = true;
-		return async ({
-			result
-		}: {
-			result: { type: string; data?: Record<string, unknown> };
-		}) => {
+		return async ({ result }: { result: { type: string; data?: Record<string, unknown> } }) => {
 			loading = false;
 			if (result.type === 'success' && result.data?.template) {
 				const newTemplate = result.data.template as (typeof templates)[number];
@@ -129,26 +135,36 @@
 				await invalidate('?/');
 			} else {
 				const resData = (await response.json()) as { error?: string };
-				alert(resData.error || 'Gagal mengubah status');
+				toast.error(resData.error || 'Gagal mengubah status');
 			}
 		} catch (error) {
 			console.error('Error toggling template:', error);
-			alert('Terjadi kesalahan server');
+			toast.error('Terjadi kesalahan server');
 		} finally {
 			togglingId = null;
 		}
 	}
 
-	// Handle delete
-	async function handleDelete(templateId: string) {
-		if (!confirm('Apakah Anda yakin ingin menghapus template ini?')) {
-			return;
-		}
+	function closeDeleteDialog() {
+		showDeleteConfirm = false;
+		deleteTargetId = null;
+	}
 
-		deletingId = templateId;
+	// Prompt delete confirmation
+	function promptDelete(templateId: string) {
+		deleteTargetId = templateId;
+		showDeleteConfirm = true;
+	}
+
+	// Handle delete (called from confirmation dialog)
+	async function handleDelete() {
+		if (!deleteTargetId) return;
+
+		deletingId = deleteTargetId;
+		showDeleteConfirm = false;
 		try {
 			const formData = new FormData();
-			formData.append('id', templateId);
+			formData.append('id', deleteTargetId);
 
 			const response = await fetch('?/delete', {
 				method: 'POST',
@@ -159,13 +175,14 @@
 				await invalidate('?/');
 			} else {
 				const resData = (await response.json()) as { error?: string };
-				alert(resData.error || 'Gagal menghapus template');
+				toast.error(resData.error || 'Gagal menghapus template');
 			}
 		} catch (error) {
 			console.error('Error deleting template:', error);
-			alert('Terjadi kesalahan server');
+			toast.error('Terjadi kesalahan server');
 		} finally {
 			deletingId = null;
+			deleteTargetId = null;
 		}
 	}
 </script>
@@ -259,7 +276,7 @@
 								</button>
 								<button
 									type="button"
-									onclick={() => handleDelete(tmpl.id)}
+									onclick={() => promptDelete(tmpl.id)}
 									disabled={deletingId === tmpl.id}
 									class="p-2 hover:bg-secondary rounded-full transition-colors text-destructive"
 									aria-label="Hapus"
@@ -410,3 +427,20 @@
 		</div>
 	</div>
 {/if}
+
+<!-- Delete Confirmation Dialog -->
+<AlertDialog
+	open={showDeleteConfirm}
+	onopenchange={(open) => {
+		if (!open) closeDeleteDialog();
+	}}
+>
+	<AlertDialogTitle>Hapus Template?</AlertDialogTitle>
+	<AlertDialogDescription>
+		Template yang dihapus tidak dapat dikembalikan. Apakah Anda yakin ingin melanjutkan?
+	</AlertDialogDescription>
+	<div class="flex gap-3 mt-6">
+		<AlertDialogCancel onclick={closeDeleteDialog}>Batal</AlertDialogCancel>
+		<AlertDialogAction onclick={handleDelete}>Hapus</AlertDialogAction>
+	</div>
+</AlertDialog>
