@@ -434,7 +434,7 @@
 
 				<!-- Summary Cards Skeleton -->
 				<div class="grid gap-4 md:grid-cols-3">
-					{#each Array(3) as i (i)}
+					{#each [0, 1, 2] as i (i)}
 						<div class="bg-card border rounded-lg p-4">
 							<div class="h-4 w-20 bg-muted rounded mb-2"></div>
 							<div class="h-8 w-32 bg-muted rounded"></div>
@@ -447,7 +447,7 @@
 					<div class="bg-card border rounded-lg p-4">
 						<div class="h-4 w-32 bg-muted rounded mb-4"></div>
 						<div class="space-y-3">
-							{#each Array(3) as i (i)}
+							{#each [0, 1, 2] as i (i)}
 								<div class="flex items-center justify-between">
 									<div class="flex items-center gap-2">
 										<div class="w-8 h-8 bg-muted rounded-full"></div>
@@ -461,7 +461,7 @@
 					<div class="bg-card border rounded-lg p-4">
 						<div class="h-4 w-32 bg-muted rounded mb-4"></div>
 						<div class="space-y-3">
-							{#each Array(3) as i (i)}
+							{#each [0, 1, 2] as i (i)}
 								<div class="flex items-center justify-between">
 									<div class="flex items-center gap-2">
 										<div class="w-8 h-8 bg-muted rounded-full"></div>

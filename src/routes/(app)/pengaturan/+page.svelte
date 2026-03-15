@@ -79,7 +79,14 @@
 	}
 
 	// Mutable form state initialized from server data
-	let profileForm = $state(profileToForm(data.profile));
+	let profileForm = $state(profileToForm(null));
+
+	// Keep profileForm in sync with data when not editing
+	$effect(() => {
+		if (!isEditingProfile) {
+			profileForm = profileToForm(data.profile);
+		}
+	});
 
 	// Password change state
 

@@ -284,7 +284,7 @@
 					<FileText class="w-8 h-8 text-muted-foreground" />
 				</div>
 				<p class="text-muted-foreground mb-2">Belum ada template</p>
-				<p class="text-sm text-muted-foreground">Tambahkan template untuk Transaksi masuk更快</p>
+				<p class="text-sm text-muted-foreground">Tambahkan template untuk transaksi lebih cepat</p>
 			</div>
 		{/if}
 	</div>

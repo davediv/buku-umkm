@@ -10,7 +10,7 @@
 
 	// State
 	let loading = $state(false);
-	let selectedPeriod = $state<Period>((data.catatan?.period as Period) ?? 'monthly');
+	let selectedPeriod = $state<Period>('monthly');
 
 	// Keep selectedPeriod in sync with data after navigation
 	$effect(() => {
