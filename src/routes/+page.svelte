@@ -134,18 +134,17 @@
 				<p class="mt-3 text-muted-foreground">Dirancang khusus untuk pelaku UMKM Indonesia</p>
 			</div>
 
-			<div class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+			<div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
 				{#each features as feature (feature.title)}
 					<div
-						class="group relative overflow-hidden rounded-xl border bg-card p-6 transition-shadow duration-300 hover:shadow-md"
+						class="group rounded-2xl bg-card p-7 shadow-sm ring-1 ring-border/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/[0.08] hover:ring-primary/20"
 					>
 						<div
-							class="absolute inset-y-0 left-0 w-1 bg-primary/60 transition-[width,background-color] duration-300 group-hover:w-1.5 group-hover:bg-primary"
-						></div>
-						<div class="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+							class="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/[0.12] to-primary/[0.04] transition-transform duration-300 group-hover:scale-105"
+						>
 							<feature.icon class="h-5 w-5 text-primary" />
 						</div>
-						<h3 class="font-semibold">{feature.title}</h3>
+						<h3 class="font-semibold tracking-tight">{feature.title}</h3>
 						<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
 							{feature.desc}
 						</p>
