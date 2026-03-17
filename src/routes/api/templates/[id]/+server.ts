@@ -47,8 +47,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				updatedAt: template.updatedAt
 			}
 		});
-	} catch (error) {
-		console.error('Error fetching template:', error);
+	} catch {
+		console.error('Error fetching template:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -130,8 +130,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				updatedAt: new Date().toISOString()
 			}
 		});
-	} catch (error) {
-		console.error('Error updating template:', error);
+	} catch {
+		console.error('Error updating template:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -171,8 +171,8 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		return json({
 			message: 'Template berhasil dihapus'
 		});
-	} catch (error) {
-		console.error('Error deleting template:', error);
+	} catch {
+		console.error('Error deleting template:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

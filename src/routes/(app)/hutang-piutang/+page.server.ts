@@ -1,10 +1,11 @@
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { debtQueries } from '$lib/server/db/queries';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user || !locals.session) {
-		return { debts: [], summary: { piutang: 0, hutang: 0 } };
+		throw redirect(302, '/masuk');
 	}
 
 	const userId = locals.user.id;

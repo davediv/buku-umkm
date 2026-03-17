@@ -1,3 +1,11 @@
-# allow crawling everything by default
 User-agent: *
-Disallow:
+Disallow: /api/
+Disallow: /beranda
+Disallow: /transaksi
+Disallow: /akun
+Disallow: /laporan
+Disallow: /hutang-piutang
+Disallow: /pajak
+Disallow: /pengaturan
+Disallow: /onboarding
+Disallow: /demo

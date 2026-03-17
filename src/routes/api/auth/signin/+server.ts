@@ -43,7 +43,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'Email atau password salah' }, { status: 401 });
 		}
 
-		console.error('Signin error:', error);
+		console.error('Signin error');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

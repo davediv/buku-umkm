@@ -13,8 +13,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		return json({
 			message: 'Logout berhasil'
 		});
-	} catch (error) {
-		console.error('Signout error:', error);
+	} catch {
+		console.error('Signout error:');
 		return json({
 			message: 'Logout berhasil'
 		});

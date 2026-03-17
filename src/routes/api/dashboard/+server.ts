@@ -99,8 +99,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				}
 			}
 		});
-	} catch (error) {
-		console.error('Error fetching dashboard data:', error);
+	} catch {
+		console.error('Error fetching dashboard data:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

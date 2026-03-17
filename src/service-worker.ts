@@ -33,24 +33,18 @@ self.addEventListener('fetch', (event: FetchEvent) => {
 	// Skip cross-origin requests (e.g., analytics, external fonts)
 	if (url.origin !== location.origin) return;
 
-	// For navigation requests (HTML), try network first, then cache
+	// Skip API requests entirely — never cache authenticated data
+	if (url.pathname.startsWith('/api/')) return;
+
+	// For navigation requests (HTML), always use network (pages contain user-specific data)
 	if (event.request.mode === 'navigate') {
 		event.respondWith(
-			fetch(event.request)
-				.then((response) => {
-					// Clone and cache the response
-					const responseClone = response.clone();
-					caches.open(CACHE_NAME).then((cache) => {
-						cache.put(event.request, responseClone);
-					});
-					return response;
-				})
-				.catch(() => {
-					// Fallback to cache
-					return caches.match(event.request).then((cached) => {
-						return cached || caches.match('/');
-					});
-				})
+			fetch(event.request).catch(() => {
+				// Offline fallback: serve cached version or root
+				return caches.match(event.request).then((cached) => {
+					return cached || caches.match('/');
+				});
+			})
 		);
 		return;
 	}

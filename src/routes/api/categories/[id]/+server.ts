@@ -44,8 +44,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				updatedAt: cat.updatedAt
 			}
 		});
-	} catch (error) {
-		console.error('Error fetching category:', error);
+	} catch {
+		console.error('Error fetching category:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -112,8 +112,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				updatedAt: new Date().toISOString()
 			}
 		});
-	} catch (error) {
-		console.error('Error updating category:', error);
+	} catch {
+		console.error('Error updating category:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -166,8 +166,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				updatedAt: new Date().toISOString()
 			}
 		});
-	} catch (error) {
-		console.error('Error toggling category status:', error);
+	} catch {
+		console.error('Error toggling category status:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -218,8 +218,8 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		return json({
 			message: 'Kategori berhasil dihapus'
 		});
-	} catch (error) {
-		console.error('Error deleting category:', error);
+	} catch {
+		console.error('Error deleting category:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

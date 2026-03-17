@@ -6,7 +6,7 @@ import { debtQueries, chartOfAccountQueries } from '$lib/server/db/queries';
 export const load: PageServerLoad = async ({ params, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		throw redirect(302, '/login');
+		throw redirect(302, '/masuk');
 	}
 
 	const userId = locals.user.id;
@@ -69,8 +69,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			payments,
 			accounts: paymentAccounts
 		};
-	} catch (err) {
-		console.error('Error loading debt detail:', err);
+	} catch {
+		console.error('Error loading debt detail');
 		throw error(500, 'Terjadi kesalahan server');
 	}
 };

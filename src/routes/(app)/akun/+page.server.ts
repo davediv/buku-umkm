@@ -39,8 +39,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		return {
 			accounts: mappedAccounts
 		};
-	} catch (error) {
-		console.error('Error fetching accounts:', error);
+	} catch {
+		console.error('Error fetching accounts:');
 		return {
 			accounts: [],
 			error: 'Gagal memuat data akun'
@@ -118,8 +118,8 @@ export const actions: Actions = {
 					updatedAt: now
 				}
 			};
-		} catch (error) {
-			console.error('Error creating account:', error);
+		} catch {
+			console.error('Error creating account:');
 			return fail(500, { error: 'Terjadi kesalahan server', success: false });
 		}
 	},
@@ -172,8 +172,8 @@ export const actions: Actions = {
 				success: true,
 				message: 'Akun berhasil diperbarui'
 			};
-		} catch (error) {
-			console.error('Error updating account:', error);
+		} catch {
+			console.error('Error updating account:');
 			return fail(500, { error: 'Terjadi kesalahan server', success: false });
 		}
 	}

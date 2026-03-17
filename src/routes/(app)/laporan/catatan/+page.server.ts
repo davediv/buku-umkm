@@ -129,8 +129,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				notesSections
 			}
 		};
-	} catch (error) {
-		console.error('Error fetching catatan data:', error);
+	} catch {
+		console.error('Error fetching catatan data:');
 		return {
 			catatan: null,
 			error: 'Gagal memuat catatan atas laporan keuangan'

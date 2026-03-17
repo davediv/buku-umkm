@@ -156,8 +156,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		};
 
 		return json({ data: response });
-	} catch (error) {
-		console.error('Error in GET /api/tax/annual:', error);
+	} catch {
+		console.error('Error in GET /api/tax/annual:');
 		return json({ error: 'Failed to fetch annual tax data' }, { status: 500 });
 	}
 };

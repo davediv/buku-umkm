@@ -46,8 +46,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				createdAt: photo.createdAt
 			}))
 		});
-	} catch (error) {
-		console.error('Error fetching transaction photos:', error);
+	} catch {
+		console.error('Error fetching transaction photos');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -125,9 +125,21 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		const extension = file.type === 'image/png' ? 'png' : 'jpg';
 		const r2Key = `receipts/${userId}/${transactionId}/${photoId}.${extension}`;
 
-		// Convert file to ArrayBuffer
+		// Convert file to ArrayBuffer and validate magic bytes
 		const arrayBuffer = await file.arrayBuffer();
 		const uint8Array = new Uint8Array(arrayBuffer);
+
+		// Verify actual file content matches claimed type
+		const isJPEG = uint8Array[0] === 0xff && uint8Array[1] === 0xd8 && uint8Array[2] === 0xff;
+		const isPNG =
+			uint8Array[0] === 0x89 &&
+			uint8Array[1] === 0x50 &&
+			uint8Array[2] === 0x4e &&
+			uint8Array[3] === 0x47;
+
+		if (!isJPEG && !isPNG) {
+			return json({ error: 'File bukan gambar JPEG atau PNG yang valid' }, { status: 400 });
+		}
 
 		// Upload to R2
 		await r2.put(r2Key, uint8Array, {
@@ -165,8 +177,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			},
 			{ status: 201 }
 		);
-	} catch (error) {
-		console.error('Error uploading transaction photo:', error);
+	} catch {
+		console.error('Error uploading transaction photo');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

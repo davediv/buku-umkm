@@ -77,8 +77,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				updatedAt: txn.updatedAt
 			}
 		});
-	} catch (error) {
-		console.error('Error fetching transaction:', error);
+	} catch {
+		console.error('Error fetching transaction:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -232,8 +232,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				updatedAt: updatedTxn!.updatedAt
 			}
 		});
-	} catch (error) {
-		console.error('Error updating transaction:', error);
+	} catch {
+		console.error('Error updating transaction:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -289,8 +289,8 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		return json({
 			message: 'Transaksi berhasil dihapus'
 		});
-	} catch (error) {
-		console.error('Error deleting transaction:', error);
+	} catch {
+		console.error('Error deleting transaction:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

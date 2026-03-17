@@ -206,8 +206,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				}
 			}
 		};
-	} catch (error) {
-		console.error('Error fetching balance sheet data:', error);
+	} catch {
+		console.error('Error fetching balance sheet data:');
 		return {
 			balanceSheet: null,
 			error: 'Gagal memuat data laporan posisi keuangan'

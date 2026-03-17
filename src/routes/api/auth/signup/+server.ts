@@ -23,9 +23,20 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'Email dan password wajib diisi' }, { status: 400 });
 		}
 
-		// Validate password minimum length (8 characters)
+		// Validate password strength
 		if (password.length < 8) {
 			return json({ error: 'Password minimal 8 karakter' }, { status: 400 });
+		}
+
+		if (password.length > 128) {
+			return json({ error: 'Password maksimal 128 karakter' }, { status: 400 });
+		}
+
+		if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+			return json(
+				{ error: 'Password harus mengandung huruf besar, huruf kecil, dan angka' },
+				{ status: 400 }
+			);
 		}
 
 		// Sign up the user
@@ -55,10 +66,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			) {
 				return json({ error: 'Email sudah terdaftar' }, { status: 400 });
 			}
-			return json({ error: error.message || 'Pendaftaran gagal' }, { status: 400 });
+			return json({ error: 'Pendaftaran gagal' }, { status: 400 });
 		}
 
-		console.error('Signup error:', error);
+		console.error('Signup error');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

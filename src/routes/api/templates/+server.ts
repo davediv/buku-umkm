@@ -37,8 +37,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 		}));
 
 		return json({ templates: mappedTemplates });
-	} catch (error) {
-		console.error('Error fetching templates:', error);
+	} catch {
+		console.error('Error fetching templates:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -95,8 +95,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			},
 			{ status: 201 }
 		);
-	} catch (error) {
-		console.error('Error creating template:', error);
+	} catch {
+		console.error('Error creating template:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

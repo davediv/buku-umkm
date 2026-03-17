@@ -69,8 +69,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		}));
 
 		return json({ debts: mappedDebts });
-	} catch (error) {
-		console.error('Error fetching debts:', error);
+	} catch {
+		console.error('Error fetching debts:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -161,8 +161,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			},
 			{ status: 201 }
 		);
-	} catch (error) {
-		console.error('Error creating debt:', error);
+	} catch {
+		console.error('Error creating debt:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
