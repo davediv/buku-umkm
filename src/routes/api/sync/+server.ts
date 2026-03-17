@@ -18,10 +18,10 @@ const BATCH_SIZE = 50;
 // Helper: Convert IndexedDB record to D1 schema format
 // ============================================================================
 
-function toTransactionDbRecord(record: Record<string, unknown>) {
+function toTransactionDbRecord(record: Record<string, unknown>, userId: string) {
 	return {
 		id: record.id as string,
-		userId: record.userId as string,
+		userId,
 		date: record.date as string,
 		type: record.type as 'income' | 'expense' | 'transfer',
 		amount: record.amount as number,
@@ -40,10 +40,10 @@ function toTransactionDbRecord(record: Record<string, unknown>) {
 	};
 }
 
-function toAccountDbRecord(record: Record<string, unknown>) {
+function toAccountDbRecord(record: Record<string, unknown>, userId: string) {
 	return {
 		id: record.id as string,
-		userId: record.userId as string,
+		userId,
 		code: record.code as string,
 		name: record.name as string,
 		type: record.type as 'asset' | 'liability' | 'equity' | 'revenue' | 'expense',
@@ -57,10 +57,10 @@ function toAccountDbRecord(record: Record<string, unknown>) {
 	};
 }
 
-function toCategoryDbRecord(record: Record<string, unknown>) {
+function toCategoryDbRecord(record: Record<string, unknown>, userId: string) {
 	return {
 		id: record.id as string,
-		userId: record.userId as string,
+		userId,
 		code: record.code as string,
 		name: record.name as string,
 		type: record.type as 'income' | 'expense',
@@ -73,10 +73,10 @@ function toCategoryDbRecord(record: Record<string, unknown>) {
 	};
 }
 
-function toDebtDbRecord(record: Record<string, unknown>) {
+function toDebtDbRecord(record: Record<string, unknown>, userId: string) {
 	return {
 		id: record.id as string,
-		userId: record.userId as string,
+		userId,
 		type: record.type as 'piutang' | 'hutang',
 		contactName: record.contactName as string,
 		contactPhone: record.contactPhone as string | null,
@@ -94,10 +94,10 @@ function toDebtDbRecord(record: Record<string, unknown>) {
 	};
 }
 
-function toBusinessProfileDbRecord(record: Record<string, unknown>) {
+function toBusinessProfileDbRecord(record: Record<string, unknown>, userId: string) {
 	return {
 		id: record.id as string,
-		userId: record.userId as string,
+		userId,
 		name: record.name as string,
 		address: record.address as string | null,
 		phone: record.phone as string | null,
@@ -124,6 +124,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const db = getDb();
 
 	try {
+		// Enforce body size limit
+		const contentLength = parseInt(request.headers.get('content-length') || '0', 10);
+		if (contentLength > 5 * 1024 * 1024) {
+			return json({ error: 'Request body too large' }, { status: 413 });
+		}
+
 		const body = await request.json();
 
 		const {
@@ -133,6 +139,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			debts = [],
 			businessProfiles = []
 		} = body as Record<string, unknown[]>;
+
+		// Limit total record count to prevent resource exhaustion
+		const MAX_RECORDS_PER_SYNC = 5000;
+		const totalRecords =
+			transactions.length +
+			accounts.length +
+			categories.length +
+			debts.length +
+			businessProfiles.length;
+		if (totalRecords > MAX_RECORDS_PER_SYNC) {
+			return json({ error: `Maksimal ${MAX_RECORDS_PER_SYNC} record per sync` }, { status: 400 });
+		}
 
 		const results: {
 			transactions: { id: string; success: boolean; error?: string }[];
@@ -155,7 +173,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			await db.transaction(async (tx) => {
 				for (const record of batch) {
 					try {
-						const dbRecord = toTransactionDbRecord(record);
+						const dbRecord = toTransactionDbRecord(record, userId);
 						const existing = await tx
 							.select()
 							.from(transaction)
@@ -207,7 +225,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			await db.transaction(async (tx) => {
 				for (const record of batch) {
 					try {
-						const dbRecord = toAccountDbRecord(record);
+						const dbRecord = toAccountDbRecord(record, userId);
 						const existing = await tx
 							.select()
 							.from(chartOfAccount)
@@ -251,7 +269,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			await db.transaction(async (tx) => {
 				for (const record of batch) {
 					try {
-						const dbRecord = toCategoryDbRecord(record);
+						const dbRecord = toCategoryDbRecord(record, userId);
 						const existing = await tx
 							.select()
 							.from(category)
@@ -293,7 +311,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			await db.transaction(async (tx) => {
 				for (const record of batch) {
 					try {
-						const dbRecord = toDebtDbRecord(record);
+						const dbRecord = toDebtDbRecord(record, userId);
 						const existing = await tx
 							.select()
 							.from(debt)
@@ -337,7 +355,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Process business profiles
 		for (const record of businessProfiles as Record<string, unknown>[]) {
 			try {
-				const dbRecord = toBusinessProfileDbRecord(record);
+				const dbRecord = toBusinessProfileDbRecord(record, userId);
 				const existing = await db
 					.select()
 					.from(businessProfile)
@@ -376,8 +394,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			results,
 			timestamp: new Date().toISOString()
 		});
-	} catch (error) {
-		console.error('Sync error:', error);
+	} catch {
+		console.error('Sync error');
 		return json({ error: 'Terjadi kesalahan saat sinkronisasi' }, { status: 500 });
 	}
 };
@@ -488,8 +506,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 			businessProfiles: profilesData,
 			timestamp: new Date().toISOString()
 		});
-	} catch (error) {
-		console.error('Sync GET error:', error);
+	} catch {
+		console.error('Sync GET error');
 		return json({ error: 'Terjadi kesalahan saat mengambil data' }, { status: 500 });
 	}
 };

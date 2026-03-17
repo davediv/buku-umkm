@@ -101,8 +101,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 		};
 
 		return json({ data: response });
-	} catch (error) {
-		console.error('Error in GET /api/tax/summary:', error);
+	} catch {
+		console.error('Error in GET /api/tax/summary:');
 		return json({ error: 'Failed to fetch tax summary' }, { status: 500 });
 	}
 };

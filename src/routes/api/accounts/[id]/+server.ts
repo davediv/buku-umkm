@@ -60,8 +60,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				updatedAt: account.updatedAt
 			}
 		});
-	} catch (error) {
-		console.error('Error fetching account:', error);
+	} catch {
+		console.error('Error fetching account:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -143,8 +143,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				updatedAt: new Date().toISOString()
 			}
 		});
-	} catch (error) {
-		console.error('Error updating account:', error);
+	} catch {
+		console.error('Error updating account:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -196,8 +196,8 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		return json({
 			message: 'Akun berhasil dinonaktifkan'
 		});
-	} catch (error) {
-		console.error('Error deleting account:', error);
+	} catch {
+		console.error('Error deleting account:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

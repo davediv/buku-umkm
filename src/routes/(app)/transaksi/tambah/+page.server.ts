@@ -48,8 +48,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 			accounts,
 			templates: mappedTemplates
 		};
-	} catch (error) {
-		console.error('Error loading transaction form data:', error);
+	} catch {
+		console.error('Error loading transaction form data:');
 		return {
 			categories: { income: [], expense: [] },
 			accounts: [],

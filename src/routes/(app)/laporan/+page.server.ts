@@ -446,8 +446,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					}
 				: null
 		};
-	} catch (error) {
-		console.error('Error fetching laporan data:', error);
+	} catch {
+		console.error('Error fetching laporan data:');
 		return {
 			reportType,
 			period,

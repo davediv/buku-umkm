@@ -44,8 +44,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 				}
 			}
 		};
-	} catch (error) {
-		console.error('Error fetching categories:', error);
+	} catch {
+		console.error('Error fetching categories:');
 		return {
 			categories: {
 				income: { all: [], groups: {} },
@@ -108,8 +108,8 @@ export const actions: Actions = {
 					updatedAt: now
 				}
 			};
-		} catch (error) {
-			console.error('Error creating category:', error);
+		} catch {
+			console.error('Error creating category:');
 			return fail(500, { error: 'Terjadi kesalahan server', success: false });
 		}
 	},
@@ -154,8 +154,8 @@ export const actions: Actions = {
 				success: true,
 				message: 'Kategori berhasil diperbarui'
 			};
-		} catch (error) {
-			console.error('Error updating category:', error);
+		} catch {
+			console.error('Error updating category:');
 			return fail(500, { error: 'Terjadi kesalahan server', success: false });
 		}
 	},
@@ -190,8 +190,8 @@ export const actions: Actions = {
 				success: true,
 				message: isActive ? 'Kategori berhasil diaktifkan' : 'Kategori berhasil dinonaktifkan'
 			};
-		} catch (error) {
-			console.error('Error toggling category:', error);
+		} catch {
+			console.error('Error toggling category:');
 			return fail(500, { error: 'Terjadi kesalahan server', success: false });
 		}
 	},
@@ -241,8 +241,8 @@ export const actions: Actions = {
 				success: true,
 				message: 'Kategori berhasil dihapus'
 			};
-		} catch (error) {
-			console.error('Error deleting category:', error);
+		} catch {
+			console.error('Error deleting category:');
 			return fail(500, { error: 'Terjadi kesalahan server', success: false });
 		}
 	}

@@ -155,8 +155,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 				{ status: 201 }
 			);
 		}
-	} catch (error) {
-		console.error('Error in POST /api/tax/[year]/[month]/mark-paid:', error);
+	} catch {
+		console.error('Error in POST /api/tax/[year]/[month]/mark-paid:');
 		return json({ error: 'Failed to mark tax as paid' }, { status: 500 });
 	}
 };

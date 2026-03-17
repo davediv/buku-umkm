@@ -66,8 +66,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				}))
 			}
 		});
-	} catch (error) {
-		console.error('Error fetching debt:', error);
+	} catch {
+		console.error('Error fetching debt:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -171,8 +171,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				updatedAt: updatedDebt.updatedAt
 			}
 		});
-	} catch (error) {
-		console.error('Error updating debt:', error);
+	} catch {
+		console.error('Error updating debt:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -211,8 +211,8 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		return json({
 			message: 'Hutang/piutang berhasil dihapus'
 		});
-	} catch (error) {
-		console.error('Error deleting debt:', error);
+	} catch {
+		console.error('Error deleting debt:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

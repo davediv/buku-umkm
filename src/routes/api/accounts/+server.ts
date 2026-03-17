@@ -46,8 +46,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 		}));
 
 		return json({ accounts: mappedAccounts });
-	} catch (error) {
-		console.error('Error fetching accounts:', error);
+	} catch {
+		console.error('Error fetching accounts:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -131,8 +131,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			},
 			{ status: 201 }
 		);
-	} catch (error) {
-		console.error('Error creating account:', error);
+	} catch {
+		console.error('Error creating account:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

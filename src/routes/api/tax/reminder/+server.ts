@@ -189,8 +189,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 		};
 
 		return json({ data: response });
-	} catch (error) {
-		console.error('Error in GET /api/tax/reminder:', error);
+	} catch {
+		console.error('Error in GET /api/tax/reminder:');
 		return json({ error: 'Failed to fetch tax reminder' }, { status: 500 });
 	}
 };

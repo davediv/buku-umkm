@@ -93,22 +93,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'Akun tujuan tidak ditemukan' }, { status: 400 });
 		}
 
-		// Validate source account has sufficient balance
-		if (sourceAccount.balance < amount) {
-			return json(
-				{
-					error: `Saldo tidak mencukupi. Saldo tersedia: Rp${sourceAccount.balance.toLocaleString('id-ID')}`
-				},
-				{ status: 400 }
-			);
-		}
-
 		// Generate transfer ID to link both transactions
 		const transferId = crypto.randomUUID();
 		const now = new Date().toISOString();
 
 		// Create transfer and update both account balances in a transaction
+		// Balance check is inside the transaction to prevent TOCTOU race conditions
 		await db.transaction(async (tx) => {
+			// Re-read balance inside transaction to prevent race condition
+			const [currentSource] = await tx
+				.select({ balance: chartOfAccount.balance })
+				.from(chartOfAccount)
+				.where(
+					and(eq(chartOfAccount.userId, userId), eq(chartOfAccount.id, body.source_account_id))
+				);
+
+			if (!currentSource || currentSource.balance < amount) {
+				throw new Error('Saldo tidak mencukupi');
+			}
 			// Create expense transaction (money out from source)
 			const expenseId = crypto.randomUUID();
 			await tx.insert(transaction).values({
@@ -181,7 +183,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			{ status: 201 }
 		);
 	} catch (error) {
-		console.error('Error creating transfer:', error);
+		// Handle balance insufficient error from transaction
+		if (error instanceof Error && error.message === 'Saldo tidak mencukupi') {
+			return json({ error: 'Saldo tidak mencukupi' }, { status: 400 });
+		}
+		console.error('Error creating transfer');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

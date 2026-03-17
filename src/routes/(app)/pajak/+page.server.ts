@@ -1,3 +1,4 @@
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 interface TaxApiResponse<T> {
@@ -11,11 +12,7 @@ interface TaxApiResponse<T> {
 export const load: PageServerLoad = async ({ locals, fetch }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return {
-			summary: null,
-			history: null,
-			error: 'Unauthorized'
-		};
+		throw redirect(302, '/masuk');
 	}
 
 	try {
@@ -37,8 +34,8 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
 			history: historyData.data || null,
 			error: null
 		};
-	} catch (err) {
-		console.error('Error loading tax data:', err);
+	} catch {
+		console.error('Error loading tax data');
 		return {
 			summary: null,
 			history: null,

@@ -100,8 +100,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				}
 			}
 		};
-	} catch (error) {
-		console.error('Error fetching dashboard data:', error);
+	} catch {
+		console.error('Error fetching dashboard data:');
 		return {
 			dashboard: null,
 			error: 'Gagal memuat data dashboard'

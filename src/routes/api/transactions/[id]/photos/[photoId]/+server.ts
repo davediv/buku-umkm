@@ -53,8 +53,8 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		return json({
 			message: 'Foto berhasil dihapus'
 		});
-	} catch (error) {
-		console.error('Error deleting transaction photo:', error);
+	} catch {
+		console.error('Error deleting transaction photo:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

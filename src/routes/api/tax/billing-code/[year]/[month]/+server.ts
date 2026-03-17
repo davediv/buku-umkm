@@ -120,8 +120,8 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		};
 
 		return json({ data: response });
-	} catch (error) {
-		console.error('Error in GET /api/tax/billing-code/[year]/[month]:', error);
+	} catch {
+		console.error('Error in GET /api/tax/billing-code/[year]/[month]:');
 		return json({ error: 'Failed to fetch billing code data' }, { status: 500 });
 	}
 };

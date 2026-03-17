@@ -321,6 +321,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const db = getDb();
 
 	try {
+		// Enforce body size limit (50MB)
+		const MAX_RESTORE_SIZE = 50 * 1024 * 1024;
+		const contentLength = parseInt(request.headers.get('content-length') || '0', 10);
+		if (contentLength > MAX_RESTORE_SIZE) {
+			return json({ error: 'Ukuran file terlalu besar (maks 50MB)' }, { status: 413 });
+		}
+
 		// Get backup file from request
 		const contentType = request.headers.get('content-type') ?? '';
 
@@ -329,6 +336,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (contentType.includes('application/json')) {
 			// Parse JSON directly
 			const text = await request.text();
+			if (text.length > MAX_RESTORE_SIZE) {
+				return json({ error: 'Ukuran file terlalu besar (maks 50MB)' }, { status: 413 });
+			}
 			backupData = JSON.parse(text);
 		} else if (contentType.includes('multipart/form-data')) {
 			// Handle multipart form data with file upload
@@ -351,7 +361,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: validation.error }, { status: 400 });
 		}
 
-		console.log(`Starting restore for user ${userId}, schema version: ${validation.version}`);
+		console.log(`Starting restore, schema version: ${validation.version}`);
 
 		// Use transaction to ensure atomicity - if any step fails, rollback
 		await db.transaction(async (tx) => {
@@ -362,14 +372,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			await insertBackupData(tx, userId, backupData as Record<string, unknown>);
 		});
 
-		console.log(`Restore completed successfully for user ${userId}`);
+		console.log('Restore completed successfully');
 
 		return json({
 			success: true,
 			message: 'Data berhasil dipulihkan dari backup'
 		});
 	} catch (error) {
-		console.error('Error restoring backup:', error);
+		console.error('Error restoring backup');
 
 		if (error instanceof SyntaxError) {
 			return json({ error: 'Format file backup tidak valid' }, { status: 400 });

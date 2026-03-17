@@ -219,9 +219,7 @@ export const POST: RequestHandler = async ({ locals }) => {
 			taxRecords.length +
 			templates.length;
 
-		console.log(
-			`Backup generated for user ${userId}: ${recordCount} records, business: ${businessName}`
-		);
+		console.log(`Backup generated: ${recordCount} records`);
 
 		// Return JSON as downloadable file
 		return new Response(JSON.stringify(backupData), {
@@ -230,8 +228,8 @@ export const POST: RequestHandler = async ({ locals }) => {
 				'Content-Disposition': `attachment; filename="backup-${businessName.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.json"`
 			}
 		});
-	} catch (error) {
-		console.error('Error generating backup:', error);
+	} catch {
+		console.error('Error generating backup');
 		return json({ error: 'Terjadi kesalahan saat membuat cadangan' }, { status: 500 });
 	}
 };

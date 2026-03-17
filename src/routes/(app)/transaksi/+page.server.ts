@@ -32,8 +32,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			transactions,
 			filters: { type, startDate, endDate }
 		};
-	} catch (error) {
-		console.error('Error loading transactions:', error);
+	} catch {
+		console.error('Error loading transactions:');
 		return {
 			transactions: [],
 			error: 'Gagal memuat transaksi'

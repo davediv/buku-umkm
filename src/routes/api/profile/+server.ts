@@ -76,8 +76,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 		const serializedProfile = await serializeProfile(profile);
 
 		return json({ profile: serializedProfile });
-	} catch (error) {
-		console.error('Error fetching profile:', error);
+	} catch {
+		console.error('Error fetching profile:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -184,8 +184,8 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 			message: 'Profil berhasil diperbarui',
 			profile: serializedProfile
 		});
-	} catch (error) {
-		console.error('Error updating profile:', error);
+	} catch {
+		console.error('Error updating profile:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

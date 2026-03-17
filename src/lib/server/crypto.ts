@@ -4,8 +4,17 @@
 // Compatible with Cloudflare Workers environment
 // ============================================================================
 
-// Encryption key - in production, use environment variable
-const ENCRYPTION_SECRET = 'buku-umkm-npwp-encryption-key-v1';
+import { env } from '$env/dynamic/private';
+
+function getEncryptionSecret(): string {
+	const secret = env.NPWP_ENCRYPTION_KEY;
+	if (!secret || secret.length < 32) {
+		throw new Error(
+			'NPWP_ENCRYPTION_KEY environment variable must be set (at least 32 characters)'
+		);
+	}
+	return secret;
+}
 
 // Cached encryption key to avoid expensive recomputation
 let cachedKey: Promise<CryptoKey> | null = null;
@@ -16,7 +25,7 @@ let cachedKey: Promise<CryptoKey> | null = null;
 function deriveKey(): Promise<CryptoKey> {
 	if (!cachedKey) {
 		const encoder = new TextEncoder();
-		const keyMaterial = encoder.encode(ENCRYPTION_SECRET);
+		const keyMaterial = encoder.encode(getEncryptionSecret());
 		cachedKey = self.crypto.subtle
 			.digest('SHA-256', keyMaterial)
 			.then((hashedKey) =>
@@ -87,8 +96,8 @@ export async function decryptNPWP(encryptedNpwp: string): Promise<string | null>
 
 		const decoder = new TextDecoder();
 		return decoder.decode(decrypted);
-	} catch (error) {
-		console.error('Failed to decrypt NPWP:', error);
+	} catch {
+		console.error('Failed to decrypt NPWP');
 		return null;
 	}
 }

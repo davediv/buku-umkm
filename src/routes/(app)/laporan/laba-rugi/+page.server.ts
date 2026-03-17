@@ -152,8 +152,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				}
 			}
 		};
-	} catch (error) {
-		console.error('Error fetching profit/loss data:', error);
+	} catch {
+		console.error('Error fetching profit/loss data:');
 		return {
 			profitLoss: null,
 			error: 'Gagal memuat data laporan laba/rugi'

@@ -40,8 +40,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 			categories,
 			templates: mappedTemplates
 		};
-	} catch (error) {
-		console.error('Error fetching templates:', error);
+	} catch {
+		console.error('Error fetching templates:');
 		return {
 			categories: { income: [], expense: [] },
 			templates: [],
@@ -106,8 +106,8 @@ export const actions: Actions = {
 					isActive: true
 				}
 			};
-		} catch (error) {
-			console.error('Error creating template:', error);
+		} catch {
+			console.error('Error creating template:');
 			return fail(500, { error: 'Terjadi kesalahan server', success: false });
 		}
 	},
@@ -158,8 +158,8 @@ export const actions: Actions = {
 				success: true,
 				message: 'Template berhasil diperbarui'
 			};
-		} catch (error) {
-			console.error('Error updating template:', error);
+		} catch {
+			console.error('Error updating template:');
 			return fail(500, { error: 'Terjadi kesalahan server', success: false });
 		}
 	},
@@ -198,8 +198,8 @@ export const actions: Actions = {
 				success: true,
 				message: 'Template berhasil dihapus'
 			};
-		} catch (error) {
-			console.error('Error deleting template:', error);
+		} catch {
+			console.error('Error deleting template:');
 			return fail(500, { error: 'Terjadi kesalahan server', success: false });
 		}
 	},
@@ -228,8 +228,8 @@ export const actions: Actions = {
 				success: true,
 				message: isActive ? 'Template berhasil diaktifkan' : 'Template berhasil dinonaktifkan'
 			};
-		} catch (error) {
-			console.error('Error toggling template:', error);
+		} catch {
+			console.error('Error toggling template:');
 			return fail(500, { error: 'Terjadi kesalahan server', success: false });
 		}
 	}

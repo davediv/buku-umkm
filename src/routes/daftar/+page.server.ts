@@ -35,6 +35,10 @@ export const actions: Actions = {
 			errors.password = 'Kata sandi wajib diisi';
 		} else if (password.length < 8) {
 			errors.password = 'Kata sandi minimal 8 karakter';
+		} else if (password.length > 128) {
+			errors.password = 'Kata sandi maksimal 128 karakter';
+		} else if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+			errors.password = 'Kata sandi harus mengandung huruf besar, huruf kecil, dan angka';
 		}
 
 		if (!confirmPassword) {
@@ -59,10 +63,13 @@ export const actions: Actions = {
 			});
 		} catch (error) {
 			if (error instanceof APIError) {
-				return fail(400, {
-					message: error.message || 'Pendaftaran gagal',
-					values: { name, email }
-				});
+				if (
+					error.message?.toLowerCase().includes('email') &&
+					error.message?.toLowerCase().includes('exist')
+				) {
+					return fail(400, { message: 'Email sudah terdaftar', values: { name, email } });
+				}
+				return fail(400, { message: 'Pendaftaran gagal', values: { name, email } });
 			}
 			return fail(500, { message: 'Terjadi kesalahan server', values: { name, email } });
 		}

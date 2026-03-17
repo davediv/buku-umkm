@@ -46,8 +46,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			accounts,
 			photos
 		};
-	} catch (error) {
-		console.error('Error loading transaction:', error);
+	} catch {
+		console.error('Error loading transaction:');
 		return { error: 'Gagal memuat data transaksi' };
 	}
 };

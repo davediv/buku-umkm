@@ -39,8 +39,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 		}));
 
 		return json({ categories: mappedCategories });
-	} catch (error) {
-		console.error('Error fetching categories:', error);
+	} catch {
+		console.error('Error fetching categories:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -111,8 +111,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			},
 			{ status: 201 }
 		);
-	} catch (error) {
-		console.error('Error creating category:', error);
+	} catch {
+		console.error('Error creating category:');
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

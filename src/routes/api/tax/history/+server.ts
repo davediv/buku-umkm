@@ -135,8 +135,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		};
 
 		return json({ data: response });
-	} catch (error) {
-		console.error('Error in GET /api/tax/history:', error);
+	} catch {
+		console.error('Error in GET /api/tax/history:');
 		return json({ error: 'Failed to fetch tax history' }, { status: 500 });
 	}
 };
