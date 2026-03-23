@@ -454,7 +454,7 @@ export async function triggerSync(userId: string, options?: { auto?: boolean }):
 			return true;
 		}
 
-		console.log(`Starting sync for user: ${userId}, pending: ${totalPending}`);
+		console.log(`Starting sync, pending: ${totalPending}`);
 
 		// Sync each table in batches
 		const results = await Promise.all([

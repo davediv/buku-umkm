@@ -44,9 +44,11 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
 			contentType = 'image/png';
 		}
 
+		const fileName = key.split('/').pop() || 'photo';
 		return new Response(object.body, {
 			headers: {
 				'Content-Type': contentType,
+				'Content-Disposition': `inline; filename="${fileName}"`,
 				'Cache-Control': 'private, max-age=31536000',
 				'X-Content-Type-Options': 'nosniff'
 			}

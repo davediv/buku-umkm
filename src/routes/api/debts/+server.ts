@@ -96,6 +96,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'Nama kontak wajib diisi' }, { status: 400 });
 		}
 
+		if (body.contact_name.length > 200) {
+			return json({ error: 'Nama kontak maksimal 200 karakter' }, { status: 400 });
+		}
+
+		if (body.contact_phone && body.contact_phone.length > 20) {
+			return json({ error: 'Nomor telepon maksimal 20 karakter' }, { status: 400 });
+		}
+
+		if (body.contact_address && body.contact_address.length > 500) {
+			return json({ error: 'Alamat maksimal 500 karakter' }, { status: 400 });
+		}
+
+		if (body.description && body.description.length > 500) {
+			return json({ error: 'Keterangan maksimal 500 karakter' }, { status: 400 });
+		}
+
 		const amount = Math.floor(Number(body.amount));
 		if (!amount || amount <= 0) {
 			return json({ error: 'Jumlah harus lebih dari 0' }, { status: 400 });

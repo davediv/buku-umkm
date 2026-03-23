@@ -28,7 +28,7 @@ export const actions: Actions = {
 			});
 		} catch (error) {
 			if (error instanceof APIError) {
-				return fail(400, { message: error.message || 'Signin failed' });
+				return fail(400, { message: 'Email atau kata sandi salah' });
 			}
 			return fail(500, { message: 'Unexpected error' });
 		}
@@ -53,7 +53,7 @@ export const actions: Actions = {
 			});
 		} catch (error) {
 			if (error instanceof APIError) {
-				return fail(400, { message: error.message || 'Registration failed' });
+				return fail(400, { message: 'Pendaftaran gagal' });
 			}
 			return fail(500, { message: 'Unexpected error' });
 		}

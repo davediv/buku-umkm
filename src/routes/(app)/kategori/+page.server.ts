@@ -75,6 +75,10 @@ export const actions: Actions = {
 				return fail(400, { error: 'Nama kategori wajib diisi', success: false });
 			}
 
+			if (name.length > 200) {
+				return fail(400, { error: 'Nama kategori maksimal 200 karakter', success: false });
+			}
+
 			if (!type || (type !== 'income' && type !== 'expense')) {
 				return fail(400, { error: 'Tipe kategori wajib dipilih', success: false });
 			}
@@ -134,6 +138,10 @@ export const actions: Actions = {
 
 			if (!name || name.trim() === '') {
 				return fail(400, { error: 'Nama kategori wajib diisi', success: false });
+			}
+
+			if (name.length > 200) {
+				return fail(400, { error: 'Nama kategori maksimal 200 karakter', success: false });
 			}
 
 			// Check if category exists

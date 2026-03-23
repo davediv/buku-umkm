@@ -10,9 +10,49 @@ import {
 	businessProfile
 } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { MAX_TRANSACTION_AMOUNT } from '$lib/constants';
 
 // Batch size for syncing records
 const BATCH_SIZE = 50;
+const MAX_SYNC_BODY_SIZE = 5 * 1024 * 1024;
+const MAX_STRING_LENGTH = 500;
+
+// ============================================================================
+// Input Validation Helpers
+// ============================================================================
+
+function isValidId(value: unknown): value is string {
+	return typeof value === 'string' && value.length > 0 && value.length <= 36;
+}
+
+function isValidDateString(value: unknown): value is string {
+	if (typeof value !== 'string') return false;
+	const date = new Date(value);
+	return !isNaN(date.getTime());
+}
+
+function isValidAmount(value: unknown): boolean {
+	return (
+		typeof value === 'number' &&
+		Number.isFinite(value) &&
+		value >= 0 &&
+		value <= MAX_TRANSACTION_AMOUNT
+	);
+}
+
+function truncStr(value: unknown, maxLen = MAX_STRING_LENGTH): string | null {
+	if (value === null || value === undefined) return null;
+	const str = String(value);
+	return str.length > maxLen ? str.slice(0, maxLen) : str;
+}
+
+function validateBaseRecord(record: Record<string, unknown>): boolean {
+	return (
+		isValidId(record.id) &&
+		isValidDateString(record.createdAt) &&
+		isValidDateString(record.updatedAt)
+	);
+}
 
 // ============================================================================
 // Helper: Convert IndexedDB record to D1 schema format
@@ -25,15 +65,15 @@ function toTransactionDbRecord(record: Record<string, unknown>, userId: string) 
 		date: record.date as string,
 		type: record.type as 'income' | 'expense' | 'transfer',
 		amount: record.amount as number,
-		description: record.description as string | null,
+		description: truncStr(record.description),
 		accountId: record.accountId as string,
-		toAccountId: record.toAccountId as string | null,
-		categoryId: record.categoryId as string | null,
-		debtId: record.debtId as string | null,
+		toAccountId: truncStr(record.toAccountId, 36),
+		categoryId: truncStr(record.categoryId, 36),
+		debtId: truncStr(record.debtId, 36),
 		isTaxed: record.isTaxed as boolean,
 		taxAmount: record.taxAmount as number,
-		referenceNumber: record.referenceNumber as string | null,
-		notes: record.notes as string | null,
+		referenceNumber: truncStr(record.referenceNumber, 100),
+		notes: truncStr(record.notes),
 		isActive: record.isActive as boolean,
 		createdAt: new Date(record.createdAt as string),
 		updatedAt: new Date(record.updatedAt as string)
@@ -44,13 +84,13 @@ function toAccountDbRecord(record: Record<string, unknown>, userId: string) {
 	return {
 		id: record.id as string,
 		userId,
-		code: record.code as string,
-		name: record.name as string,
+		code: truncStr(record.code, 20) as string,
+		name: truncStr(record.name, 200) as string,
 		type: record.type as 'asset' | 'liability' | 'equity' | 'revenue' | 'expense',
-		subType: record.subType as string | null,
+		subType: truncStr(record.subType, 50),
 		isSystem: record.isSystem as boolean,
 		isActive: record.isActive as boolean,
-		parentId: record.parentId as string | null,
+		parentId: truncStr(record.parentId, 36),
 		balance: record.balance as number,
 		createdAt: new Date(record.createdAt as string),
 		updatedAt: new Date(record.updatedAt as string)
@@ -61,13 +101,13 @@ function toCategoryDbRecord(record: Record<string, unknown>, userId: string) {
 	return {
 		id: record.id as string,
 		userId,
-		code: record.code as string,
-		name: record.name as string,
+		code: truncStr(record.code, 20) as string,
+		name: truncStr(record.name, 200) as string,
 		type: record.type as 'income' | 'expense',
 		isSystem: record.isSystem as boolean,
 		isActive: record.isActive as boolean,
-		icon: record.icon as string | null,
-		color: record.color as string | null,
+		icon: truncStr(record.icon, 50),
+		color: truncStr(record.color, 20),
 		createdAt: new Date(record.createdAt as string),
 		updatedAt: new Date(record.updatedAt as string)
 	};
@@ -78,15 +118,15 @@ function toDebtDbRecord(record: Record<string, unknown>, userId: string) {
 		id: record.id as string,
 		userId,
 		type: record.type as 'piutang' | 'hutang',
-		contactName: record.contactName as string,
-		contactPhone: record.contactPhone as string | null,
-		contactAddress: record.contactAddress as string | null,
+		contactName: truncStr(record.contactName, 200) as string,
+		contactPhone: truncStr(record.contactPhone, 20),
+		contactAddress: truncStr(record.contactAddress),
 		originalAmount: record.originalAmount as number,
 		paidAmount: record.paidAmount as number,
 		remainingAmount: record.remainingAmount as number,
 		date: record.date as string,
 		dueDate: record.dueDate as string | null,
-		description: record.description as string | null,
+		description: truncStr(record.description),
 		status: record.status as 'active' | 'paid' | 'overdue',
 		isActive: record.isActive as boolean,
 		createdAt: new Date(record.createdAt as string),
@@ -98,13 +138,13 @@ function toBusinessProfileDbRecord(record: Record<string, unknown>, userId: stri
 	return {
 		id: record.id as string,
 		userId,
-		name: record.name as string,
-		address: record.address as string | null,
-		phone: record.phone as string | null,
-		npwp: record.npwp as string | null,
-		businessType: record.businessType as string,
-		ownerName: record.ownerName as string | null,
-		industry: record.industry as string | null,
+		name: truncStr(record.name, 200) as string,
+		address: truncStr(record.address),
+		phone: truncStr(record.phone, 20),
+		npwp: truncStr(record.npwp, 100),
+		businessType: truncStr(record.businessType, 50) as string,
+		ownerName: truncStr(record.ownerName, 200),
+		industry: truncStr(record.industry, 100),
 		createdAt: new Date(record.createdAt as string),
 		updatedAt: new Date(record.updatedAt as string)
 	};
@@ -124,13 +164,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const db = getDb();
 
 	try {
-		// Enforce body size limit
+		// Enforce body size limit - check actual body, not just Content-Length header
 		const contentLength = parseInt(request.headers.get('content-length') || '0', 10);
-		if (contentLength > 5 * 1024 * 1024) {
+		if (contentLength > MAX_SYNC_BODY_SIZE) {
 			return json({ error: 'Request body too large' }, { status: 413 });
 		}
 
-		const body = await request.json();
+		const text = await request.text();
+		if (text.length > MAX_SYNC_BODY_SIZE) {
+			return json({ error: 'Request body too large' }, { status: 413 });
+		}
+
+		const body = JSON.parse(text);
 
 		const {
 			transactions = [],
@@ -173,6 +218,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			await db.transaction(async (tx) => {
 				for (const record of batch) {
 					try {
+						if (
+							!validateBaseRecord(record) ||
+							!['income', 'expense', 'transfer'].includes(record.type as string) ||
+							!isValidAmount(record.amount)
+						) {
+							results.transactions.push({
+								id: String(record.id || 'unknown'),
+								success: false,
+								error: 'Validation failed'
+							});
+							continue;
+						}
+
 						const dbRecord = toTransactionDbRecord(record, userId);
 						const existing = await tx
 							.select()
@@ -210,9 +268,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							await tx.insert(transaction).values(dbRecord);
 						}
 						results.transactions.push({ id: dbRecord.id, success: true });
-					} catch (err) {
-						const error = err instanceof Error ? err.message : 'Unknown error';
-						results.transactions.push({ id: record.id as string, success: false, error });
+					} catch {
+						results.transactions.push({
+							id: String(record.id || 'unknown'),
+							success: false,
+							error: 'Sync failed'
+						});
 					}
 				}
 			});
@@ -225,6 +286,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			await db.transaction(async (tx) => {
 				for (const record of batch) {
 					try {
+						if (
+							!validateBaseRecord(record) ||
+							!['asset', 'liability', 'equity', 'revenue', 'expense'].includes(
+								record.type as string
+							)
+						) {
+							results.accounts.push({
+								id: String(record.id || 'unknown'),
+								success: false,
+								error: 'Validation failed'
+							});
+							continue;
+						}
+
 						const dbRecord = toAccountDbRecord(record, userId);
 						const existing = await tx
 							.select()
@@ -254,9 +329,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							await tx.insert(chartOfAccount).values(dbRecord);
 						}
 						results.accounts.push({ id: dbRecord.id, success: true });
-					} catch (err) {
-						const error = err instanceof Error ? err.message : 'Unknown error';
-						results.accounts.push({ id: record.id as string, success: false, error });
+					} catch {
+						results.accounts.push({
+							id: String(record.id || 'unknown'),
+							success: false,
+							error: 'Sync failed'
+						});
 					}
 				}
 			});
@@ -269,6 +347,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			await db.transaction(async (tx) => {
 				for (const record of batch) {
 					try {
+						if (
+							!validateBaseRecord(record) ||
+							!['income', 'expense'].includes(record.type as string)
+						) {
+							results.categories.push({
+								id: String(record.id || 'unknown'),
+								success: false,
+								error: 'Validation failed'
+							});
+							continue;
+						}
+
 						const dbRecord = toCategoryDbRecord(record, userId);
 						const existing = await tx
 							.select()
@@ -296,9 +386,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							await tx.insert(category).values(dbRecord);
 						}
 						results.categories.push({ id: dbRecord.id, success: true });
-					} catch (err) {
-						const error = err instanceof Error ? err.message : 'Unknown error';
-						results.categories.push({ id: record.id as string, success: false, error });
+					} catch {
+						results.categories.push({
+							id: String(record.id || 'unknown'),
+							success: false,
+							error: 'Sync failed'
+						});
 					}
 				}
 			});
@@ -311,6 +404,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			await db.transaction(async (tx) => {
 				for (const record of batch) {
 					try {
+						if (
+							!validateBaseRecord(record) ||
+							!['piutang', 'hutang'].includes(record.type as string) ||
+							!isValidAmount(record.originalAmount)
+						) {
+							results.debts.push({
+								id: String(record.id || 'unknown'),
+								success: false,
+								error: 'Validation failed'
+							});
+							continue;
+						}
+
 						const dbRecord = toDebtDbRecord(record, userId);
 						const existing = await tx
 							.select()
@@ -344,9 +450,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							await tx.insert(debt).values(dbRecord);
 						}
 						results.debts.push({ id: dbRecord.id, success: true });
-					} catch (err) {
-						const error = err instanceof Error ? err.message : 'Unknown error';
-						results.debts.push({ id: record.id as string, success: false, error });
+					} catch {
+						results.debts.push({
+							id: String(record.id || 'unknown'),
+							success: false,
+							error: 'Sync failed'
+						});
 					}
 				}
 			});
@@ -355,6 +464,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Process business profiles
 		for (const record of businessProfiles as Record<string, unknown>[]) {
 			try {
+				if (!validateBaseRecord(record)) {
+					results.businessProfiles.push({
+						id: String(record.id || 'unknown'),
+						success: false,
+						error: 'Validation failed'
+					});
+					continue;
+				}
+
 				const dbRecord = toBusinessProfileDbRecord(record, userId);
 				const existing = await db
 					.select()
@@ -383,9 +501,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					await db.insert(businessProfile).values(dbRecord);
 				}
 				results.businessProfiles.push({ id: dbRecord.id, success: true });
-			} catch (err) {
-				const error = err instanceof Error ? err.message : 'Unknown error';
-				results.businessProfiles.push({ id: record.id as string, success: false, error });
+			} catch {
+				results.businessProfiles.push({
+					id: String(record.id || 'unknown'),
+					success: false,
+					error: 'Sync failed'
+				});
 			}
 		}
 

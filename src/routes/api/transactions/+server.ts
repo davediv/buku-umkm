@@ -28,8 +28,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 	try {
 		// Parse query params
-		const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
-		const offset = parseInt(url.searchParams.get('offset') || '0');
+		const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 100);
+		const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0);
 		const accountId = url.searchParams.get('account_id') || undefined;
 		const categoryId = url.searchParams.get('category_id') || undefined;
 		const type = (url.searchParams.get('type') as 'income' | 'expense' | 'transfer') || undefined;
@@ -133,6 +133,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				{ error: `Jumlah maksimal adalah Rp${MAX_TRANSACTION_AMOUNT.toLocaleString('id-ID')}` },
 				{ status: 400 }
 			);
+		}
+
+		// Validate string lengths
+		if (body.description && body.description.length > 500) {
+			return json({ error: 'Keterangan maksimal 500 karakter' }, { status: 400 });
 		}
 
 		// Validate date - cannot be in the future

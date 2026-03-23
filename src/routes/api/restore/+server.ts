@@ -349,7 +349,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				return json({ error: 'File backup tidak ditemukan' }, { status: 400 });
 			}
 
+			if (file.size > MAX_RESTORE_SIZE) {
+				return json({ error: 'Ukuran file terlalu besar (maks 50MB)' }, { status: 413 });
+			}
+
 			const text = await file.text();
+			if (text.length > MAX_RESTORE_SIZE) {
+				return json({ error: 'Ukuran file terlalu besar (maks 50MB)' }, { status: 413 });
+			}
 			backupData = JSON.parse(text);
 		} else {
 			return json({ error: 'Format request tidak didukung' }, { status: 400 });

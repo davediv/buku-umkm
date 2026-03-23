@@ -108,6 +108,23 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'Nama usaha wajib diisi' }, { status: 400 });
 		}
 
+		// Validate string lengths
+		if (body.name && body.name.length > 200) {
+			return json({ error: 'Nama usaha maksimal 200 karakter' }, { status: 400 });
+		}
+		if (body.address && body.address.length > 500) {
+			return json({ error: 'Alamat maksimal 500 karakter' }, { status: 400 });
+		}
+		if (body.phone && body.phone.length > 20) {
+			return json({ error: 'Nomor telepon maksimal 20 karakter' }, { status: 400 });
+		}
+		if (body.ownerName && body.ownerName.length > 200) {
+			return json({ error: 'Nama pemilik maksimal 200 karakter' }, { status: 400 });
+		}
+		if (body.industry && body.industry.length > 100) {
+			return json({ error: 'Industri maksimal 100 karakter' }, { status: 400 });
+		}
+
 		// Validate business type
 		if (body.businessType !== undefined) {
 			if (

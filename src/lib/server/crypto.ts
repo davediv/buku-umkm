@@ -33,7 +33,11 @@ function deriveKey(): Promise<CryptoKey> {
 					'encrypt',
 					'decrypt'
 				])
-			);
+			)
+			.catch((err) => {
+				cachedKey = null;
+				throw err;
+			});
 	}
 	return cachedKey;
 }

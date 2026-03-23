@@ -23,6 +23,11 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'Email dan password wajib diisi' }, { status: 400 });
 		}
 
+		// Validate email format
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+			return json({ error: 'Email tidak valid' }, { status: 400 });
+		}
+
 		// Validate password strength
 		if (password.length < 8) {
 			return json({ error: 'Password minimal 8 karakter' }, { status: 400 });
@@ -48,14 +53,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 		});
 
-		// Extract session from the result - better-auth returns session in different ways
-		const session =
-			'session' in result ? result.session : { token: result.token, user: result.user };
-
 		return json({
 			message: 'Pendaftaran berhasil',
-			user: result.user,
-			session
+			user: { id: result.user.id, name: result.user.name, email: result.user.email }
 		});
 	} catch (error) {
 		if (error instanceof APIError) {

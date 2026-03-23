@@ -114,14 +114,39 @@ const handleCSP: Handle = async ({ event, resolve }) => {
 	// Security headers
 	response.headers.set('X-Content-Type-Options', 'nosniff');
 	response.headers.set('X-Frame-Options', 'DENY');
-	response.headers.set('X-XSS-Protection', '1; mode=block');
 	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-	response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+	response.headers.set(
+		'Permissions-Policy',
+		'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()'
+	);
 	response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
 	response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
 	response.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
 
 	return response;
+};
+
+// ============================================
+// CSRF Protection Handler
+// ============================================
+
+const handleCSRF: Handle = async ({ event, resolve }) => {
+	const method = event.request.method;
+	// Only check state-changing methods
+	if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+		return resolve(event);
+	}
+
+	const origin = event.request.headers.get('origin');
+	if (origin) {
+		const requestUrl = new URL(event.url);
+		const originUrl = new URL(origin);
+		if (originUrl.origin !== requestUrl.origin) {
+			return new Response('Forbidden', { status: 403 });
+		}
+	}
+
+	return resolve(event);
 };
 
 // ============================================
@@ -140,4 +165,4 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	return svelteKitHandler({ event, resolve, auth, building });
 };
 
-export const handle = sequence(handleRateLimit, handleCSP, handleBetterAuth);
+export const handle = sequence(handleCSRF, handleRateLimit, handleCSP, handleBetterAuth);

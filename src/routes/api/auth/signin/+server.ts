@@ -29,14 +29,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 		});
 
-		// Extract session from the result - better-auth returns session in different ways
-		const session =
-			'session' in result ? result.session : { token: result.token, user: result.user };
-
 		return json({
 			message: 'Login berhasil',
-			user: result.user,
-			session
+			user: { id: result.user.id, name: result.user.name, email: result.user.email }
 		});
 	} catch (error) {
 		if (error instanceof APIError) {
