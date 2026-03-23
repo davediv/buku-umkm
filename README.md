@@ -65,16 +65,16 @@ Update the placeholder values in `wrangler.jsonc` with your actual resource IDs:
 
 ```jsonc
 {
-  "d1_databases": [
-    {
-      "database_id": "<YOUR_D1_DATABASE_ID>" // from step 2
-    }
-  ],
-  "kv_namespaces": [
-    {
-      "id": "<YOUR_KV_NAMESPACE_ID>" // from step 2
-    }
-  ]
+	"d1_databases": [
+		{
+			"database_id": "<YOUR_D1_DATABASE_ID>" // from step 2
+		}
+	],
+	"kv_namespaces": [
+		{
+			"id": "<YOUR_KV_NAMESPACE_ID>" // from step 2
+		}
+	]
 }
 ```
 
@@ -113,19 +113,19 @@ Open [http://localhost:5173](http://localhost:5173).
 
 ## Available Scripts
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Start dev server |
-| `npm run build` | Build for production |
-| `npm run preview` | Build and preview with Wrangler |
-| `npm run check` | Run Svelte type checking |
-| `npm run lint` | Run Prettier and ESLint |
-| `npm run format` | Format code with Prettier |
-| `npm run test` | Run tests |
-| `npm run db:generate` | Generate Drizzle migrations from schema changes |
-| `npm run db:migrate:local` | Apply migrations to local D1 |
-| `npm run db:migrate:remote` | Apply migrations to remote D1 |
-| `npm run deploy` | Build and deploy to Cloudflare Workers |
+| Command                     | Description                                     |
+| --------------------------- | ----------------------------------------------- |
+| `npm run dev`               | Start dev server                                |
+| `npm run build`             | Build for production                            |
+| `npm run preview`           | Build and preview with Wrangler                 |
+| `npm run check`             | Run Svelte type checking                        |
+| `npm run lint`              | Run Prettier and ESLint                         |
+| `npm run format`            | Format code with Prettier                       |
+| `npm run test`              | Run tests                                       |
+| `npm run db:generate`       | Generate Drizzle migrations from schema changes |
+| `npm run db:migrate:local`  | Apply migrations to local D1                    |
+| `npm run db:migrate:remote` | Apply migrations to remote D1                   |
+| `npm run deploy`            | Build and deploy to Cloudflare Workers          |
 
 ## Project Structure
 

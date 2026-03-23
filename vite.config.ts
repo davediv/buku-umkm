@@ -5,7 +5,11 @@ import { playwright } from '@vitest/browser-playwright';
 import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
-	plugins: [tailwindcss(), sveltekit(), devtoolsJson()],
+	plugins: [
+		tailwindcss(),
+		sveltekit(),
+		...(process.env.NODE_ENV !== 'production' ? [devtoolsJson()] : [])
+	],
 	test: {
 		expect: { requireAssertions: true },
 		projects: [

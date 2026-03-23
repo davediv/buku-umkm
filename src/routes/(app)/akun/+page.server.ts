@@ -68,6 +68,10 @@ export const actions: Actions = {
 				return fail(400, { error: 'Nama akun wajib diisi', success: false });
 			}
 
+			if (name.length > 200) {
+				return fail(400, { error: 'Nama akun maksimal 200 karakter', success: false });
+			}
+
 			// Validate type
 			if (!type || !isValidAccountType(type)) {
 				return fail(400, { error: 'Jenis akun tidak valid', success: false });
@@ -145,6 +149,10 @@ export const actions: Actions = {
 
 			if (!name || name.trim() === '') {
 				return fail(400, { error: 'Nama akun wajib diisi', success: false });
+			}
+
+			if (name.length > 200) {
+				return fail(400, { error: 'Nama akun maksimal 200 karakter', success: false });
 			}
 
 			// Validate type

@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import {
 		Plus,
 		Search,
@@ -85,6 +84,7 @@
 	}
 
 	// Local mutable transactions state — syncs from load data, allows optimistic updates
+	// eslint-disable-next-line svelte/prefer-writable-derived -- mutated for optimistic deletes
 	let transactions = $state(data.transactions);
 
 	// Sync when load data changes (e.g., navigation, full reload)

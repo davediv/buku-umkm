@@ -29,6 +29,8 @@ export const actions: Actions = {
 			errors.password = 'Kata sandi wajib diisi';
 		} else if (password.length < 8) {
 			errors.password = 'Kata sandi minimal 8 karakter';
+		} else if (password.length > 128) {
+			errors.password = 'Kata sandi maksimal 128 karakter';
 		}
 
 		if (Object.keys(errors).length > 0) {

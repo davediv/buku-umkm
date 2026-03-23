@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { chartOfAccountQueries } from '$lib/server/db/queries';
-import { eq, or } from 'drizzle-orm';
+import { eq, or, and } from 'drizzle-orm';
 import { transaction } from '$lib/server/db/schema';
 import {
 	VALID_ACCOUNT_TYPES,
@@ -17,10 +17,17 @@ interface UpdateAccountBody {
 	type?: AccountType;
 }
 
-// Helper to check if account has transactions
-async function hasTransactions(db: ReturnType<typeof getDb>, accountId: string): Promise<boolean> {
+// Helper to check if account has transactions (scoped to user)
+async function hasTransactions(
+	db: ReturnType<typeof getDb>,
+	userId: string,
+	accountId: string
+): Promise<boolean> {
 	const transactions = await db.query.transaction.findFirst({
-		where: or(eq(transaction.accountId, accountId), eq(transaction.toAccountId, accountId))
+		where: and(
+			eq(transaction.userId, userId),
+			or(eq(transaction.accountId, accountId), eq(transaction.toAccountId, accountId))
+		)
 	});
 	return !!transactions;
 }
@@ -94,6 +101,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		// Validate name (if provided)
 		if (body.name !== undefined && body.name.trim() === '') {
 			return json({ error: 'Nama akun tidak boleh kosong' }, { status: 400 });
+		}
+
+		if (body.name !== undefined && body.name.length > 200) {
+			return json({ error: 'Nama akun maksimal 200 karakter' }, { status: 400 });
 		}
 
 		// Validate account type (if provided)
@@ -179,7 +190,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		}
 
 		// Check if account has transactions
-		const hasTxns = await hasTransactions(db, accountId);
+		const hasTxns = await hasTransactions(db, userId, accountId);
 
 		if (hasTxns) {
 			return json(
