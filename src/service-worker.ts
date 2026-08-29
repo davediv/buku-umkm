@@ -4,11 +4,17 @@ import { build, files, version } from '$service-worker';
 
 const CACHE_NAME = `buku-umkm-cache-${version}`;
 const CACHE_PREFIX = 'buku-umkm-cache-';
-const PRECACHE_ASSETS = files;
+// Cloudflare's asset server intentionally does not expose dotfiles such as
+// static/.assetsignore. Including one in addAll() rejects the whole install.
+const PRECACHE_ASSETS = files.filter((asset) => {
+	const filename = asset.split('/').pop();
+	return filename ? !filename.startsWith('.') : false;
+});
 const CACHEABLE_PATHS = new Set(
-	[...build, ...files].map((asset) => new URL(asset, self.location.href).pathname)
+	[...build, ...PRECACHE_ASSETS].map((asset) => new URL(asset, self.location.href).pathname)
 );
-const OFFLINE_PAGE = files.find((asset) => asset.endsWith('offline.html')) ?? '/offline.html';
+const OFFLINE_PAGE =
+	PRECACHE_ASSETS.find((asset) => asset.endsWith('offline.html')) ?? '/offline.html';
 
 // Keep installation lightweight: route bundles are cached only after the user visits them.
 self.addEventListener('install', (event: ExtendableEvent) => {
