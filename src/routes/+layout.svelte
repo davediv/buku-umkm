@@ -6,30 +6,38 @@
 	let { children } = $props();
 
 	onMount(() => {
-		// Register service worker
-		if ('serviceWorker' in navigator) {
-			navigator.serviceWorker
-				.register('/service-worker.js')
-				.then((registration) => {
-					console.log('Service Worker registered:', registration.scope);
+		if (!('serviceWorker' in navigator)) return;
 
-					// Check for updates
-					registration.addEventListener('updatefound', () => {
-						const newWorker = registration.installing;
-						if (newWorker) {
-							newWorker.addEventListener('statechange', () => {
-								if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-									toast.info('Versi baru tersedia', 'Muat ulang halaman untuk memperbarui.');
-									newWorker.postMessage({ type: 'SKIP_WAITING' });
-								}
-							});
-						}
-					});
-				})
-				.catch((error) => {
-					console.error('Service Worker registration failed:', error);
-				});
-		}
+		let registration: ServiceWorkerRegistration | null = null;
+		let installingWorker: ServiceWorker | null = null;
+		const handleStateChange = () => {
+			if (installingWorker?.state === 'installed' && navigator.serviceWorker.controller) {
+				toast.info('Versi baru tersedia', 'Muat ulang halaman untuk memperbarui.');
+				installingWorker.postMessage({ type: 'SKIP_WAITING' });
+			}
+		};
+		const handleUpdateFound = () => {
+			installingWorker?.removeEventListener('statechange', handleStateChange);
+			installingWorker = registration?.installing ?? null;
+			installingWorker?.addEventListener('statechange', handleStateChange);
+		};
+		const observeRegistration = async () => {
+			try {
+				registration = await navigator.serviceWorker.ready;
+				registration.addEventListener('updatefound', handleUpdateFound);
+			} catch (error) {
+				console.error('Service Worker registration failed:', error);
+			}
+		};
+
+		if (document.readyState === 'complete') void observeRegistration();
+		else window.addEventListener('load', observeRegistration, { once: true });
+
+		return () => {
+			window.removeEventListener('load', observeRegistration);
+			registration?.removeEventListener('updatefound', handleUpdateFound);
+			installingWorker?.removeEventListener('statechange', handleStateChange);
+		};
 	});
 </script>
 
