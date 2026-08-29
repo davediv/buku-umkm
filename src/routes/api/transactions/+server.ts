@@ -151,16 +151,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const db = getDb();
 
-		// Verify account belongs to user
-		const account = await chartOfAccountQueries.findById(db, userId, body.account_id);
+		// Account and category ownership checks are independent; validate them concurrently.
+		const [account, category] = await Promise.all([
+			chartOfAccountQueries.findById(db, userId, body.account_id),
+			body.category_id
+				? categoryQueries.findById(db, userId, body.category_id)
+				: Promise.resolve(null)
+		]);
+
 		if (!account) {
 			return json({ error: 'Akun tidak ditemukan' }, { status: 400 });
 		}
 
 		// Verify category belongs to user (if provided)
-		let category = null;
 		if (body.category_id) {
-			category = await categoryQueries.findById(db, userId, body.category_id);
 			if (!category) {
 				return json({ error: 'Kategori tidak ditemukan' }, { status: 400 });
 			}
