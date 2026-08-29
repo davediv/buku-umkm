@@ -6,15 +6,20 @@ const CACHE_NAME = `buku-umkm-cache-${version}`;
 const CACHE_PREFIX = 'buku-umkm-cache-';
 // Cloudflare's asset server intentionally does not expose dotfiles such as
 // static/.assetsignore. Including one in addAll() rejects the whole install.
-const PRECACHE_ASSETS = files.filter((asset) => {
+const PUBLIC_ASSETS = files.filter((asset) => {
 	const filename = asset.split('/').pop();
 	return filename ? !filename.startsWith('.') : false;
 });
+const OFFLINE_ASSET = PUBLIC_ASSETS.find((asset) => asset.endsWith('offline.html'));
+// Cloudflare serves HTML assets at extensionless canonical URLs. Caching the
+// redirected response makes Chrome reject it when used for another navigation.
+const OFFLINE_PAGE = OFFLINE_ASSET?.replace(/\.html$/, '') ?? '/offline';
+const PRECACHE_ASSETS = PUBLIC_ASSETS.map((asset) =>
+	asset === OFFLINE_ASSET ? OFFLINE_PAGE : asset
+);
 const CACHEABLE_PATHS = new Set(
 	[...build, ...PRECACHE_ASSETS].map((asset) => new URL(asset, self.location.href).pathname)
 );
-const OFFLINE_PAGE =
-	PRECACHE_ASSETS.find((asset) => asset.endsWith('offline.html')) ?? '/offline.html';
 
 // Keep installation lightweight: route bundles are cached only after the user visits them.
 self.addEventListener('install', (event: ExtendableEvent) => {
