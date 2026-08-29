@@ -44,8 +44,10 @@
 	<!-- Tax Reminder Banner -->
 	<TaxReminder />
 
-	<!-- Sync Status - Mobile only (desktop is in sidebar) -->
-	<div class="md:hidden">
+	<!-- A single responsive sync indicator avoids duplicate polling and IndexedDB work. -->
+	<div
+		class="md:fixed md:bottom-0 md:left-0 md:z-[60] md:flex md:w-20 md:justify-center md:border-t md:border-border md:bg-card md:py-3"
+	>
 		<SyncStatusIndicator />
 	</div>
 
@@ -125,11 +127,6 @@
 				</li>
 			{/each}
 		</ul>
-
-		<!-- Sync status at bottom of sidebar -->
-		<div class="flex justify-center border-t border-border py-3">
-			<SyncStatusIndicator />
-		</div>
 	</aside>
 
 	<!-- Toast Notifications -->
