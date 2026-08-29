@@ -1,0 +1,2 @@
+CREATE INDEX `transaction_user_date_type_idx` ON `transaction` (`user_id`,`date`,`type`);--> statement-breakpoint
+CREATE INDEX `transaction_user_active_date_created_idx` ON `transaction` (`user_id`,`is_active`,`date`,`created_at`);

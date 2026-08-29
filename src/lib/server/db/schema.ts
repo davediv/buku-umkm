@@ -208,6 +208,13 @@ export const transaction = sqliteTable(
 		index('transaction_userId_idx').on(table.userId),
 		index('transaction_date_idx').on(table.date),
 		index('transaction_type_idx').on(table.type),
+		index('transaction_user_date_type_idx').on(table.userId, table.date, table.type),
+		index('transaction_user_active_date_created_idx').on(
+			table.userId,
+			table.isActive,
+			table.date,
+			table.createdAt
+		),
 		index('transaction_accountId_idx').on(table.accountId),
 		index('transaction_toAccountId_idx').on(table.toAccountId),
 		index('transaction_categoryId_idx').on(table.categoryId),
