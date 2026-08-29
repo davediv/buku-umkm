@@ -3,13 +3,18 @@
 import { build, files, version } from '$service-worker';
 
 const CACHE_NAME = `buku-umkm-cache-${version}`;
-const ASSETS = [...build, ...files];
+const CACHE_PREFIX = 'buku-umkm-cache-';
+const PRECACHE_ASSETS = files;
+const CACHEABLE_PATHS = new Set(
+	[...build, ...files].map((asset) => new URL(asset, self.location.href).pathname)
+);
+const OFFLINE_PAGE = files.find((asset) => asset.endsWith('offline.html')) ?? '/offline.html';
 
-// Install event - cache all static assets
+// Keep installation lightweight: route bundles are cached only after the user visits them.
 self.addEventListener('install', (event: ExtendableEvent) => {
 	event.waitUntil(
 		caches.open(CACHE_NAME).then((cache) => {
-			return cache.addAll(ASSETS);
+			return cache.addAll(PRECACHE_ASSETS);
 		})
 	);
 });
@@ -18,12 +23,16 @@ self.addEventListener('install', (event: ExtendableEvent) => {
 self.addEventListener('activate', (event: ExtendableEvent) => {
 	event.waitUntil(
 		caches.keys().then((keys) => {
-			return Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)));
+			return Promise.all(
+				keys
+					.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
+					.map((key) => caches.delete(key))
+			);
 		})
 	);
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - cache only known public assets, never authenticated route data.
 self.addEventListener('fetch', (event: FetchEvent) => {
 	const url = new URL(event.request.url);
 
@@ -39,42 +48,33 @@ self.addEventListener('fetch', (event: FetchEvent) => {
 	// For navigation requests (HTML), always use network (pages contain user-specific data)
 	if (event.request.mode === 'navigate') {
 		event.respondWith(
-			fetch(event.request).catch(() => {
-				// Offline fallback: serve cached version or root
-				return caches.match(event.request).then((cached) => {
-					return cached || caches.match('/');
-				});
+			fetch(event.request).catch(async () => {
+				const offlinePage = await caches.match(OFFLINE_PAGE);
+				return offlinePage ?? Response.error();
 			})
 		);
 		return;
 	}
 
-	// For static assets, try cache first, then network
-	event.respondWith(
-		caches.match(event.request).then((cached) => {
-			if (cached) {
-				// Return cached version and update in background
-				fetch(event.request).then((response) => {
-					caches.open(CACHE_NAME).then((cache) => {
-						cache.put(event.request, response);
-					});
-				});
-				return cached;
-			}
+	// Ignore SvelteKit data requests and any other URL not in the generated public asset manifest.
+	if (!CACHEABLE_PATHS.has(url.pathname)) return;
 
-			// Not in cache, fetch from network
-			return fetch(event.request).then((response) => {
-				// Cache successful responses
-				if (response.status === 200) {
-					const responseClone = response.clone();
-					caches.open(CACHE_NAME).then((cache) => {
-						cache.put(event.request, responseClone);
-					});
-				}
-				return response;
-			});
-		})
-	);
+	// Versioned build assets are immutable, so a cache hit never needs background revalidation.
+	let cacheWrite = Promise.resolve();
+	const response = caches.match(event.request).then(async (cached) => {
+		if (cached) return cached;
+
+		const networkResponse = await fetch(event.request);
+		if (networkResponse.ok) {
+			cacheWrite = caches
+				.open(CACHE_NAME)
+				.then((cache) => cache.put(event.request, networkResponse.clone()));
+		}
+		return networkResponse;
+	});
+
+	event.respondWith(response);
+	event.waitUntil(response.then(() => cacheWrite.catch(() => undefined), () => undefined));
 });
 
 // Handle messages from the main thread
