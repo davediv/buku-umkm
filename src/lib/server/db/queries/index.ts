@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, lt, sql } from 'drizzle-orm';
+import { eq, and, gte, lte, lt, inArray, sql } from 'drizzle-orm';
 import type { SQLiteDb } from '../index';
 import {
 	chartOfAccount,
@@ -1360,62 +1360,58 @@ export const dashboardQueries = {
 	/**
 	 * Get cash flow data for chart
 	 */
-	getCashFlow(db: SQLiteDb, userId: string, months = 6) {
-		return (async () => {
-			const now = new Date();
-			const results = [];
+	async getCashFlow(db: SQLiteDb, userId: string, months = 6) {
+		const monthCount = Math.max(0, Math.floor(months));
+		if (monthCount === 0) return [];
 
-			for (let i = months - 1; i >= 0; i--) {
-				const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-				const year = date.getFullYear();
-				const month = date.getMonth() + 1;
+		const now = new Date();
+		const firstMonth = new Date(now.getFullYear(), now.getMonth() - monthCount + 1, 1);
+		const monthAfterLast = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+		const toDateString = (date: Date) =>
+			`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+		const monthExpression = sql<string>`substr(${transaction.date}, 1, 7)`;
 
-				const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-				const endDate =
-					month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, '0')}-01`;
+		const rows = await db
+			.select({
+				label: monthExpression,
+				type: transaction.type,
+				total: sql<number>`COALESCE(SUM(${transaction.amount}), 0)`
+			})
+			.from(transaction)
+			.where(
+				and(
+					eq(transaction.userId, userId),
+					inArray(transaction.type, ['income', 'expense']),
+					gte(transaction.date, toDateString(firstMonth)),
+					lt(transaction.date, toDateString(monthAfterLast))
+				)
+			)
+			.groupBy(monthExpression, transaction.type);
 
-				const income = await db
-					.select({
-						total: sql`COALESCE(SUM(${transaction.amount}), 0)`
-					})
-					.from(transaction)
-					.where(
-						and(
-							eq(transaction.userId, userId),
-							eq(transaction.type, 'income'),
-							gte(transaction.date, startDate),
-							lt(transaction.date, endDate)
-						)
-					)
-					.then((rows) => Number(rows[0]?.total ?? 0));
+		const totals = new Map<string, { income: number; expense: number }>();
+		for (const row of rows) {
+			const current = totals.get(row.label) ?? { income: 0, expense: 0 };
+			if (row.type === 'income') current.income = Number(row.total);
+			if (row.type === 'expense') current.expense = Number(row.total);
+			totals.set(row.label, current);
+		}
 
-				const expense = await db
-					.select({
-						total: sql`COALESCE(SUM(${transaction.amount}), 0)`
-					})
-					.from(transaction)
-					.where(
-						and(
-							eq(transaction.userId, userId),
-							eq(transaction.type, 'expense'),
-							gte(transaction.date, startDate),
-							lt(transaction.date, endDate)
-						)
-					)
-					.then((rows) => Number(rows[0]?.total ?? 0));
+		return Array.from({ length: monthCount }, (_, index) => {
+			const date = new Date(now.getFullYear(), now.getMonth() - monthCount + index + 1, 1);
+			const year = date.getFullYear();
+			const month = date.getMonth() + 1;
+			const label = `${year}-${String(month).padStart(2, '0')}`;
+			const total = totals.get(label) ?? { income: 0, expense: 0 };
 
-				results.push({
-					year,
-					month,
-					label: `${year}-${String(month).padStart(2, '0')}`,
-					income,
-					expense,
-					net: income - expense
-				});
-			}
-
-			return results;
-		})();
+			return {
+				year,
+				month,
+				label,
+				income: total.income,
+				expense: total.expense,
+				net: total.income - total.expense
+			};
+		});
 	},
 
 	/**
