@@ -17,8 +17,6 @@
 	}
 
 	let reminderData = $state<TaxReminderData | null>(null);
-	let loading = $state(true);
-	let error = $state<string | null>(null);
 	let dismissed = $state(false);
 
 	// Get urgency-based styles
@@ -57,21 +55,34 @@
 		}
 	}
 
-	// Fetch reminder data on mount
-	onMount(async () => {
-		try {
-			const response = await fetch('/api/tax/reminder');
-			const result = (await response.json()) as { data?: TaxReminderData };
+	// Tax reminders are useful but non-critical, so load them after the page becomes interactive.
+	onMount(() => {
+		const controller = new AbortController();
+		const loadReminder = async () => {
+			try {
+				const response = await fetch('/api/tax/reminder', { signal: controller.signal });
+				if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
-			if (result.data) {
-				reminderData = result.data;
+				const result = (await response.json()) as { data?: TaxReminderData };
+				if (result.data) reminderData = result.data;
+			} catch (err) {
+				if (!controller.signal.aborted) console.error('Error fetching tax reminder:', err);
 			}
-		} catch (err) {
-			console.error('Error fetching tax reminder:', err);
-			error = 'Failed to load reminder';
-		} finally {
-			loading = false;
+		};
+
+		if ('requestIdleCallback' in window) {
+			const idleId = window.requestIdleCallback(() => void loadReminder(), { timeout: 2000 });
+			return () => {
+				window.cancelIdleCallback(idleId);
+				controller.abort();
+			};
 		}
+
+		const timeoutId = setTimeout(() => void loadReminder(), 500);
+		return () => {
+			clearTimeout(timeoutId);
+			controller.abort();
+		};
 	});
 
 	function handleDismiss() {
@@ -86,27 +97,7 @@
 	);
 </script>
 
-{#if loading}
-	<!-- Skeleton while loading -->
-	<div class="border-b border-yellow-200 bg-yellow-50 animate-pulse">
-		<div class="max-w-4xl mx-auto px-4 py-3">
-			<div class="flex items-center gap-3">
-				<div class="w-8 h-8 bg-yellow-200 rounded-full"></div>
-				<div class="flex-1 space-y-2">
-					<div class="h-4 bg-yellow-200 rounded w-3/4"></div>
-					<div class="h-3 bg-yellow-200 rounded w-1/2"></div>
-				</div>
-			</div>
-		</div>
-	</div>
-{:else if error}
-	<!-- Error state -->
-	<div class="border-b border-red-200 bg-red-50">
-		<div class="max-w-4xl mx-auto px-4 py-3">
-			<p class="text-sm text-red-700">{error}</p>
-		</div>
-	</div>
-{:else if !dismissed && reminderData?.showReminder}
+{#if !dismissed && reminderData?.showReminder}
 	<div class="border-b {styles.border} {styles.bg} transition-all duration-300">
 		<div class="max-w-4xl mx-auto px-4 {styles.size}">
 			<div class="flex items-start gap-3">
