@@ -19,19 +19,17 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const db = getDb();
 
 	try {
-		// Get transaction by ID
-		const transaction = await transactionQueries.findById(db, userId, transactionId, true);
-
-		if (!transaction) {
-			return { error: 'Transaksi tidak ditemukan' };
-		}
-
-		// Run remaining queries in parallel
-		const [allCategories, allAccounts, photos] = await Promise.all([
+		// Load independent form data together so valid edit routes need one database round trip window.
+		const [transaction, allCategories, allAccounts, photos] = await Promise.all([
+			transactionQueries.findById(db, userId, transactionId, true),
 			categoryQueries.findAll(db, userId),
 			chartOfAccountQueries.findAll(db, userId),
 			transactionPhotoQueries.findByTransactionId(db, userId, transactionId)
 		]);
+
+		if (!transaction) {
+			return { error: 'Transaksi tidak ditemukan' };
+		}
 
 		const categories = {
 			income: allCategories.filter((c) => c.type === 'income' && c.isActive),
