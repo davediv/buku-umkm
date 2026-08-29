@@ -17,19 +17,20 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const db = getDb();
 
 	try {
-		// Get all categories (active only)
-		const allCategories = await categoryQueries.findAll(db, userId);
+		// These independent lookups share the critical path for opening the form.
+		const [allCategories, allAccounts, templates] = await Promise.all([
+			categoryQueries.findAll(db, userId),
+			chartOfAccountQueries.findAll(db, userId),
+			transactionTemplateQueries.findAllActive(db, userId)
+		]);
+
 		const categories = {
 			income: allCategories.filter((c) => c.type === 'income' && c.isActive),
 			expense: allCategories.filter((c) => c.type === 'expense' && c.isActive)
 		};
 
 		// Get all active accounts (cash, bank, ewallet)
-		const allAccounts = await chartOfAccountQueries.findAll(db, userId);
 		const accounts = allAccounts.filter((a) => a.isActive);
-
-		// Get all active templates
-		const templates = await transactionTemplateQueries.findAllActive(db, userId);
 
 		// Map to include category info for display
 		const categoryMap = new Map(allCategories.map((c) => [c.id, c]));
