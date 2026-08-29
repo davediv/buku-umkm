@@ -74,7 +74,12 @@ self.addEventListener('fetch', (event: FetchEvent) => {
 	});
 
 	event.respondWith(response);
-	event.waitUntil(response.then(() => cacheWrite.catch(() => undefined), () => undefined));
+	event.waitUntil(
+		response.then(
+			() => cacheWrite.catch(() => undefined),
+			() => undefined
+		)
+	);
 });
 
 // Handle messages from the main thread
