@@ -4,7 +4,6 @@
 	import { ArrowLeft, Copy, FileDown, AlertCircle, CheckCircle2 } from '@lucide/svelte';
 	import { formatRupiah } from '$lib/utils';
 	import { copyToast } from '$lib/components/ui/toast';
-	import { jsPDF } from 'jspdf';
 
 	// Get year and month from URL params
 	const year = $derived(parseInt(page.params.year || '0'));
@@ -12,6 +11,7 @@
 
 	// State
 	let loading = $state(true);
+	let exportingPdf = $state(false);
 	let error = $state<string | null>(null);
 	let billingData = $state<{
 		kap: string;
@@ -70,82 +70,90 @@
 		}
 	}
 
-	function exportPDF() {
-		if (!billingData) return;
+	async function exportPDF() {
+		if (!billingData || exportingPdf) return;
+		exportingPdf = true;
 
-		const doc = new jsPDF();
-		const pageWidth = doc.internal.pageSize.getWidth();
+		try {
+			const { jsPDF } = await import('jspdf');
+			const doc = new jsPDF();
+			const pageWidth = doc.internal.pageSize.getWidth();
 
-		// Title
-		doc.setFontSize(16);
-		doc.setFont('helvetica', 'bold');
-		doc.text('KODE BILLING PAJAK PPH FINAL 0.5%', pageWidth / 2, 20, { align: 'center' });
+			// Title
+			doc.setFontSize(16);
+			doc.setFont('helvetica', 'bold');
+			doc.text('KODE BILLING PAJAK PPH FINAL 0.5%', pageWidth / 2, 20, { align: 'center' });
 
-		// Subtitle
-		doc.setFontSize(10);
-		doc.setFont('helvetica', 'normal');
-		doc.text(`Masa Pajak: ${billingData.masaPajak}`, pageWidth / 2, 28, { align: 'center' });
+			// Subtitle
+			doc.setFontSize(10);
+			doc.setFont('helvetica', 'normal');
+			doc.text(`Masa Pajak: ${billingData.masaPajak}`, pageWidth / 2, 28, { align: 'center' });
 
-		// Divider
-		doc.setLineWidth(0.5);
-		doc.line(20, 32, pageWidth - 20, 32);
+			// Divider
+			doc.setLineWidth(0.5);
+			doc.line(20, 32, pageWidth - 20, 32);
 
-		// Data fields
-		let yPos = 45;
-		const leftMargin = 20;
-		const labelCol = 60;
+			// Data fields
+			let yPos = 45;
+			const leftMargin = 20;
+			const labelCol = 60;
 
-		doc.setFont('helvetica', 'bold');
-		doc.text('NPWP', leftMargin, yPos);
-		doc.setFont('helvetica', 'normal');
-		doc.text(': ' + (billingData.npwp || '-'), labelCol, yPos);
+			doc.setFont('helvetica', 'bold');
+			doc.text('NPWP', leftMargin, yPos);
+			doc.setFont('helvetica', 'normal');
+			doc.text(': ' + (billingData.npwp || '-'), labelCol, yPos);
 
-		yPos += 10;
-		doc.setFont('helvetica', 'bold');
-		doc.text('Nama Wajib Pajak', leftMargin, yPos);
-		doc.setFont('helvetica', 'normal');
-		doc.text(': ' + billingData.namaWp, labelCol, yPos);
+			yPos += 10;
+			doc.setFont('helvetica', 'bold');
+			doc.text('Nama Wajib Pajak', leftMargin, yPos);
+			doc.setFont('helvetica', 'normal');
+			doc.text(': ' + billingData.namaWp, labelCol, yPos);
 
-		yPos += 10;
-		doc.setFont('helvetica', 'bold');
-		doc.text('KAP (Kode Akun Pajak)', leftMargin, yPos);
-		doc.setFont('helvetica', 'normal');
-		doc.text(': ' + billingData.kap, labelCol, yPos);
+			yPos += 10;
+			doc.setFont('helvetica', 'bold');
+			doc.text('KAP (Kode Akun Pajak)', leftMargin, yPos);
+			doc.setFont('helvetica', 'normal');
+			doc.text(': ' + billingData.kap, labelCol, yPos);
 
-		yPos += 10;
-		doc.setFont('helvetica', 'bold');
-		doc.text('KJS (Kode Jenis Setoran)', leftMargin, yPos);
-		doc.setFont('helvetica', 'normal');
-		doc.text(': ' + billingData.kjs, labelCol, yPos);
+			yPos += 10;
+			doc.setFont('helvetica', 'bold');
+			doc.text('KJS (Kode Jenis Setoran)', leftMargin, yPos);
+			doc.setFont('helvetica', 'normal');
+			doc.text(': ' + billingData.kjs, labelCol, yPos);
 
-		yPos += 10;
-		doc.setFont('helvetica', 'bold');
-		doc.text('Masa Pajak', leftMargin, yPos);
-		doc.setFont('helvetica', 'normal');
-		doc.text(': ' + billingData.masaPajak, labelCol, yPos);
+			yPos += 10;
+			doc.setFont('helvetica', 'bold');
+			doc.text('Masa Pajak', leftMargin, yPos);
+			doc.setFont('helvetica', 'normal');
+			doc.text(': ' + billingData.masaPajak, labelCol, yPos);
 
-		yPos += 10;
-		doc.setFont('helvetica', 'bold');
-		doc.text('Tahun Pajak', leftMargin, yPos);
-		doc.setFont('helvetica', 'normal');
-		doc.text(': ' + billingData.tahun.toString(), labelCol, yPos);
+			yPos += 10;
+			doc.setFont('helvetica', 'bold');
+			doc.text('Tahun Pajak', leftMargin, yPos);
+			doc.setFont('helvetica', 'normal');
+			doc.text(': ' + billingData.tahun.toString(), labelCol, yPos);
 
-		yPos += 15;
-		doc.setFont('helvetica', 'bold');
-		doc.text('Jumlah Setor', leftMargin, yPos);
-		doc.setFont('helvetica', 'normal');
-		doc.setFontSize(12);
-		doc.text(': Rp ' + formatRupiah(billingData.jumlahSetor).replace('Rp ', ''), labelCol, yPos);
+			yPos += 15;
+			doc.setFont('helvetica', 'bold');
+			doc.text('Jumlah Setor', leftMargin, yPos);
+			doc.setFont('helvetica', 'normal');
+			doc.setFontSize(12);
+			doc.text(': Rp ' + formatRupiah(billingData.jumlahSetor).replace('Rp ', ''), labelCol, yPos);
 
-		// Footer
-		doc.setFontSize(8);
-		doc.setFont('helvetica', 'italic');
-		doc.text('Dicetak dari Buku UMKM - Aplikasi Pencatatan Keuangan UMKM', pageWidth / 2, 280, {
-			align: 'center'
-		});
+			// Footer
+			doc.setFontSize(8);
+			doc.setFont('helvetica', 'italic');
+			doc.text('Dicetak dari Buku UMKM - Aplikasi Pencatatan Keuangan UMKM', pageWidth / 2, 280, {
+				align: 'center'
+			});
 
-		// Save
-		doc.save(`kode-billing-${billingData.tahun}-${month.toString().padStart(2, '0')}.pdf`);
+			// Save
+			doc.save(`kode-billing-${billingData.tahun}-${month.toString().padStart(2, '0')}.pdf`);
+		} catch (err) {
+			console.error('Failed to export billing PDF:', err);
+		} finally {
+			exportingPdf = false;
+		}
 	}
 </script>
 
@@ -201,10 +209,12 @@
 				<h2 class="text-lg font-semibold">Ringkasan Kode Billing</h2>
 				<button
 					onclick={exportPDF}
-					class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md font-medium transition-colors"
+					disabled={exportingPdf}
+					aria-busy={exportingPdf}
+					class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md font-medium transition-colors disabled:cursor-wait disabled:opacity-70"
 				>
-					<FileDown class="w-4 h-4" />
-					Ekspor PDF
+					<FileDown class="w-4 h-4 {exportingPdf ? 'animate-pulse' : ''}" />
+					{exportingPdf ? 'Menyiapkan...' : 'Ekspor PDF'}
 				</button>
 			</div>
 
