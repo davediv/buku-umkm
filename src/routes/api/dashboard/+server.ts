@@ -1,11 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
-import {
-	dashboardQueries,
-	transactionQueries,
-	chartOfAccountQueries
-} from '$lib/server/db/queries';
+import { dashboardQueries, transactionQueries } from '$lib/server/db/queries';
 
 type PeriodParam = 'daily' | 'weekly' | 'monthly';
 
@@ -28,23 +24,14 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	try {
 		// Run all queries in parallel for performance
 		// Note: When period is 'daily', periodStats already contains today's data
-		const [summary, periodStats, debtSummary, recentTransactions, accounts, todayStatsResult] =
-			await Promise.all([
-				dashboardQueries.getSummary(db, userId),
-				dashboardQueries.getPeriodStats(db, userId, period),
-				dashboardQueries.getDebtSummary(db, userId),
-				transactionQueries.getRecent(db, userId, 5),
-				chartOfAccountQueries.findAll(db, userId),
-				dashboardQueries.getTodayStats(db, userId)
-			]);
+		const [overview, recentTransactions] = await Promise.all([
+			dashboardQueries.getOverview(db, userId, period),
+			transactionQueries.getRecent(db, userId, 5)
+		]);
+		const { summary, periodStats, debtSummary, todayStats } = overview;
 
 		// Use periodStats when period is daily, otherwise use today's stats
-		const today = period === 'daily' ? periodStats : todayStatsResult;
-
-		// Calculate total balance across all accounts
-		const totalBalance = accounts
-			.filter((acc) => acc.type === 'asset')
-			.reduce((sum, acc) => sum + acc.balance, 0);
+		const today = period === 'daily' ? periodStats : todayStats;
 
 		// Map recent transactions to simplified format
 		const recent = recentTransactions.map((t) => ({
@@ -62,8 +49,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 		return json({
 			data: {
-				// Total balance across all accounts
-				totalBalance,
+				// Total balance across all asset accounts
+				totalBalance: summary.totalAssets,
 				// Today's stats
 				today: {
 					income: today.income,

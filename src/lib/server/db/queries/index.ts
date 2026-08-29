@@ -1016,6 +1016,129 @@ export const businessProfileQueries = {
 
 export const dashboardQueries = {
 	/**
+	 * Load the dashboard's shared aggregates with one statement per table.
+	 * This keeps the page/API contract while avoiding repeated scans and serial D1 round trips.
+	 */
+	async getOverview(
+		db: SQLiteDb,
+		userId: string,
+		period: 'daily' | 'weekly' | 'monthly' = 'monthly'
+	) {
+		const now = new Date();
+		const today = now.toISOString().split('T')[0];
+		const tomorrow = new Date(now);
+		tomorrow.setDate(tomorrow.getDate() + 1);
+		const tomorrowDate = tomorrow.toISOString().split('T')[0];
+		const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+		const endOfMonth =
+			now.getMonth() === 11
+				? `${now.getFullYear() + 1}-01-01`
+				: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
+		const startOfYear = `${now.getFullYear()}-01-01`;
+
+		let periodStart = startOfMonth;
+		let periodEnd = endOfMonth;
+		if (period === 'daily') {
+			periodStart = today;
+			periodEnd = tomorrowDate;
+		} else if (period === 'weekly') {
+			const dayOfWeek = now.getDay();
+			const monday = new Date(now);
+			monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+			const nextMonday = new Date(monday);
+			nextMonday.setDate(monday.getDate() + 7);
+			periodStart = monday.toISOString().split('T')[0];
+			periodEnd = nextMonday.toISOString().split('T')[0];
+		}
+
+		const earliestTransactionDate = [startOfYear, today, periodStart].sort()[0];
+		const [accountRows, transactionRows, debtRows, taxRows] = await Promise.all([
+			db
+				.select({
+					assets: sql<number>`COALESCE(SUM(CASE WHEN ${chartOfAccount.type} = 'asset' THEN ${chartOfAccount.balance} ELSE 0 END), 0)`,
+					liabilities: sql<number>`COALESCE(SUM(CASE WHEN ${chartOfAccount.type} = 'liability' THEN ${chartOfAccount.balance} ELSE 0 END), 0)`,
+					equity: sql<number>`COALESCE(SUM(CASE WHEN ${chartOfAccount.type} = 'equity' THEN ${chartOfAccount.balance} ELSE 0 END), 0)`
+				})
+				.from(chartOfAccount)
+				.where(eq(chartOfAccount.userId, userId)),
+			db
+				.select({
+					monthlyIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${startOfMonth} AND ${transaction.date} < ${endOfMonth} THEN ${transaction.amount} ELSE 0 END), 0)`,
+					monthlyExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${startOfMonth} AND ${transaction.date} < ${endOfMonth} THEN ${transaction.amount} ELSE 0 END), 0)`,
+					yearIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${startOfYear} THEN ${transaction.amount} ELSE 0 END), 0)`,
+					yearExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${startOfYear} THEN ${transaction.amount} ELSE 0 END), 0)`,
+					todayIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${today} AND ${transaction.date} < ${tomorrowDate} THEN ${transaction.amount} ELSE 0 END), 0)`,
+					todayExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${today} AND ${transaction.date} < ${tomorrowDate} THEN ${transaction.amount} ELSE 0 END), 0)`,
+					periodIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${periodStart} AND ${transaction.date} < ${periodEnd} THEN ${transaction.amount} ELSE 0 END), 0)`,
+					periodExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${periodStart} AND ${transaction.date} < ${periodEnd} THEN ${transaction.amount} ELSE 0 END), 0)`
+				})
+				.from(transaction)
+				.where(and(eq(transaction.userId, userId), gte(transaction.date, earliestTransactionDate))),
+			db
+				.select({
+					piutang: sql<number>`COALESCE(SUM(CASE WHEN ${debt.type} = 'piutang' AND ${debt.status} = 'active' THEN ${debt.remainingAmount} ELSE 0 END), 0)`,
+					hutang: sql<number>`COALESCE(SUM(CASE WHEN ${debt.type} = 'hutang' AND ${debt.status} = 'active' THEN ${debt.remainingAmount} ELSE 0 END), 0)`,
+					activeCount: sql<number>`COALESCE(SUM(CASE WHEN ${debt.status} = 'active' THEN 1 ELSE 0 END), 0)`
+				})
+				.from(debt)
+				.where(eq(debt.userId, userId)),
+			db
+				.select({ count: sql<number>`COUNT(*)` })
+				.from(taxRecord)
+				.where(and(eq(taxRecord.userId, userId), eq(taxRecord.status, 'unpaid')))
+		]);
+
+		const accounts = accountRows[0];
+		const transactions = transactionRows[0];
+		const debts = debtRows[0];
+		const totalAssets = Number(accounts?.assets ?? 0);
+		const totalLiabilities = Number(accounts?.liabilities ?? 0);
+		const totalEquity = Number(accounts?.equity ?? 0);
+		const monthlyIncome = Number(transactions?.monthlyIncome ?? 0);
+		const monthlyExpense = Number(transactions?.monthlyExpense ?? 0);
+		const yearIncome = Number(transactions?.yearIncome ?? 0);
+		const yearExpense = Number(transactions?.yearExpense ?? 0);
+		const todayIncome = Number(transactions?.todayIncome ?? 0);
+		const todayExpense = Number(transactions?.todayExpense ?? 0);
+		const periodIncome = Number(transactions?.periodIncome ?? 0);
+		const periodExpense = Number(transactions?.periodExpense ?? 0);
+
+		return {
+			summary: {
+				totalAssets,
+				totalLiabilities,
+				totalEquity,
+				netWorth: totalAssets - totalLiabilities,
+				monthlyIncome,
+				monthlyExpense,
+				monthlyProfit: monthlyIncome - monthlyExpense,
+				yearToDateRevenue: yearIncome,
+				yearToDateExpense: yearExpense,
+				yearToDateProfit: yearIncome - yearExpense,
+				activeDebtsCount: Number(debts?.activeCount ?? 0),
+				unpaidTaxesCount: Number(taxRows[0]?.count ?? 0)
+			},
+			periodStats: {
+				period,
+				startDate: periodStart,
+				endDate: periodEnd,
+				income: periodIncome,
+				expense: periodExpense,
+				profit: periodIncome - periodExpense
+			},
+			todayStats: {
+				income: todayIncome,
+				expense: todayExpense,
+				profit: todayIncome - todayExpense
+			},
+			debtSummary: {
+				piutang: Number(debts?.piutang ?? 0),
+				hutang: Number(debts?.hutang ?? 0)
+			}
+		};
+	},
+
+	/**
 	 * Get dashboard summary
 	 */
 	getSummary(db: SQLiteDb, userId: string) {

@@ -1,10 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import {
-	dashboardQueries,
-	transactionQueries,
-	chartOfAccountQueries
-} from '$lib/server/db/queries';
+import { dashboardQueries, transactionQueries } from '$lib/server/db/queries';
 import { redirect } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -24,31 +20,15 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	try {
 		// Run all queries in parallel for performance
-		const [
-			summary,
-			periodStats,
-			debtSummary,
-			recentTransactions,
-			accounts,
-			todayStatsResult,
-			cashFlow
-		] = await Promise.all([
-			dashboardQueries.getSummary(db, userId),
-			dashboardQueries.getPeriodStats(db, userId, period as 'daily' | 'weekly' | 'monthly'),
-			dashboardQueries.getDebtSummary(db, userId),
+		const [overview, recentTransactions, cashFlow] = await Promise.all([
+			dashboardQueries.getOverview(db, userId, period as 'daily' | 'weekly' | 'monthly'),
 			transactionQueries.getRecent(db, userId, 5),
-			chartOfAccountQueries.findAll(db, userId),
-			dashboardQueries.getTodayStats(db, userId),
 			dashboardQueries.getCashFlow(db, userId, 6)
 		]);
+		const { summary, periodStats, debtSummary, todayStats } = overview;
 
 		// Use periodStats when period is daily, otherwise use today's stats
-		const today = period === 'daily' ? periodStats : todayStatsResult;
-
-		// Calculate total balance across all accounts
-		const totalBalance = accounts
-			.filter((acc) => acc.type === 'asset')
-			.reduce((sum, acc) => sum + acc.balance, 0);
+		const today = period === 'daily' ? periodStats : todayStats;
 
 		// Map recent transactions to simplified format
 		const recent = recentTransactions.map((t) => ({
@@ -69,7 +49,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 		return {
 			dashboard: {
-				totalBalance,
+				totalBalance: summary.totalAssets,
 				today: {
 					income: today.income,
 					expense: today.expense,
