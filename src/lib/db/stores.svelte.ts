@@ -2,7 +2,6 @@
 // Provides reactive access to sync state
 
 import { browser } from '$app/environment';
-import { onSyncStateChange, initSyncListeners, cleanupSyncListeners } from './sync';
 import type { SyncState } from './sync';
 
 // ============================================================================
@@ -18,6 +17,12 @@ let syncState = $state<SyncState>({
 });
 
 let syncUnsubscribe: (() => void) | null = null;
+let syncRuntimePromise: Promise<typeof import('./sync')> | null = null;
+let lifecycleToken = 0;
+
+function loadSyncRuntime() {
+	return (syncRuntimePromise ??= import('./sync'));
+}
 
 export const syncStore = {
 	get state() {
@@ -25,23 +30,26 @@ export const syncStore = {
 	},
 	init() {
 		if (!browser) return;
+		const token = ++lifecycleToken;
 
-		// Subscribe to sync state changes
-		syncUnsubscribe = onSyncStateChange((state: SyncState) => {
-			syncState = state;
+		void loadSyncRuntime().then((runtime) => {
+			if (token !== lifecycleToken) return;
+
+			syncUnsubscribe = runtime.onSyncStateChange((state: SyncState) => {
+				syncState = state;
+			});
+			runtime.initSyncListeners();
 		});
-
-		// Initialize listeners
-		initSyncListeners();
 	},
 	destroy() {
+		lifecycleToken++;
 		if (syncUnsubscribe) {
 			syncUnsubscribe();
 			syncUnsubscribe = null;
 		}
 
-		if (browser) {
-			cleanupSyncListeners();
+		if (browser && syncRuntimePromise) {
+			void syncRuntimePromise.then((runtime) => runtime.cleanupSyncListeners());
 		}
 	}
 };

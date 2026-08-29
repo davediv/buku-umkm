@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { CheckCircle, Clock, AlertCircle, RefreshCw, WifiOff, X } from '@lucide/svelte';
 	import { syncStore } from '$lib/db/stores.svelte';
-	import { triggerSync, refreshPendingCount } from '$lib/db/sync';
 	import { browser } from '$app/environment';
 
 	// Type for sync status
@@ -14,6 +13,11 @@
 	// State
 	let showPopover = $state(false);
 	let currentUserId: string | null = $state(null);
+	let syncRuntimePromise: Promise<typeof import('$lib/db/sync')> | null = null;
+
+	function loadSyncRuntime() {
+		return (syncRuntimePromise ??= import('$lib/db/sync'));
+	}
 
 	// Get user ID from sessionStorage
 	function getUserId(): string | null {
@@ -57,6 +61,7 @@
 		}
 
 		try {
+			const { triggerSync } = await loadSyncRuntime();
 			await triggerSync(currentUserId);
 		} catch (error) {
 			console.error('Sync failed:', error);
@@ -82,22 +87,28 @@
 		currentUserId = getUserId();
 		if (!currentUserId) return;
 
-		// Initial refresh with error handling
-		refreshPendingCount(currentUserId).catch((error) => {
-			console.error('Failed to refresh pending count:', error);
+		let cancelled = false;
+		let interval: ReturnType<typeof setInterval> | null = null;
+		void loadSyncRuntime().then(({ refreshPendingCount }) => {
+			if (cancelled || !currentUserId) return;
+
+			const refresh = () => {
+				const uid = getUserId();
+				if (uid) {
+					refreshPendingCount(uid).catch((error) => {
+						console.error('Failed to refresh pending count:', error);
+					});
+				}
+			};
+
+			refresh();
+			interval = setInterval(refresh, SYNC_REFRESH_INTERVAL);
 		});
 
-		// Periodic refresh with error handling
-		const interval = setInterval(() => {
-			const uid = getUserId();
-			if (uid) {
-				refreshPendingCount(uid).catch((error) => {
-					console.error('Failed to refresh pending count:', error);
-				});
-			}
-		}, SYNC_REFRESH_INTERVAL);
-
-		return () => clearInterval(interval);
+		return () => {
+			cancelled = true;
+			if (interval) clearInterval(interval);
+		};
 	});
 
 	// Toggle popover

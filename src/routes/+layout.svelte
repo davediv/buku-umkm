@@ -1,18 +1,11 @@
 <script lang="ts">
 	import '../app.css';
 	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
-	import { initStores, destroyStores } from '$lib/db/stores.svelte';
 	import { toast } from '$lib/components/ui/toast';
 
 	let { children } = $props();
 
 	onMount(() => {
-		// Initialize database stores
-		if (browser) {
-			initStores();
-		}
-
 		// Register service worker
 		if ('serviceWorker' in navigator) {
 			navigator.serviceWorker
@@ -37,11 +30,6 @@
 					console.error('Service Worker registration failed:', error);
 				});
 		}
-
-		// Cleanup on unmount
-		return () => {
-			destroyStores();
-		};
 	});
 </script>
 

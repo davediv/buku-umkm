@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { onMount } from 'svelte';
 	import {
 		Home,
 		Receipt,
@@ -13,6 +14,7 @@
 	import TaxReminder from '$lib/components/tax-reminder.svelte';
 	import SyncStatusIndicator from '$lib/components/sync-status-indicator.svelte';
 	import Toast from '$lib/components/ui/toast/toast.svelte';
+	import { destroyStores, initStores } from '$lib/db/stores.svelte';
 
 	let { children } = $props();
 
@@ -38,6 +40,28 @@
 		page.url.pathname === '/transaksi/tambah' ||
 			page.url.pathname.match(/^\/transaksi\/[\w-]+$/) !== null
 	);
+
+	onMount(() => {
+		let initialized = false;
+		const initialize = () => {
+			initialized = true;
+			initStores();
+		};
+
+		if ('requestIdleCallback' in window) {
+			const idleId = window.requestIdleCallback(initialize, { timeout: 1500 });
+			return () => {
+				window.cancelIdleCallback(idleId);
+				if (initialized) destroyStores();
+			};
+		}
+
+		const timeoutId = setTimeout(initialize, 250);
+		return () => {
+			clearTimeout(timeoutId);
+			if (initialized) destroyStores();
+		};
+	});
 </script>
 
 <div class="flex min-h-screen flex-col bg-background">
