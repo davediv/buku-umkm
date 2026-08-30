@@ -15,6 +15,13 @@
       "when": 1787996529779,
       "tag": "0001_quiet_glorian",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788075977586,
+      "tag": "0002_superb_wallow",
+      "breakpoints": true
     }
   ]
 }

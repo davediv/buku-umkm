@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { applyAction, deserialize } from '$app/forms';
 	import { t } from '$lib/i18n';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -16,15 +16,7 @@
 		ShoppingCart,
 		MoreHorizontal
 	} from '@lucide/svelte';
-	import { createBusinessProfile } from '$lib/db/business-profile';
-	import { createAccount } from '$lib/db/accounts';
 	import { getBusinessTypeLabel } from '$lib/utils';
-	import type { PageData } from './$types';
-
-	let { data }: { data: PageData } = $props();
-
-	// Get user ID from server data
-	let userId = $derived(data.userId);
 
 	// Wizard state
 	let currentStep = $state(1);
@@ -133,9 +125,19 @@
 	async function skipOnboarding() {
 		loading = true;
 		try {
-			// Save flag to localStorage that onboarding is skipped
-			localStorage.setItem('onboarding_skipped', 'true');
-			await goto('/beranda');
+			const response = await fetch('?/skip', { method: 'POST' });
+			const result = deserialize(await response.text());
+			if (result.type === 'failure') {
+				errors.submit =
+					result.data && 'message' in result.data
+						? String(result.data.message)
+						: 'Gagal menyimpan pilihan. Silakan coba lagi.';
+				return;
+			}
+			await applyAction(result);
+		} catch (error) {
+			console.error('Failed to skip onboarding:', error);
+			errors.submit = 'Gagal menyimpan pilihan. Silakan coba lagi.';
 		} finally {
 			loading = false;
 		}
@@ -143,38 +145,29 @@
 
 	async function completeOnboarding() {
 		if (!validateStep3()) return;
-		if (!userId) {
-			errors.submit = 'Sesi berakhir. Silakan login ulang.';
-			return;
-		}
 
 		completing = true;
 		try {
-			// Step 1 & 2: Create business profile
-			await createBusinessProfile({
-				userId,
-				name: businessName,
-				ownerName: ownerName,
-				businessType: businessType
-			});
+			const formData = new FormData();
+			formData.set('businessName', businessName);
+			formData.set('ownerName', ownerName);
+			formData.set('businessType', businessType);
+			formData.set('accountName', accountName);
+			formData.set('accountType', selectedAccountType);
+			formData.set('openingBalance', String(openingBalance));
+			const response = await fetch('?/complete', { method: 'POST', body: formData });
+			const result = deserialize(await response.text());
 
-			// Step 3: Create first account with opening balance
-			await createAccount({
-				userId,
-				code: '1101',
-				name: accountName,
-				type: 'asset',
-				subType: selectedAccountType,
-				isSystem: true,
-				balance: openingBalance
-			});
+			if (result.type === 'failure') {
+				if (result.data && 'errors' in result.data && result.data.errors) {
+					errors = result.data.errors as Record<string, string>;
+				} else if (result.data && 'message' in result.data && result.data.message) {
+					errors.submit = String(result.data.message);
+				}
+				return;
+			}
 
-			// Mark onboarding as complete
-			localStorage.setItem('onboarding_completed', 'true');
-			localStorage.removeItem('onboarding_skipped');
-
-			// Redirect to dashboard
-			await goto('/beranda');
+			await applyAction(result);
 		} catch (error) {
 			console.error('Failed to complete onboarding:', error);
 			errors.submit = 'Gagal menyimpan data. Silakan coba lagi.';
@@ -251,6 +244,15 @@
 	<!-- Main Content -->
 	<main class="flex-1 px-4 pb-8">
 		<div class="max-w-md mx-auto">
+			{#if errors.submit}
+				<div
+					class="mb-4 p-3 rounded-md bg-destructive/10 border border-destructive text-destructive text-sm"
+					role="alert"
+				>
+					{errors.submit}
+				</div>
+			{/if}
+
 			<!-- Step 1: Business Info -->
 			{#if currentStep === 1}
 				<div class="space-y-6 animate-in slide-in-from-right-4 duration-300">
@@ -410,14 +412,6 @@
 						</div>
 					</div>
 
-					{#if errors.submit}
-						<div
-							class="p-3 rounded-md bg-destructive/10 border border-destructive text-destructive text-sm"
-						>
-							{errors.submit}
-						</div>
-					{/if}
-
 					<div class="flex gap-3">
 						<Button variant="outline" class="flex-1" onclick={prevStep} disabled={completing}>
 							<ArrowLeft class="w-4 h-4 mr-1" />
@@ -442,7 +436,7 @@
 		<div class="max-w-md mx-auto text-center text-sm text-muted-foreground">
 			<p class="flex items-center justify-center gap-2">
 				<span class="w-2 h-2 bg-green-500 rounded-full"></span>
-				Data Anda tersimpan dengan aman di perangkat
+				Data akan disimpan aman ke akun Anda
 			</p>
 		</div>
 	</footer>

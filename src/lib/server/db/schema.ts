@@ -8,11 +8,12 @@ import { user, session, account } from './auth.schema';
 export * from './auth.schema';
 
 // Add relations to auth user table for business tables
-export const userRelations = relations(user, ({ many }) => ({
+export const userRelations = relations(user, ({ many, one }) => ({
 	sessions: many(session),
 	accounts: many(account),
 	// Business table relations
 	extension: many(userExtension),
+	onboardingState: one(onboardingState),
 	businessProfiles: many(businessProfile),
 	chartOfAccounts: many(chartOfAccount),
 	categories: many(category),
@@ -57,6 +58,27 @@ export const userExtension = sqliteTable('user_extension', {
 export const userExtensionRelations = relations(userExtension, ({ one }) => ({
 	user: one(user, {
 		fields: [userExtension.id],
+		references: [user.id]
+	})
+}));
+
+// ============================================================================
+// Onboarding State
+// ============================================================================
+
+export const onboardingState = sqliteTable('onboarding_state', {
+	userId: text('user_id')
+		.primaryKey()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	status: text('status').notNull(), // 'completed' | 'skipped'
+	completedAt: integer('completed_at', { mode: 'timestamp_ms' }),
+	skippedAt: integer('skipped_at', { mode: 'timestamp_ms' }),
+	...timestampColumns
+});
+
+export const onboardingStateRelations = relations(onboardingState, ({ one }) => ({
+	user: one(user, {
+		fields: [onboardingState.userId],
 		references: [user.id]
 	})
 }));
