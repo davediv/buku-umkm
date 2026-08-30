@@ -1,7 +1,8 @@
-import { error, redirect } from '@sveltejs/kit';
+import { error, isHttpError, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { debtQueries, chartOfAccountQueries } from '$lib/server/db/queries';
+import { todayInJakarta } from '$lib/shared/dates';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	// Check authentication
@@ -62,15 +63,17 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		// - Piutang payment: money comes IN (use income accounts like "Kas", "Bank")
 		// - Hutang payment: money goes OUT (use expense accounts like "Kas", "Bank")
 		// Both can use cash/bank accounts (type: asset)
-		const paymentAccounts = accounts.filter((a) => a.type === 'asset');
+		const paymentAccounts = accounts.filter((a) => a.type === 'asset' && a.isActive);
 
 		return {
 			debt: formattedDebt,
 			payments,
-			accounts: paymentAccounts
+			accounts: paymentAccounts,
+			today: todayInJakarta()
 		};
-	} catch {
-		console.error('Error loading debt detail');
+	} catch (cause) {
+		if (isHttpError(cause)) throw cause;
+		console.error('Error loading debt detail', cause);
 		throw error(500, 'Terjadi kesalahan server');
 	}
 };

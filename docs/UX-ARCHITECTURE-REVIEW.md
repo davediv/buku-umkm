@@ -15,7 +15,7 @@
 - [x] **UX-ARCH-08:** Consolidate reports into one canonical route hierarchy.
 - [x] **UX-ARCH-09:** Rebuild transaction browsing around a server query contract.
 - [x] **UX-ARCH-10:** Preserve transaction-entry context and partial outcomes.
-- [ ] **UX-ARCH-11:** Correct the Utang/Piutang journey.
+- [x] **UX-ARCH-11:** Correct the Utang/Piutang journey.
 - [ ] **UX-ARCH-12:** Never conflate error, empty, offline, and success states.
 - [ ] **UX-ARCH-13:** Standardize navigation continuity and URL state.
 - [ ] **UX-ARCH-14:** Adopt accessible interaction primitives and responsive data patterns.

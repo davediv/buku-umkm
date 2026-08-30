@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import {
 		ArrowLeft,
 		ArrowRight,
@@ -14,7 +14,9 @@
 		X,
 		Plus
 	} from '@lucide/svelte';
-	import { formatRupiah, formatDate, getDebtStatusBadge } from '$lib/utils';
+	import { getDebtDueState } from '$lib/debts/list';
+	import { todayInJakarta } from '$lib/shared/dates';
+	import { formatRupiah, formatDate } from '$lib/utils';
 
 	let { data } = $props();
 
@@ -26,33 +28,19 @@
 
 	// Form state
 	let paymentAmount = $state<number | string>('');
-	let paymentDate = $state(new Date().toISOString().split('T')[0]);
+	let paymentDate = $state(todayInJakarta());
 	let paymentAccount = $state('');
 	let paymentNotes = $state('');
 	let paymentCommandId = $state('');
 
-	// Local mutable state — syncs from load data, allows optimistic updates
-	let debt = $state(data.debt);
-	let payments = $state(data.payments);
+	let debt = $derived(data.debt);
+	let payments = $derived(data.payments);
 	let accounts = $derived(data.accounts);
-
-	// Sync when load data changes (e.g., navigation, full reload)
-	$effect(() => {
-		debt = data.debt;
-		payments = data.payments;
-	});
-	let statusBadge = $derived(getDebtStatusBadge(debt.status));
-
-	// Pre-fill payment amount with remaining balance
-	$effect(() => {
-		if (showPaymentModal && debt.remainingAmount) {
-			paymentAmount = debt.remainingAmount;
-		}
-	});
+	let dueState = $derived(getDebtDueState(debt, data.today));
 
 	// Get type label
 	function getTypeLabel(type: string): string {
-		return type === 'piutang' ? 'Piutang' : 'Hutang';
+		return type === 'piutang' ? 'Piutang' : 'Utang';
 	}
 
 	// Get type color
@@ -65,7 +53,7 @@
 		error = null;
 		success = null;
 		paymentAmount = debt.remainingAmount;
-		paymentDate = new Date().toISOString().split('T')[0];
+		paymentDate = todayInJakarta();
 		paymentAccount = '';
 		paymentNotes = '';
 		paymentCommandId = crypto.randomUUID();
@@ -133,17 +121,9 @@
 				return;
 			}
 
-			// Optimistically update local state
-			if (result.payment) {
-				payments = [...payments, result.payment as (typeof payments)[number]];
-			}
-			if (result.debt) {
-				const updatedDebt = result.debt as Partial<typeof debt>;
-				debt = { ...debt, ...updatedDebt };
-			}
-
 			success = result.message ?? null;
 			closePaymentModal();
+			await invalidateAll();
 		} catch (err) {
 			error = 'Terjadi kesalahan server';
 			console.error(err);
@@ -190,9 +170,9 @@
 				<div class="flex items-center gap-3">
 					<h1 class="text-2xl font-bold">{debt.contactName}</h1>
 					<span
-						class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full {statusBadge.class}"
+						class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full {dueState.badgeClass}"
 					>
-						{statusBadge.label}
+						{dueState.label}
 					</span>
 				</div>
 				<p class="text-sm text-muted-foreground">
@@ -202,21 +182,34 @@
 		</div>
 
 		<!-- Record Payment Button -->
-		{#if debt.status !== 'paid'}
+		{#if debt.isActive && dueState.kind !== 'paid'}
 			<button
 				onclick={openPaymentModal}
-				class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+				class="inline-flex min-h-12 items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
 			>
 				<Plus class="w-4 h-4" />
-				Catat Pembayaran
+				{debt.type === 'piutang' ? 'Catat Penerimaan' : 'Catat Pembayaran'}
 			</button>
-		{:else}
+		{:else if dueState.kind === 'paid'}
 			<div class="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-md">
 				<CheckCircle class="w-4 h-4" />
 				<span class="text-sm font-medium">Lunas</span>
 			</div>
+		{:else}
+			<div class="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-gray-700">
+				<span class="text-sm font-medium">Catatan diarsipkan</span>
+			</div>
 		{/if}
 	</div>
+
+	{#if success}
+		<div
+			class="rounded-md border border-green-500 bg-green-500/10 p-3 text-sm text-green-800"
+			role="status"
+		>
+			{success}
+		</div>
+	{/if}
 
 	<!-- Amount Cards -->
 	<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -241,7 +234,9 @@
 				<Clock class="w-4 h-4 text-muted-foreground" />
 				<span class="text-sm text-muted-foreground">Sisa Tagihan</span>
 			</div>
-			<p class="text-xl font-semibold {debt.status === 'paid' ? 'text-green-600' : 'text-red-600'}">
+			<p
+				class="text-xl font-semibold {dueState.kind === 'paid' ? 'text-green-600' : 'text-red-600'}"
+			>
 				{formatRupiah(debt.remainingAmount)}
 			</p>
 		</div>
@@ -277,7 +272,16 @@
 					<Calendar class="w-4 h-4 text-muted-foreground mt-0.5" />
 					<div>
 						<dt class="text-xs text-muted-foreground">Jatuh Tempo</dt>
-						<dd class="text-sm font-medium">{formatDate(debt.dueDate)}</dd>
+						<dd class="text-sm font-medium">
+							{debt.dueDate ? formatDate(debt.dueDate) : 'Tidak ditentukan'}
+						</dd>
+						<dd
+							class="mt-1 text-xs {dueState.kind === 'overdue'
+								? 'text-red-700'
+								: 'text-muted-foreground'}"
+						>
+							{dueState.label}
+						</dd>
 					</div>
 				</div>
 
@@ -348,14 +352,21 @@
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="payment-modal-title"
+		tabindex="-1"
+		onclick={(event) => event.target === event.currentTarget && !loading && closePaymentModal()}
+		onkeydown={(event) => event.key === 'Escape' && !loading && closePaymentModal()}
 	>
 		<div
 			class="bg-white border rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
 		>
 			<div class="flex items-center justify-between mb-6">
-				<h2 id="payment-modal-title" class="text-lg font-semibold">Catat Pembayaran</h2>
+				<h2 id="payment-modal-title" class="text-lg font-semibold">
+					{debt.type === 'piutang' ? 'Catat Penerimaan Piutang' : 'Catat Pembayaran Utang'}
+				</h2>
 				<button
+					type="button"
 					onclick={closePaymentModal}
+					disabled={loading}
 					class="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
 					aria-label="Tutup"
 				>
@@ -367,7 +378,9 @@
 			<div class="mb-6 p-3 bg-muted/50 rounded-lg">
 				<div class="flex justify-between text-sm">
 					<span class="text-muted-foreground">Sisa Tagihan</span>
-					<span class="font-semibold {debt.status === 'paid' ? 'text-green-600' : 'text-red-600'}">
+					<span
+						class="font-semibold {dueState.kind === 'paid' ? 'text-green-600' : 'text-red-600'}"
+					>
 						{formatRupiah(debt.remainingAmount)}
 					</span>
 				</div>
@@ -375,7 +388,9 @@
 
 			<form onsubmit={handlePaymentSubmit} class="space-y-4">
 				<div class="space-y-2">
-					<label for="paymentAmount" class="text-sm font-medium">Jumlah Pembayaran *</label>
+					<label for="paymentAmount" class="text-sm font-medium">
+						{debt.type === 'piutang' ? 'Jumlah diterima' : 'Jumlah dibayar'} *
+					</label>
 					<input
 						id="paymentAmount"
 						type="number"
@@ -397,26 +412,33 @@
 						id="paymentDate"
 						type="date"
 						bind:value={paymentDate}
+						min={debt.date}
+						max={data.today}
 						class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 						required
 					/>
 				</div>
 
 				<div class="space-y-2">
-					<label for="paymentAccount" class="text-sm font-medium">Akun *</label>
+					<label for="paymentAccount" class="text-sm font-medium">
+						{debt.type === 'piutang' ? 'Diterima ke kas/rekening' : 'Dibayar dari kas/rekening'} *
+					</label>
 					<select
 						id="paymentAccount"
 						bind:value={paymentAccount}
 						class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 						required
 					>
-						<option value="">Pilih Akun</option>
+						<option value="">Pilih kas atau rekening</option>
 						{#each accounts as account (account.id)}
 							<option value={account.id}>
 								{account.name} ({account.code})
 							</option>
 						{/each}
 					</select>
+					<p class="text-xs text-muted-foreground">
+						Saldo rekening akan {debt.type === 'piutang' ? 'bertambah' : 'berkurang'} sebesar pembayaran.
+					</p>
 				</div>
 
 				<div class="space-y-2">
@@ -433,23 +455,17 @@
 				{#if error}
 					<div
 						class="bg-destructive/10 border border-destructive text-destructive text-sm p-3 rounded-md flex items-center gap-2"
+						role="alert"
 					>
 						<AlertCircle class="w-4 h-4" />
 						{error}
 					</div>
 				{/if}
-				{#if success}
-					<div
-						class="bg-green-500/10 border border-green-500 text-green-500 text-sm p-3 rounded-md"
-					>
-						{success}
-					</div>
-				{/if}
-
 				<div class="flex gap-3 pt-4">
 					<button
 						type="button"
 						onclick={closePaymentModal}
+						disabled={loading}
 						class="flex-1 px-4 py-2 border rounded-md text-sm font-medium hover:bg-secondary transition-colors"
 					>
 						Batal
@@ -459,7 +475,11 @@
 						disabled={loading}
 						class="flex-1 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
 					>
-						{loading ? 'Menyimpan...' : 'Simpan'}
+						{loading
+							? 'Menyimpan…'
+							: debt.type === 'piutang'
+								? 'Simpan penerimaan'
+								: 'Simpan pembayaran'}
 					</button>
 				</div>
 			</form>
