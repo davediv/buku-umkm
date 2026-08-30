@@ -25,6 +25,8 @@ function account(id: string, userId: string, balance = 1_000_000): AccountRecord
 		isActive: true,
 		parentId: null,
 		balance,
+		openingBalance: balance,
+		openingDate: '2026-01-01',
 		createdAt: now,
 		updatedAt: now
 	};
@@ -175,6 +177,23 @@ describe('financial mutation commands', () => {
 		expect(repository.createTransactionAtomic).not.toHaveBeenCalled();
 	});
 
+	it('rejects movements before the account opening date', async () => {
+		const { repository } = createRepository();
+		const service = createFinancialMutationService(repository);
+
+		await expect(
+			service.createTransaction('user-1', 'request-123', {
+				type: 'income',
+				amount: 50_000,
+				accountId: 'account-1',
+				categoryId: null,
+				date: '2025-12-31',
+				description: null
+			})
+		).rejects.toMatchObject({ code: 'DATE_BEFORE_ACCOUNT_OPENING', status: 400 });
+		expect(repository.createTransactionAtomic).not.toHaveBeenCalled();
+	});
+
 	it('updates a transaction balance by the delta and returns the persisted row', async () => {
 		const { repository, accounts, transactions } = createRepository();
 		transactions.set(
@@ -250,5 +269,81 @@ describe('financial mutation commands', () => {
 		expect(created.entity.id).toBe('debt-1');
 		expect(replayed).toMatchObject({ entity: { id: 'debt-1' }, replayed: true });
 		expect(repository.createDebtAtomic).toHaveBeenCalledTimes(1);
+	});
+
+	it('rejects a payment dated before its debt', async () => {
+		const { repository, debts } = createRepository();
+		debts.set('debt-1', {
+			id: 'debt-1',
+			userId: 'user-1',
+			type: 'hutang',
+			contactName: 'Supplier',
+			contactPhone: null,
+			contactAddress: null,
+			originalAmount: 500_000,
+			paidAmount: 0,
+			remainingAmount: 500_000,
+			date: '2026-08-20',
+			dueDate: null,
+			description: null,
+			status: 'active',
+			isActive: true,
+			createdAt: now,
+			updatedAt: now,
+			payments: []
+		});
+		const service = createFinancialMutationService(repository);
+
+		await expect(
+			service.recordDebtPayment('user-1', 'debt-1', 'payment-request', {
+				amount: 100_000,
+				date: '2026-08-19',
+				accountId: 'account-1',
+				notes: null
+			})
+		).rejects.toMatchObject({ code: 'PAYMENT_BEFORE_DEBT', status: 400 });
+		expect(repository.recordDebtPaymentAtomic).not.toHaveBeenCalled();
+	});
+
+	it('keeps debts with payment history from being removed', async () => {
+		const { repository, debts } = createRepository();
+		debts.set('debt-1', {
+			id: 'debt-1',
+			userId: 'user-1',
+			type: 'piutang',
+			contactName: 'Budi',
+			contactPhone: null,
+			contactAddress: null,
+			originalAmount: 500_000,
+			paidAmount: 100_000,
+			remainingAmount: 400_000,
+			date: '2026-08-20',
+			dueDate: null,
+			description: null,
+			status: 'active',
+			isActive: true,
+			createdAt: now,
+			updatedAt: now,
+			payments: [
+				{
+					id: 'payment-1',
+					debtId: 'debt-1',
+					userId: 'user-1',
+					amount: 100_000,
+					date: '2026-08-21',
+					accountId: 'account-1',
+					transactionId: 'txn-1',
+					notes: null,
+					createdAt: now
+				}
+			]
+		});
+		const service = createFinancialMutationService(repository);
+
+		await expect(service.deleteDebt('user-1', 'debt-1')).rejects.toMatchObject({
+			code: 'DEBT_HAS_PAYMENTS',
+			status: 409
+		});
+		expect(repository.deleteDebt).not.toHaveBeenCalled();
 	});
 });

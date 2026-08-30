@@ -3,12 +3,12 @@ import { getDb } from '$lib/server/db';
 import {
 	dashboardQueries,
 	chartOfAccountQueries,
-	debtQueries,
 	businessProfileQueries
 } from '$lib/server/db/queries';
-import { redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { getIndonesianMonthName } from '$lib/tax/config';
-import { formatDateLong } from '$lib/utils';
+import { getBalanceSheetAsOf } from '$lib/server/reports/balance-sheet';
+import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Check authentication
@@ -35,7 +35,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		: 'monthly';
 
 	// For neraca - date
-	const selectedDate = dateParam || new Date().toISOString().split('T')[0];
+	const today = todayInJakarta();
+	const selectedDate = dateParam || today;
+	if (!isIsoCalendarDate(selectedDate) || selectedDate > today) {
+		throw error(400, 'Tanggal laporan tidak valid');
+	}
 
 	// For catatan - period
 	type CatatanPeriodType = 'monthly' | 'quarterly' | 'yearly';
@@ -163,171 +167,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				}
 			};
 		} else if (reportType === 'neraca') {
-			// Fetch balance sheet data
-			const [assetAccounts, piutangData, hutangData] = await Promise.all([
-				chartOfAccountQueries.findByType(db, userId, 'asset'),
-				debtQueries.findAll(db, userId, { type: 'piutang', status: 'active' }),
-				debtQueries.findAll(db, userId, { type: 'hutang', status: 'active' })
-			]);
-
-			const totalPiutang = piutangData.reduce((sum, d) => sum + d.remainingAmount, 0);
-			const totalHutang = hutangData.reduce((sum, d) => sum + d.remainingAmount, 0);
-
-			const assetBreakdown = assetAccounts.reduce(
-				(acc, a) => {
-					const item = { id: a.id, name: a.name, code: a.code, balance: a.balance };
-					const subtype = a.subType;
-
-					if (subtype === 'kas') {
-						acc.kas.items.push(item);
-						acc.kas.subtotal += a.balance;
-					} else if (subtype === 'bank') {
-						acc.bank.items.push(item);
-						acc.bank.subtotal += a.balance;
-					} else if (subtype === 'piutang') {
-						acc.piutang.items.push(item);
-						acc.piutang.subtotal += a.balance;
-					} else if (subtype === 'persediaan') {
-						acc.persediaan.items.push(item);
-						acc.persediaan.subtotal += a.balance;
-					} else if (subtype === 'aktiva_tetap') {
-						acc.aktivaTetap.items.push(item);
-						acc.aktivaTetap.subtotal += a.balance;
-					} else {
-						acc.lainnya.items.push(item);
-						acc.lainnya.subtotal += a.balance;
-					}
-					return acc;
-				},
-				{
-					kas: {
-						label: 'Kas',
-						items: [] as { id: string; name: string; code: string; balance: number }[],
-						subtotal: 0
-					},
-					bank: {
-						label: 'Bank',
-						items: [] as { id: string; name: string; code: string; balance: number }[],
-						subtotal: 0
-					},
-					piutang: {
-						label: 'Piutang Usaha',
-						items: [] as { id: string; name: string; code: string; balance: number }[],
-						subtotal: 0
-					},
-					persediaan: {
-						label: 'Persediaan',
-						items: [] as { id: string; name: string; code: string; balance: number }[],
-						subtotal: 0
-					},
-					aktivaTetap: {
-						label: 'Aktiva Tetap',
-						items: [] as { id: string; name: string; code: string; balance: number }[],
-						subtotal: 0
-					},
-					lainnya: {
-						label: 'Lainnya',
-						items: [] as { id: string; name: string; code: string; balance: number }[],
-						subtotal: 0
-					}
-				}
-			);
-
-			const totalKas = assetBreakdown.kas.subtotal;
-			const totalBank = assetBreakdown.bank.subtotal;
-			const totalPiutangUsaha = assetBreakdown.piutang.subtotal;
-			const totalPersediaan = assetBreakdown.persediaan.subtotal;
-			const totalAktivaTetap = assetBreakdown.aktivaTetap.subtotal;
-			const totalLainnya = assetBreakdown.lainnya.subtotal;
-
-			const totalAssetAccounts =
-				totalKas + totalBank + totalPersediaan + totalAktivaTetap + totalLainnya;
-			const totalAssets = totalAssetAccounts + totalPiutang;
-			const totalLiabilities = totalHutang;
-			const totalEquity = totalAssets - totalLiabilities;
-
-			balanceSheetData = {
-				date: selectedDate,
-				dateLabel: formatDateLong(selectedDate),
-				assets: {
-					total: totalAssets,
-					breakdown: {
-						kas: {
-							label: assetBreakdown.kas.label,
-							items: assetBreakdown.kas.items,
-							subtotal: totalKas
-						},
-						bank: {
-							label: assetBreakdown.bank.label,
-							items: assetBreakdown.bank.items,
-							subtotal: totalBank
-						},
-						piutangUsaha: {
-							label: assetBreakdown.piutang.label,
-							items: assetBreakdown.piutang.items,
-							subtotal: totalPiutangUsaha
-						},
-						piutangDetail: {
-							label: 'Piutang (Detail)',
-							items: piutangData.map((d) => ({
-								id: d.id,
-								name: d.contactName,
-								originalAmount: d.originalAmount,
-								paidAmount: d.paidAmount,
-								remainingAmount: d.remainingAmount,
-								date: d.date,
-								dueDate: d.dueDate
-							})),
-							subtotal: totalPiutang
-						},
-						persediaan: {
-							label: assetBreakdown.persediaan.label,
-							items: assetBreakdown.persediaan.items,
-							subtotal: totalPersediaan
-						},
-						aktivaTetap: {
-							label: assetBreakdown.aktivaTetap.label,
-							items: assetBreakdown.aktivaTetap.items,
-							subtotal: totalAktivaTetap
-						},
-						lainnya: {
-							label: assetBreakdown.lainnya.label,
-							items: assetBreakdown.lainnya.items,
-							subtotal: totalLainnya
-						}
-					}
-				},
-				liabilities: {
-					total: totalLiabilities,
-					breakdown: {
-						hutangDetail: {
-							label: 'Hutang (Detail)',
-							items: hutangData.map((d) => ({
-								id: d.id,
-								name: d.contactName,
-								originalAmount: d.originalAmount,
-								paidAmount: d.paidAmount,
-								remainingAmount: d.remainingAmount,
-								date: d.date,
-								dueDate: d.dueDate
-							})),
-							subtotal: totalHutang
-						}
-					}
-				},
-				equity: {
-					total: totalEquity,
-					components: [{ name: 'Selisih Aset dan Kewajiban', amount: totalEquity }]
-				},
-				isBalanced: Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 1,
-				equation: {
-					assets: totalAssets,
-					liabilities: totalLiabilities,
-					equity: totalEquity,
-					result: totalAssets,
-					expected: totalLiabilities + totalEquity
-				}
-			};
+			balanceSheetData = await getBalanceSheetAsOf(db, userId, selectedDate);
 		} else {
 			// catatan - no additional data fetching needed, profile already fetched
 			const now = new Date();

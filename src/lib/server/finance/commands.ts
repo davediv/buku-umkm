@@ -94,6 +94,16 @@ function requireStandaloneTransaction(entity: TransactionRecord): void {
 	}
 }
 
+function requireAccountOpenOn(account: AccountRecord, date: string): void {
+	if (account.openingDate && date < account.openingDate) {
+		throw new FinanceError(
+			`Tanggal tidak boleh sebelum tanggal saldo awal akun (${account.openingDate})`,
+			400,
+			'DATE_BEFORE_ACCOUNT_OPENING'
+		);
+	}
+}
+
 export function createFinancialMutationService(
 	repository: FinanceRepository,
 	createId: () => string = () => crypto.randomUUID()
@@ -125,6 +135,7 @@ export function createFinancialMutationService(
 			input.categoryId ? repository.findCategory(userId, input.categoryId) : undefined
 		]);
 		if (!account) throw new FinanceError('Akun tidak ditemukan', 400, 'ACCOUNT_NOT_FOUND');
+		requireAccountOpenOn(account, input.date);
 		if (input.categoryId && !selectedCategory) {
 			throw new FinanceError('Kategori tidak ditemukan', 400, 'CATEGORY_NOT_FOUND');
 		}
@@ -179,6 +190,12 @@ export function createFinancialMutationService(
 		const existing = await repository.findTransaction(userId, transactionId);
 		if (!existing) throw new FinanceError('Transaksi tidak ditemukan', 404, 'NOT_FOUND');
 		requireStandaloneTransaction(existing);
+		if (input.date !== undefined) {
+			const account =
+				existing.account ?? (await repository.findAccount(userId, existing.accountId));
+			if (!account) throw new FinanceError('Akun tidak ditemukan', 400, 'ACCOUNT_NOT_FOUND');
+			requireAccountOpenOn(account, input.date);
+		}
 
 		if (input.categoryId) {
 			const selectedCategory = await repository.findCategory(userId, input.categoryId);
@@ -288,6 +305,8 @@ export function createFinancialMutationService(
 		if (!destinationAccount) {
 			throw new FinanceError('Akun tujuan tidak ditemukan', 400, 'ACCOUNT_NOT_FOUND');
 		}
+		requireAccountOpenOn(sourceAccount, input.date);
+		requireAccountOpenOn(destinationAccount, input.date);
 
 		const transferId = createId();
 		const sourceTransactionId = createId();
@@ -436,6 +455,13 @@ export function createFinancialMutationService(
 	async function deleteDebt(userId: string, debtId: string): Promise<void> {
 		const existing = await repository.findDebt(userId, debtId);
 		if (!existing) throw new FinanceError('Hutang/piutang tidak ditemukan', 404, 'NOT_FOUND');
+		if (existing.payments.length > 0) {
+			throw new FinanceError(
+				'Hutang/piutang yang sudah memiliki pembayaran tidak dapat dihapus',
+				409,
+				'DEBT_HAS_PAYMENTS'
+			);
+		}
 		await repository.deleteDebt(userId, debtId);
 	}
 
@@ -483,6 +509,14 @@ export function createFinancialMutationService(
 		]);
 		if (!existingDebt) throw new FinanceError('Hutang/piutang tidak ditemukan', 404, 'NOT_FOUND');
 		if (!account) throw new FinanceError('Akun tidak ditemukan', 400, 'ACCOUNT_NOT_FOUND');
+		if (input.date < existingDebt.date) {
+			throw new FinanceError(
+				'Tanggal pembayaran tidak boleh sebelum tanggal pencatatan hutang/piutang',
+				400,
+				'PAYMENT_BEFORE_DEBT'
+			);
+		}
+		requireAccountOpenOn(account, input.date);
 		if (existingDebt.status === 'paid') {
 			throw new FinanceError('Hutang/piutang sudah lunas', 400, 'ALREADY_PAID');
 		}

@@ -12,6 +12,7 @@ import {
 	getTransactionTemplate,
 	type BusinessType as SeedBusinessType
 } from '$lib/server/db/seed/accounts';
+import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
 
 export type OnboardingStatus = 'completed' | 'skipped';
 export type FirstAccountType = 'kas' | 'bank' | 'ewallet';
@@ -23,6 +24,7 @@ export type CompleteOnboardingInput = {
 	accountName: string;
 	accountType: FirstAccountType;
 	openingBalance: number;
+	openingDate: string;
 };
 
 export type OnboardingFormResult =
@@ -51,6 +53,7 @@ export function parseOnboardingForm(formData: FormData): OnboardingFormResult {
 	const accountType = readText(formData, 'accountType');
 	const openingBalanceRaw = readText(formData, 'openingBalance');
 	const openingBalance = Number(openingBalanceRaw);
+	const openingDate = readText(formData, 'openingDate');
 	const errors: Record<string, string> = {};
 
 	if (!businessName) errors.businessName = 'Nama bisnis wajib diisi';
@@ -78,6 +81,9 @@ export function parseOnboardingForm(formData: FormData): OnboardingFormResult {
 	) {
 		errors.openingBalance = `Saldo harus berupa Rupiah bulat antara 0 dan ${MAX_TRANSACTION_AMOUNT}`;
 	}
+	if (!isIsoCalendarDate(openingDate) || openingDate > todayInJakarta()) {
+		errors.openingDate = 'Tanggal saldo awal tidak valid';
+	}
 
 	if (Object.keys(errors).length > 0) return { success: false, errors };
 
@@ -89,7 +95,8 @@ export function parseOnboardingForm(formData: FormData): OnboardingFormResult {
 			businessType: businessType as BusinessType,
 			accountName,
 			accountType: accountType as FirstAccountType,
-			openingBalance
+			openingBalance,
+			openingDate
 		}
 	};
 }
@@ -193,7 +200,9 @@ export async function completeOnboarding(
 				isSystem: true,
 				isActive: true,
 				parentId: null,
-				balance: input.openingBalance
+				balance: input.openingBalance,
+				openingBalance: input.openingBalance,
+				openingDate: input.openingDate
 			}),
 			db.insert(category).values(categoryValues),
 			db.insert(transactionTemplate).values(templateValues)

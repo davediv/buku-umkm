@@ -9,6 +9,8 @@ import {
 	mapSchemaToApiType,
 	isValidAccountType
 } from '$lib/shared/account-types';
+import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
+import { MAX_TRANSACTION_AMOUNT } from '$lib/constants';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Check authentication
@@ -61,7 +63,8 @@ export const actions: Actions = {
 			const formData = await request.formData();
 			const name = formData.get('name') as string;
 			const type = formData.get('type') as 'cash' | 'bank' | 'ewallet';
-			const openingBalance = parseInt(formData.get('opening_balance') as string, 10) || 0;
+			const openingBalance = Number(formData.get('opening_balance')?.toString() || 0);
+			const openingDate = formData.get('opening_date')?.toString() || todayInJakarta();
 
 			// Validate required fields
 			if (!name || name.trim() === '') {
@@ -78,8 +81,15 @@ export const actions: Actions = {
 			}
 
 			// Validate opening balance
-			if (openingBalance < 0) {
-				return fail(400, { error: 'Saldo awal tidak boleh negatif', success: false });
+			if (
+				!Number.isSafeInteger(openingBalance) ||
+				openingBalance < 0 ||
+				openingBalance > MAX_TRANSACTION_AMOUNT
+			) {
+				return fail(400, { error: 'Saldo awal tidak valid', success: false });
+			}
+			if (!isIsoCalendarDate(openingDate) || openingDate > todayInJakarta()) {
+				return fail(400, { error: 'Tanggal saldo awal tidak valid', success: false });
 			}
 
 			// Map account type to schema values
@@ -107,7 +117,9 @@ export const actions: Actions = {
 					subType,
 					isSystem: false,
 					isActive: true,
-					balance: openingBalance
+					balance: openingBalance,
+					openingBalance,
+					openingDate
 				})
 				.returning();
 			return {

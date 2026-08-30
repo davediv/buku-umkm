@@ -21,6 +21,7 @@
 		AlertDialogCancel
 	} from '$lib/components/ui/alert-dialog';
 	import type { PageData, ActionData } from './$types';
+	import { todayInJakarta } from '$lib/shared/dates';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -50,6 +51,7 @@
 	let name = $state('');
 	let type = $state<'cash' | 'bank' | 'ewallet'>('cash');
 	let openingBalance = $state(0);
+	let openingDate = $state(todayInJakarta());
 
 	// Local mutable accounts state — syncs from load data, allows optimistic updates
 	let accounts = $derived(data.accounts);
@@ -85,6 +87,7 @@
 		name = '';
 		type = 'cash';
 		openingBalance = 0;
+		openingDate = todayInJakarta();
 		showModal = true;
 	}
 
@@ -94,6 +97,7 @@
 		name = account.name;
 		type = account.type as 'cash' | 'bank' | 'ewallet';
 		openingBalance = 0;
+		openingDate = todayInJakarta();
 		showModal = true;
 	}
 
@@ -104,6 +108,7 @@
 		name = '';
 		type = 'cash';
 		openingBalance = 0;
+		openingDate = todayInJakarta();
 	}
 
 	// Open transfer modal
@@ -575,6 +580,21 @@
 							class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 						/>
 						<p class="text-xs text-muted-foreground">Saldo awal opsional. Kosongkan jika 0.</p>
+					</div>
+					<div class="space-y-2">
+						<label for="opening_date" class="text-sm font-medium">Tanggal Saldo Awal</label>
+						<input
+							id="opening_date"
+							name="opening_date"
+							type="date"
+							bind:value={openingDate}
+							max={todayInJakarta()}
+							class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							required
+						/>
+						<p class="text-xs text-muted-foreground">
+							Digunakan sebagai titik awal laporan historis.
+						</p>
 					</div>
 				{/if}
 

@@ -11,11 +11,14 @@ import {
 	mapSchemaToApiType,
 	filterActiveAccounts
 } from '$lib/shared/account-types';
+import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
+import { MAX_TRANSACTION_AMOUNT } from '$lib/constants';
 
 interface CreateAccountBody {
 	name: string;
 	type: AccountType;
 	opening_balance?: number;
+	opening_date?: string;
 }
 
 // GET /api/accounts - Returns all accounts for authenticated user
@@ -81,8 +84,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Validate opening balance (if provided)
 		const openingBalance = body.opening_balance ?? 0;
-		if (openingBalance < 0) {
-			return json({ error: 'Saldo awal tidak boleh negatif' }, { status: 400 });
+		if (
+			!Number.isSafeInteger(openingBalance) ||
+			openingBalance < 0 ||
+			openingBalance > MAX_TRANSACTION_AMOUNT
+		) {
+			return json({ error: 'Saldo awal tidak valid' }, { status: 400 });
+		}
+		const openingDate = body.opening_date ?? todayInJakarta();
+		if (!isIsoCalendarDate(openingDate) || openingDate > todayInJakarta()) {
+			return json({ error: 'Tanggal saldo awal tidak valid' }, { status: 400 });
 		}
 
 		const db = getDb();
@@ -113,7 +124,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				subType,
 				isSystem: false,
 				isActive: true,
-				balance: openingBalance
+				balance: openingBalance,
+				openingBalance,
+				openingDate
 			})
 			.returning();
 

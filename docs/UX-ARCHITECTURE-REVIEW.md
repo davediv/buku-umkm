@@ -8,7 +8,7 @@
 - [x] **UX-ARCH-01:** Make onboarding server-authoritative and idempotent.
 - [x] **UX-ARCH-02:** Adopt and communicate one honest offline architecture.
 - [x] **UX-ARCH-03:** Introduce a single, typed financial mutation layer.
-- [ ] **UX-ARCH-04:** Make dated financial reports historically accurate.
+- [x] **UX-ARCH-04:** Make dated financial reports historically accurate.
 - [ ] **UX-ARCH-05:** Rebuild tax as a current, versioned eligibility system.
 - [ ] **UX-ARCH-06:** Reduce and group primary navigation.
 - [ ] **UX-ARCH-07:** Replace the current `Lainnya` and Settings dead-end structure.

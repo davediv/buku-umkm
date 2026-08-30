@@ -14,6 +14,7 @@ import {
 } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { BACKUP_SCHEMA_VERSION } from '$lib/constants';
+import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any;
@@ -151,6 +152,20 @@ async function insertBackupData(
 
 	// Insert chart of accounts
 	if (backup.accounts.length > 0) {
+		const movementByAccount = new Map<string, number>();
+		const earliestTransactionByAccount = new Map<string, string>();
+		for (const item of backup.transactions) {
+			if (item.isActive === false) continue;
+			const accountId = item.accountId as string;
+			const amount = Number(item.amount) || 0;
+			const effect = item.type === 'income' ? amount : item.type === 'expense' ? -amount : 0;
+			movementByAccount.set(accountId, (movementByAccount.get(accountId) ?? 0) + effect);
+			const transactionDate = item.date as string;
+			const earliest = earliestTransactionByAccount.get(accountId);
+			if (isIsoCalendarDate(transactionDate) && (!earliest || transactionDate < earliest)) {
+				earliestTransactionByAccount.set(accountId, transactionDate);
+			}
+		}
 		const accounts = backup.accounts.map((a) => ({
 			id: a.id as string,
 			userId,
@@ -162,6 +177,16 @@ async function insertBackupData(
 			isActive: Boolean(a.isActive),
 			parentId: a.parentId as string | null,
 			balance: (a.balance as number) ?? 0,
+			openingBalance:
+				typeof a.openingBalance === 'number'
+					? a.openingBalance
+					: ((a.balance as number) ?? 0) - (movementByAccount.get(a.id as string) ?? 0),
+			openingDate:
+				typeof a.openingDate === 'string' && isIsoCalendarDate(a.openingDate)
+					? a.openingDate
+					: (earliestTransactionByAccount.get(a.id as string) ??
+						(a.createdAt as string | undefined)?.slice(0, 10) ??
+						todayInJakarta()),
 			createdAt: parseDateToDate(a.createdAt as string | null | undefined),
 			updatedAt: parseDateToDate(a.updatedAt as string | null | undefined)
 		}));

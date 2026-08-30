@@ -29,6 +29,13 @@
       "when": 1788077365524,
       "tag": "0003_safe_rafael_vega",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788078360906,
+      "tag": "0004_faithful_loa",
+      "breakpoints": true
     }
   ]
 }

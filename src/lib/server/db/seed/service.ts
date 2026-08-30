@@ -2,6 +2,7 @@ import type { SQLiteDb } from '../index';
 import { chartOfAccount, category, transactionTemplate } from '../schema';
 import type { BusinessType } from './accounts';
 import { getAccountTemplate, getCategoryTemplate, getTransactionTemplate } from './accounts';
+import { todayInJakarta } from '$lib/shared/dates';
 
 export type { BusinessType } from './accounts';
 
@@ -12,6 +13,7 @@ export type { BusinessType } from './accounts';
  * @param businessType - The business type template to use
  */
 export async function seedUserAccounts(db: SQLiteDb, userId: string, businessType: BusinessType) {
+	const openingDate = todayInJakarta();
 	const accountTemplates = getAccountTemplate(businessType);
 	const categoryTemplates = getCategoryTemplate(businessType);
 
@@ -26,7 +28,9 @@ export async function seedUserAccounts(db: SQLiteDb, userId: string, businessTyp
 		isSystem: acc.isSystem,
 		isActive: true,
 		parentId: null as string | null,
-		balance: 0
+		balance: 0,
+		openingBalance: 0,
+		openingDate
 	}));
 
 	await db.insert(chartOfAccount).values(accountValues);
@@ -98,7 +102,9 @@ export async function seedDefaultCashAccount(db: SQLiteDb, userId: string) {
 			isSystem: true,
 			isActive: true,
 			parentId: null,
-			balance: 0
+			balance: 0,
+			openingBalance: 0,
+			openingDate: todayInJakarta()
 		});
 	}
 }
