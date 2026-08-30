@@ -20,6 +20,8 @@ describe('CashFlowChart', () => {
 			)
 			.toBeInTheDocument();
 		expect(document.querySelectorAll('rect')).toHaveLength(4);
-		await expect.element(page.getByText(/Jul 2026: pemasukan Rp 5\.000\.000/)).toBeInTheDocument();
+		await expect
+			.element(page.getByText(/Jul\s+2026:\s+pemasukan Rp 5\.000\.000/))
+			.toBeInTheDocument();
 	});
 });
