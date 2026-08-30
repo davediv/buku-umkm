@@ -1,7 +1,12 @@
 import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import { transactionQueries } from '$lib/server/db/queries';
 import { redirect } from '@sveltejs/kit';
+import { getTransactionPage } from '$lib/server/transactions/list';
+import {
+	getTransactionHref,
+	getTransactionPagination,
+	parseTransactionQuery
+} from '$lib/transactions/query';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Check authentication
@@ -9,34 +14,23 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		throw redirect(302, '/masuk');
 	}
 
-	const userId = locals.user.id;
-	const db = getDb();
+	const query = parseTransactionQuery(url.searchParams);
 
+	let result: Awaited<ReturnType<typeof getTransactionPage>>;
 	try {
-		// Parse query params
-		const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
-		const offset = parseInt(url.searchParams.get('offset') || '0');
-		const type = url.searchParams.get('type') as 'income' | 'expense' | undefined;
-		const startDate = url.searchParams.get('start_date') || undefined;
-		const endDate = url.searchParams.get('end_date') || undefined;
-
-		const transactions = await transactionQueries.findAll(db, userId, {
-			limit,
-			offset,
-			type,
-			startDate,
-			endDate
-		});
-
-		return {
-			transactions,
-			filters: { type, startDate, endDate }
-		};
-	} catch {
-		console.error('Error loading transactions:');
+		result = await getTransactionPage(getDb(), locals.user.id, query);
+	} catch (error) {
+		console.error('Error loading transactions:', error);
 		return {
 			transactions: [],
+			query,
+			pagination: getTransactionPagination(0, query.page, query.pageSize),
 			error: 'Gagal memuat transaksi'
 		};
 	}
+
+	if (result.query.page !== query.page) {
+		throw redirect(302, getTransactionHref(result.query));
+	}
+	return result;
 };

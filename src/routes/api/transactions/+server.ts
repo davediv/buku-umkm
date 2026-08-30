@@ -1,12 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
-import { transactionQueries } from '$lib/server/db/queries';
 import { parseCreateTransaction, requireIdempotencyKey } from '$lib/server/finance/contracts';
 import { createFinancialMutationService } from '$lib/server/finance/commands';
 import { createD1FinanceRepository } from '$lib/server/finance/repository';
 import { financeErrorResponse } from '$lib/server/finance/http';
 import { presentTransaction } from '$lib/server/finance/presenters';
+import { getTransactionPage } from '$lib/server/transactions/list';
+import { parseTransactionQuery } from '$lib/transactions/query';
 
 export const GET: RequestHandler = async ({ locals, url }) => {
 	if (!locals.user || !locals.session) {
@@ -14,24 +15,9 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	}
 
 	try {
-		const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 100);
-		const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0);
-		const requestedType = url.searchParams.get('type');
-		const type =
-			requestedType === 'income' || requestedType === 'expense' || requestedType === 'transfer'
-				? requestedType
-				: undefined;
-		const transactions = await transactionQueries.findAll(getDb(), locals.user.id, {
-			limit,
-			offset,
-			accountId: url.searchParams.get('account_id') || undefined,
-			categoryId: url.searchParams.get('category_id') || undefined,
-			type,
-			startDate: url.searchParams.get('start_date') || undefined,
-			endDate: url.searchParams.get('end_date') || undefined
-		});
-
-		return json({ transactions: transactions.map(presentTransaction) });
+		return json(
+			await getTransactionPage(getDb(), locals.user.id, parseTransactionQuery(url.searchParams))
+		);
 	} catch (error) {
 		return financeErrorResponse(error, 'list transactions');
 	}
