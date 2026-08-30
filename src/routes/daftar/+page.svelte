@@ -5,9 +5,9 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { BookOpen } from '@lucide/svelte';
-	import type { ActionData } from './$types';
+	import type { ActionData, PageData } from './$types';
 
-	let { form }: { form: ActionData } = $props();
+	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let loading = $state(false);
 </script>
@@ -61,6 +61,7 @@
 			}}
 			class="space-y-4"
 		>
+			<input type="hidden" name="return_to" value={data.returnTo} />
 			<div class="space-y-2">
 				<Label for="name">{t('common.name')}</Label>
 				<Input
@@ -139,7 +140,9 @@
 		<!-- Login Link -->
 		<p class="text-center text-sm text-muted-foreground">
 			{t('auth.hasAccount')}
-			<a href="/masuk" class="font-medium text-primary hover:underline"> {t('auth.login')}</a>
+			<a href={data.loginHref} class="font-medium text-primary hover:underline">
+				{t('auth.login')}</a
+			>
 		</p>
 	</div>
 </div>

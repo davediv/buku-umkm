@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { beforeNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { BookOpen } from '@lucide/svelte';
 	import TaxReminder from '$lib/components/tax-reminder.svelte';
@@ -10,12 +11,29 @@
 		isNavigationItemActive,
 		mobileNavigation
 	} from '$lib/navigation';
+	import { rememberNavigationOrigin } from '$lib/client/navigation-continuity';
 	import type { LayoutData } from './$types';
 
 	let { children, data }: { children: import('svelte').Snippet; data: LayoutData } = $props();
 	let desktopCreateActive = $derived(
 		isNavigationItemActive(desktopCreateAction, page.url.pathname)
 	);
+
+	beforeNavigate((navigation) => {
+		if (
+			navigation.type === 'popstate' ||
+			!navigation.from?.url ||
+			!navigation.to?.url ||
+			navigation.from.url.origin !== navigation.to.url.origin
+		) {
+			return;
+		}
+
+		rememberNavigationOrigin(
+			`${navigation.to.url.pathname}${navigation.to.url.search}`,
+			`${navigation.from.url.pathname}${navigation.from.url.search}`
+		);
+	});
 </script>
 
 <div class="flex min-h-screen flex-col bg-background">

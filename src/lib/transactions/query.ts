@@ -1,4 +1,5 @@
 import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
+import { getSafeAppReturnTo } from '$lib/navigation/return-to';
 
 export const TRANSACTION_TYPES = ['all', 'income', 'expense', 'transfer'] as const;
 export const TRANSACTION_DATE_RANGES = ['all', 'today', 'week', 'month', 'custom'] as const;
@@ -171,4 +172,32 @@ export function getTransactionHref(
 	overrides: Parameters<typeof toTransactionSearchParams>[1] = {}
 ): string {
 	return `/transaksi?${toTransactionSearchParams(query, overrides).toString()}`;
+}
+
+export function getTransactionDetailHref(id: string, query: TransactionQuery): string {
+	const returnTo = getTransactionHref(query);
+	return `/transaksi/${encodeURIComponent(id)}?${new URLSearchParams({ return_to: returnTo }).toString()}`;
+}
+
+export function getSafeTransactionListHref(
+	value: string | null | undefined,
+	today = todayInJakarta()
+): string | null {
+	const safe = getSafeAppReturnTo(value);
+	if (!safe) return null;
+
+	const parsed = new URL(safe, 'https://buku-umkm.invalid');
+	if (parsed.pathname !== '/transaksi') return null;
+	return getTransactionHref(parseTransactionQuery(parsed.searchParams, today));
+}
+
+export function getTransactionOutcomeHref(
+	returnTo: string | null | undefined,
+	outcome: 'created' | 'created-without-receipts' | 'updated' | 'deleted',
+	today = todayInJakarta()
+): string {
+	const safe = getSafeTransactionListHref(returnTo, today) ?? '/transaksi';
+	const parsed = new URL(safe, 'https://buku-umkm.invalid');
+	parsed.searchParams.set('success', outcome);
+	return `${parsed.pathname}${parsed.search}`;
 }

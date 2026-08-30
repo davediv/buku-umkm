@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getDebtDetailHref, getDebtHref, parseDebtQuery } from './query';
+import { getDebtDetailHref, getDebtHref, getSafeDebtListHref, parseDebtQuery } from './query';
 
 describe('debt list query contract', () => {
 	it('normalizes invalid and incompatible URL state', () => {
@@ -28,5 +28,14 @@ describe('debt list query contract', () => {
 		expect(getDebtDetailHref('debt-1', query)).toContain(
 			`return_to=${encodeURIComponent(listHref)}`
 		);
+	});
+
+	it('restores only a canonical debt list destination', () => {
+		const target = '/hutang-piutang?type=hutang&status=all&due=overdue&sort=due-asc&q=andi';
+		expect(getSafeDebtListHref(target, 'piutang')).toBe(target);
+		expect(getSafeDebtListHref('https://evil.example/hutang-piutang', 'hutang')).toBe(
+			'/hutang-piutang?type=hutang'
+		);
+		expect(getSafeDebtListHref('/pengaturan', 'piutang')).toBe('/hutang-piutang?type=piutang');
 	});
 });

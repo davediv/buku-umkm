@@ -22,25 +22,52 @@ describe('registration and onboarding route gates', () => {
 		getOnboardingStatus.mockReset();
 	});
 
-	it('keeps a new authenticated user in onboarding and gates the application', async () => {
-		getOnboardingStatus.mockResolvedValue(null);
+	it('preserves a protected destination when authentication is required', async () => {
+		const appUrl = new URL('https://buku.test/laporan/neraca?date=2026-08-30');
 
 		await expect(
-			loadOnboarding({ locals: authenticatedLocals } as Parameters<typeof loadOnboarding>[0])
-		).resolves.toEqual({});
+			loadApp({ locals: {}, url: appUrl } as Parameters<typeof loadApp>[0])
+		).rejects.toMatchObject({
+			status: 302,
+			location: '/masuk?return_to=%2Flaporan%2Fneraca%3Fdate%3D2026-08-30'
+		});
+	});
+
+	it('keeps a new authenticated user in onboarding and gates the application', async () => {
+		getOnboardingStatus.mockResolvedValue(null);
+		const onboardingUrl = new URL('https://buku.test/onboarding');
+		const appUrl = new URL('https://buku.test/transaksi?q=kopi&page=3');
+
 		await expect(
-			loadApp({ locals: authenticatedLocals } as Parameters<typeof loadApp>[0])
-		).rejects.toMatchObject({ status: 302, location: '/onboarding' });
+			loadOnboarding({ locals: authenticatedLocals, url: onboardingUrl } as Parameters<
+				typeof loadOnboarding
+			>[0])
+		).resolves.toEqual({ returnTo: '/beranda' });
+		await expect(
+			loadApp({ locals: authenticatedLocals, url: appUrl } as Parameters<typeof loadApp>[0])
+		).rejects.toMatchObject({
+			status: 302,
+			location: '/onboarding?return_to=%2Ftransaksi%3Fq%3Dkopi%26page%3D3'
+		});
 	});
 
 	it('sends completed users to the dashboard and allows application entry', async () => {
 		getOnboardingStatus.mockResolvedValue('completed');
+		const onboardingUrl = new URL(
+			'https://buku.test/onboarding?return_to=%2Flaporan%2Fneraca%3Fdate%3D2026-08-30'
+		);
+		const appUrl = new URL('https://buku.test/beranda');
 
 		await expect(
-			loadOnboarding({ locals: authenticatedLocals } as Parameters<typeof loadOnboarding>[0])
-		).rejects.toMatchObject({ status: 302, location: '/beranda' });
+			loadOnboarding({ locals: authenticatedLocals, url: onboardingUrl } as Parameters<
+				typeof loadOnboarding
+			>[0])
+		).rejects.toMatchObject({
+			status: 302,
+			location: '/laporan/neraca?date=2026-08-30'
+		});
 		await expect(
-			loadApp({ locals: authenticatedLocals } as Parameters<typeof loadApp>[0])
+			loadApp({ locals: authenticatedLocals, url: appUrl } as Parameters<typeof loadApp>[0])
 		).resolves.toMatchObject({ onboardingStatus: 'completed' });
 	});
 });

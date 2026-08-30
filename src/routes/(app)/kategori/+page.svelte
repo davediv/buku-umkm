@@ -24,6 +24,7 @@
 		AlertDialogCancel
 	} from '$lib/components/ui/alert-dialog';
 	import { getSafeTransactionReturn } from '$lib/client/transaction-return';
+	import { getIncomeExpenseViewHref, resolveIncomeExpenseView } from '$lib/navigation/view-state';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -36,7 +37,7 @@
 	let togglingId = $state<string | null>(null);
 	let showDeleteConfirm = $state(false);
 	let deleteTargetId = $state<string | null>(null);
-	let activeTab = $state<'income' | 'expense'>('income');
+	let activeTab = $derived(resolveIncomeExpenseView(page.url.searchParams.get('type')));
 	let operationStatus = $state<{ kind: 'success' | 'error'; message: string } | null>(null);
 	let transactionReturnTo = $derived(
 		getSafeTransactionReturn(page.url.searchParams.get('return_to'))
@@ -52,6 +53,10 @@
 
 	// Get current categories based on tab
 	let currentCategories = $derived(activeTab === 'income' ? incomeCategories : expenseCategories);
+	let incomeHref = $derived(getIncomeExpenseViewHref('/kategori', page.url.searchParams, 'income'));
+	let expenseHref = $derived(
+		getIncomeExpenseViewHref('/kategori', page.url.searchParams, 'expense')
+	);
 
 	// SAK EMKM group names
 	const sakEmkmGroups: Record<string, string> = {
@@ -236,8 +241,8 @@
 
 	<!-- Tabs -->
 	<div class="flex gap-2 border-b">
-		<button
-			onclick={() => (activeTab = 'income')}
+		<a
+			href={incomeHref}
 			class="flex items-center gap-2 px-4 py-2 border-b-2 transition-colors {activeTab === 'income'
 				? 'border-primary text-primary font-medium'
 				: 'border-transparent text-muted-foreground hover:text-foreground'}"
@@ -247,9 +252,9 @@
 			<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full"
 				>{incomeCategories.all.length}</span
 			>
-		</button>
-		<button
-			onclick={() => (activeTab = 'expense')}
+		</a>
+		<a
+			href={expenseHref}
 			class="flex items-center gap-2 px-4 py-2 border-b-2 transition-colors {activeTab === 'expense'
 				? 'border-primary text-primary font-medium'
 				: 'border-transparent text-muted-foreground hover:text-foreground'}"
@@ -259,7 +264,7 @@
 			<span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full"
 				>{expenseCategories.all.length}</span
 			>
-		</button>
+		</a>
 	</div>
 
 	{#if operationStatus && !showModal}

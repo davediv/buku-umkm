@@ -22,6 +22,7 @@
 		AlertDialogCancel
 	} from '$lib/components/ui/alert-dialog';
 	import { getSafeTransactionReturn } from '$lib/client/transaction-return';
+	import { getIncomeExpenseViewHref, resolveIncomeExpenseView } from '$lib/navigation/view-state';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -40,7 +41,7 @@
 	let togglingId = $state<string | null>(null);
 	let showDeleteConfirm = $state(false);
 	let deleteTargetId = $state<string | null>(null);
-	let activeTab = $state<'income' | 'expense'>('income');
+	let activeTab = $derived(resolveIncomeExpenseView(page.url.searchParams.get('type')));
 	let operationStatus = $state<{ kind: 'success' | 'error'; message: string } | null>(null);
 	let transactionReturnTo = $derived(
 		getSafeTransactionReturn(page.url.searchParams.get('return_to'))
@@ -64,6 +65,12 @@
 
 	// Get current templates based on tab
 	let currentTemplates = $derived(activeTab === 'income' ? incomeTemplates : expenseTemplates);
+	let incomeHref = $derived(
+		getIncomeExpenseViewHref('/pengaturan/template', page.url.searchParams, 'income')
+	);
+	let expenseHref = $derived(
+		getIncomeExpenseViewHref('/pengaturan/template', page.url.searchParams, 'expense')
+	);
 
 	// Get categories for form based on selected type
 	let formCategories = $derived(
@@ -250,24 +257,22 @@
 	<!-- Tab Navigation -->
 	<div class="border-b px-4 pt-4">
 		<div class="flex gap-1 bg-muted p-1 rounded-lg">
-			<button
-				type="button"
-				onclick={() => (activeTab = 'income')}
+			<a
+				href={incomeHref}
 				class="flex-1 py-2 px-4 rounded-md font-medium transition-all {activeTab === 'income'
 					? 'bg-green-500 text-white'
 					: 'text-muted-foreground hover:text-foreground'}"
 			>
 				Pemasukan
-			</button>
-			<button
-				type="button"
-				onclick={() => (activeTab = 'expense')}
+			</a>
+			<a
+				href={expenseHref}
 				class="flex-1 py-2 px-4 rounded-md font-medium transition-all {activeTab === 'expense'
 					? 'bg-red-500 text-white'
 					: 'text-muted-foreground hover:text-foreground'}"
 			>
 				Pengeluaran
-			</button>
+			</a>
 		</div>
 	</div>
 

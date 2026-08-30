@@ -71,3 +71,18 @@ export function getDebtDetailHref(id: string, query: DebtQuery): string {
 	const params = new URLSearchParams({ return_to: getDebtHref(query) });
 	return `/hutang-piutang/${encodeURIComponent(id)}?${params.toString()}`;
 }
+
+export function getSafeDebtListHref(
+	value: string | null | undefined,
+	fallbackType: string
+): string {
+	const type: DebtTypeFilter = fallbackType === 'hutang' ? 'hutang' : 'piutang';
+	const fallback = getDebtHref({ ...DEFAULT_DEBT_QUERY, type });
+	const safe = getSafeAppReturnTo(value);
+	if (!safe) return fallback;
+
+	const parsed = new URL(safe, 'https://buku-umkm.invalid');
+	if (parsed.pathname !== '/hutang-piutang') return fallback;
+	return getDebtHref(parseDebtQuery(parsed.searchParams));
+}
+import { getSafeAppReturnTo } from '$lib/navigation/return-to';

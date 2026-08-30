@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
 	import {
 		ArrowLeft,
 		ArrowRight,
@@ -15,7 +16,9 @@
 		Plus
 	} from '@lucide/svelte';
 	import OperationStatus from '$lib/components/operation-status.svelte';
+	import ContextBackLink from '$lib/components/context-back-link.svelte';
 	import { getDebtDueState } from '$lib/debts/list';
+	import { getSafeDebtListHref } from '$lib/debts/query';
 	import { todayInJakarta } from '$lib/shared/dates';
 	import { formatRupiah, formatDate } from '$lib/utils';
 
@@ -38,6 +41,9 @@
 	let payments = $derived(data.payments);
 	let accounts = $derived(data.accounts);
 	let dueState = $derived(getDebtDueState(debt, data.today));
+	let listReturnTo = $derived(
+		getSafeDebtListHref(page.url.searchParams.get('return_to'), debt.type)
+	);
 
 	// Get type label
 	function getTypeLabel(type: string): string {
@@ -132,11 +138,6 @@
 			loading = false;
 		}
 	}
-
-	// Go back
-	function goBack() {
-		goto('/hutang-piutang?type=' + debt.type);
-	}
 </script>
 
 <svelte:head>
@@ -145,13 +146,7 @@
 
 <div class="p-4 md:p-6 space-y-6">
 	<!-- Back Button -->
-	<button
-		onclick={goBack}
-		class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-	>
-		<ArrowLeft class="w-4 h-4" />
-		Kembali ke Daftar {getTypeLabel(debt.type)}
-	</button>
+	<ContextBackLink href={listReturnTo} label={`Kembali ke Daftar ${getTypeLabel(debt.type)}`} />
 
 	<!-- Header -->
 	<div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
