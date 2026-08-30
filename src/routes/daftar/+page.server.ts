@@ -2,12 +2,20 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getAuth } from '$lib/server/auth';
 import { APIError } from 'better-auth/api';
+import {
+	DEFAULT_APP_RETURN_TO,
+	getLoginHref,
+	getOnboardingHref,
+	getSafeAppReturnTo
+} from '$lib/navigation/return-to';
 
 export const load: PageServerLoad = async (event) => {
+	const returnTo =
+		getSafeAppReturnTo(event.url.searchParams.get('return_to')) ?? DEFAULT_APP_RETURN_TO;
 	if (event.locals.user) {
-		return redirect(302, '/beranda');
+		return redirect(302, returnTo);
 	}
-	return {};
+	return { returnTo, loginHref: getLoginHref(returnTo) };
 };
 
 export const actions: Actions = {
@@ -17,6 +25,8 @@ export const actions: Actions = {
 		const email = formData.get('email')?.toString() ?? '';
 		const password = formData.get('password')?.toString() ?? '';
 		const confirmPassword = formData.get('confirmPassword')?.toString() ?? '';
+		const returnTo =
+			getSafeAppReturnTo(formData.get('return_to')?.toString()) ?? DEFAULT_APP_RETURN_TO;
 
 		// Client-side validation
 		const errors: Record<string, string> = {};
@@ -58,7 +68,7 @@ export const actions: Actions = {
 					email,
 					password,
 					name,
-					callbackURL: '/beranda'
+					callbackURL: getOnboardingHref(returnTo)
 				}
 			});
 		} catch (error) {
@@ -75,6 +85,6 @@ export const actions: Actions = {
 		}
 
 		// Redirect to onboarding after successful registration
-		return redirect(302, '/onboarding');
+		return redirect(302, getOnboardingHref(returnTo));
 	}
 };

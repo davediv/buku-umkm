@@ -1,8 +1,9 @@
-import type { Handle } from '@sveltejs/kit';
+import { redirect, type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { building } from '$app/environment';
 import { getAuth } from '$lib/server/auth';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
+import { getLoginHref } from '$lib/navigation/return-to';
 
 // ============================================
 // Constants
@@ -160,6 +161,10 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	if (session) {
 		event.locals.session = session.session;
 		event.locals.user = session.user;
+	}
+
+	if (!session && event.route.id?.startsWith('/(app)')) {
+		throw redirect(302, getLoginHref(`${event.url.pathname}${event.url.search}`));
 	}
 
 	return svelteKitHandler({ event, resolve, auth, building });

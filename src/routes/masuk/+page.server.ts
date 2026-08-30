@@ -2,12 +2,23 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getAuth } from '$lib/server/auth';
 import { APIError } from 'better-auth/api';
+import {
+	DEFAULT_APP_RETURN_TO,
+	getRegistrationHref,
+	getSafeAppReturnTo,
+	getSafeLoginReturnTo
+} from '$lib/navigation/return-to';
 
 export const load: PageServerLoad = async (event) => {
+	const returnTo =
+		getSafeLoginReturnTo(event.url.searchParams.get('return_to')) ?? DEFAULT_APP_RETURN_TO;
 	if (event.locals.user) {
-		return redirect(302, '/beranda');
+		return redirect(302, returnTo);
 	}
-	return {};
+	return {
+		returnTo,
+		registrationHref: getRegistrationHref(getSafeAppReturnTo(returnTo) ?? DEFAULT_APP_RETURN_TO)
+	};
 };
 
 export const actions: Actions = {
@@ -15,6 +26,8 @@ export const actions: Actions = {
 		const formData = await event.request.formData();
 		const email = formData.get('email')?.toString() ?? '';
 		const password = formData.get('password')?.toString() ?? '';
+		const returnTo =
+			getSafeLoginReturnTo(formData.get('return_to')?.toString()) ?? DEFAULT_APP_RETURN_TO;
 
 		// Client-side validation
 		const errors: Record<string, string> = {};
@@ -43,7 +56,7 @@ export const actions: Actions = {
 				body: {
 					email,
 					password,
-					callbackURL: '/beranda'
+					callbackURL: returnTo
 				}
 			});
 		} catch (error) {
@@ -53,6 +66,6 @@ export const actions: Actions = {
 			return fail(500, { message: 'Terjadi kesalahan server', values: { email } });
 		}
 
-		return redirect(302, '/beranda');
+		return redirect(302, returnTo);
 	}
 };

@@ -7,17 +7,25 @@ import {
 	parseOnboardingForm,
 	skipOnboarding
 } from '$lib/server/onboarding/service';
+import {
+	DEFAULT_APP_RETURN_TO,
+	getLoginHref,
+	getOnboardingHref,
+	getSafeAppReturnTo
+} from '$lib/navigation/return-to';
 
 export const load: PageServerLoad = async (event) => {
+	const returnTo =
+		getSafeAppReturnTo(event.url.searchParams.get('return_to')) ?? DEFAULT_APP_RETURN_TO;
 	// If not logged in, redirect to login
 	if (!event.locals.user || !event.locals.session) {
-		return redirect(302, '/masuk?redirect=/onboarding');
+		return redirect(302, getLoginHref(getOnboardingHref(returnTo)));
 	}
 
 	const status = await getOnboardingStatus(getDb(), event.locals.user.id);
-	if (status) return redirect(302, '/beranda');
+	if (status) return redirect(302, returnTo);
 
-	return {};
+	return { returnTo };
 };
 
 export const actions: Actions = {
@@ -26,7 +34,10 @@ export const actions: Actions = {
 			return fail(401, { message: 'Sesi berakhir. Silakan masuk kembali.' });
 		}
 
-		const parsed = parseOnboardingForm(await event.request.formData());
+		const formData = await event.request.formData();
+		const returnTo =
+			getSafeAppReturnTo(formData.get('return_to')?.toString()) ?? DEFAULT_APP_RETURN_TO;
+		const parsed = parseOnboardingForm(formData);
 		if (!parsed.success) return fail(400, { errors: parsed.errors });
 
 		try {
@@ -39,12 +50,16 @@ export const actions: Actions = {
 			return fail(500, { message: 'Gagal menyimpan data. Silakan coba lagi.' });
 		}
 
-		return redirect(303, '/beranda');
+		return redirect(303, returnTo);
 	},
 	skip: async (event) => {
 		if (!event.locals.user || !event.locals.session) {
 			return fail(401, { message: 'Sesi berakhir. Silakan masuk kembali.' });
 		}
+
+		const formData = await event.request.formData();
+		const returnTo =
+			getSafeAppReturnTo(formData.get('return_to')?.toString()) ?? DEFAULT_APP_RETURN_TO;
 
 		try {
 			await skipOnboarding(getDb(), event.locals.user.id);
@@ -53,6 +68,6 @@ export const actions: Actions = {
 			return fail(500, { message: 'Gagal menyimpan pilihan. Silakan coba lagi.' });
 		}
 
-		return redirect(303, '/beranda');
+		return redirect(303, returnTo);
 	}
 };

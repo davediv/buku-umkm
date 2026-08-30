@@ -18,6 +18,9 @@
 	} from '@lucide/svelte';
 	import { getBusinessTypeLabel } from '$lib/utils';
 	import { todayInJakarta } from '$lib/shared/dates';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	// Wizard state
 	let currentStep = $state(1);
@@ -130,7 +133,9 @@
 	async function skipOnboarding() {
 		loading = true;
 		try {
-			const response = await fetch('?/skip', { method: 'POST' });
+			const formData = new FormData();
+			formData.set('return_to', data.returnTo);
+			const response = await fetch('?/skip', { method: 'POST', body: formData });
 			const result = deserialize(await response.text());
 			if (result.type === 'failure') {
 				errors.submit =
@@ -161,6 +166,7 @@
 			formData.set('accountType', selectedAccountType);
 			formData.set('openingBalance', String(openingBalance));
 			formData.set('openingDate', openingDate);
+			formData.set('return_to', data.returnTo);
 			const response = await fetch('?/complete', { method: 'POST', body: formData });
 			const result = deserialize(await response.text());
 

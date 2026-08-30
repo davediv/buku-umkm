@@ -5,9 +5,9 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { BookOpen } from '@lucide/svelte';
-	import type { ActionData } from './$types';
+	import type { ActionData, PageData } from './$types';
 
-	let { form }: { form: ActionData } = $props();
+	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let loading = $state(false);
 </script>
@@ -61,6 +61,7 @@
 			}}
 			class="space-y-4"
 		>
+			<input type="hidden" name="return_to" value={data.returnTo} />
 			<div class="space-y-2">
 				<Label for="email">{t('common.email')}</Label>
 				<Input
@@ -104,7 +105,9 @@
 		<!-- Register Link -->
 		<p class="text-center text-sm text-muted-foreground">
 			{t('auth.noAccount')}
-			<a href="/daftar" class="font-medium text-primary hover:underline"> {t('auth.register')}</a>
+			<a href={data.registrationHref} class="font-medium text-primary hover:underline">
+				{t('auth.register')}</a
+			>
 		</p>
 	</div>
 </div>

@@ -20,10 +20,12 @@
 
 	// State
 	let loading = $state(false);
-	let selectedPeriod = $state<'daily' | 'weekly' | 'monthly'>('monthly');
 
 	// Derived
 	let dashboard = $derived(data.dashboard);
+	let selectedPeriod = $derived(
+		(dashboard?.period.type ?? 'monthly') as 'daily' | 'weekly' | 'monthly'
+	);
 	let hasError = $derived(!dashboard && data.error);
 
 	// Handle period change
@@ -31,7 +33,6 @@
 		if (loading || selectedPeriod === period) return;
 
 		loading = true;
-		selectedPeriod = period;
 
 		try {
 			await goto(`/beranda?period=${period}`, {

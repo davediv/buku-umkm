@@ -24,6 +24,7 @@
 	import OperationStatus from '$lib/components/operation-status.svelte';
 	import { toast } from '$lib/components/ui/toast';
 	import {
+		getTransactionDetailHref,
 		getTransactionHref,
 		toTransactionSearchParams,
 		type TransactionDateRange,
@@ -407,7 +408,7 @@
 								<td class="px-4 py-3 text-right">
 									<div class="flex justify-end gap-1">
 										<a
-											href="/transaksi/{transaction.id}"
+											href={getTransactionDetailHref(transaction.id, query)}
 											class="flex h-11 w-11 items-center justify-center rounded hover:bg-secondary"
 											aria-label="Edit transaksi"
 										>

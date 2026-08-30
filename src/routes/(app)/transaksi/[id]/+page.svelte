@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { ArrowLeft, Camera, Image, Trash2, X } from '@lucide/svelte';
+	import ContextBackLink from '$lib/components/context-back-link.svelte';
 	import TransactionForm from '$lib/components/transactions/transaction-form.svelte';
 	import { validateTransactionForm } from '$lib/client/transaction-form';
 	import {
@@ -12,6 +14,7 @@
 	} from '$lib/components/ui/alert-dialog';
 	import { toast } from '$lib/components/ui/toast';
 	import { compressImage } from '$lib/utils';
+	import { getSafeTransactionListHref, getTransactionOutcomeHref } from '$lib/transactions/query';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -44,6 +47,10 @@
 	let accounts = $derived(data.accounts ?? []);
 	let canAddPhoto = $derived(photos.length < MAX_PHOTOS);
 	let transactionId = $derived(data.transaction?.id ?? '');
+	let transactionReturnTo = $derived(
+		getSafeTransactionListHref(page.url.searchParams.get('return_to')) ?? '/transaksi'
+	);
+	let currentDetailHref = $derived(`${page.url.pathname}${page.url.search}`);
 
 	async function handleFileSelect(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
@@ -154,7 +161,7 @@
 			});
 			const result = (await response.json()) as { error?: string };
 			if (!response.ok) throw new Error(result.error || 'Gagal memperbarui transaksi');
-			await goto('/transaksi?success=updated');
+			await goto(getTransactionOutcomeHref(transactionReturnTo, 'updated'));
 		} catch (updateError) {
 			console.error('Error updating transaction:', updateError);
 			toast.error(updateError instanceof Error ? updateError.message : 'Terjadi kesalahan server');
@@ -172,7 +179,7 @@
 				const result = (await response.json()) as { error?: string };
 				throw new Error(result.error || 'Gagal menghapus transaksi');
 			}
-			await goto('/transaksi?success=deleted');
+			await goto(getTransactionOutcomeHref(transactionReturnTo, 'deleted'));
 		} catch (deleteError) {
 			console.error('Error deleting transaction:', deleteError);
 			toast.error(deleteError instanceof Error ? deleteError.message : 'Terjadi kesalahan server');
@@ -192,11 +199,12 @@
 		class="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-4 py-3"
 	>
 		<div class="flex items-center gap-3">
-			<a
-				href="/transaksi"
-				class="-ml-2 flex h-11 w-11 items-center justify-center rounded-full hover:bg-secondary"
-				aria-label="Kembali ke daftar transaksi"><ArrowLeft class="h-5 w-5" /></a
-			>
+			<ContextBackLink
+				href={transactionReturnTo}
+				label="Kembali ke daftar transaksi"
+				compact
+				class="-ml-2 h-11 w-11 justify-center gap-0 rounded-full text-foreground [&_svg]:h-5 [&_svg]:w-5"
+			/>
 			<h1 class="text-lg font-semibold">Edit Transaksi</h1>
 		</div>
 		<button
@@ -284,7 +292,7 @@
 		bind:notes
 		categoriesByType={categories}
 		{accounts}
-		returnTo={`/transaksi/${transactionId}`}
+		returnTo={currentDetailHref}
 		busy={loading}
 		submitLabel="Simpan perubahan"
 		onsubmit={handleSubmit}

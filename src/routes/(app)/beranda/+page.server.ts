@@ -3,6 +3,7 @@ import { getDb } from '$lib/server/db';
 import { dashboardQueries, transactionQueries } from '$lib/server/db/queries';
 import { redirect } from '@sveltejs/kit';
 import { getTaxDashboardEstimate } from '$lib/tax/service';
+import { resolveDashboardPeriod } from '$lib/navigation/view-state';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Check authentication
@@ -14,15 +15,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const db = getDb();
 
 	// Parse period parameter (default: monthly)
-	const periodParam = url.searchParams.get('period');
-	const period = ['daily', 'weekly', 'monthly'].includes(periodParam ?? '')
-		? periodParam
-		: 'monthly';
+	const period = resolveDashboardPeriod(url.searchParams.get('period'));
 
 	try {
 		// Run all queries in parallel for performance
 		const [overview, recentTransactions, cashFlow, taxEstimate] = await Promise.all([
-			dashboardQueries.getOverview(db, userId, period as 'daily' | 'weekly' | 'monthly'),
+			dashboardQueries.getOverview(db, userId, period),
 			transactionQueries.getRecent(db, userId, 5),
 			dashboardQueries.getCashFlow(db, userId, 6),
 			getTaxDashboardEstimate(db, userId)

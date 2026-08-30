@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+	getSafeTransactionListHref,
+	getTransactionDetailHref,
 	getTransactionHref,
+	getTransactionOutcomeHref,
 	getTransactionPagination,
 	parseTransactionQuery,
 	toTransactionSearchParams
@@ -90,5 +93,25 @@ describe('transaction query contract', () => {
 			'q=kopi&type=income&range=all&sort=amount&order=desc&page=1&page_size=25'
 		);
 		expect(toTransactionSearchParams(query, {}, false).has('page')).toBe(false);
+	});
+
+	it('preserves canonical list state through detail and mutation navigation', () => {
+		const query = parseTransactionQuery(
+			new URLSearchParams('q=kopi&type=expense&range=all&page=3&page_size=25'),
+			'2026-08-30'
+		);
+		const listHref = getTransactionHref(query);
+		const detailHref = getTransactionDetailHref('txn_1', query);
+
+		expect(detailHref).toBe(`/transaksi/txn_1?return_to=${encodeURIComponent(listHref)}`);
+		expect(getSafeTransactionListHref(listHref, '2026-08-30')).toBe(listHref);
+		expect(getTransactionOutcomeHref(listHref, 'updated', '2026-08-30')).toBe(
+			`${listHref}&success=updated`
+		);
+	});
+
+	it('rejects unrelated or external transaction return targets', () => {
+		expect(getSafeTransactionListHref('https://evil.example/transaksi')).toBeNull();
+		expect(getSafeTransactionListHref('/pengaturan')).toBeNull();
 	});
 });
