@@ -30,5 +30,8 @@ describe('application navigation', () => {
 		expect(isNavigationItemActive(menu, '/pajak/profil')).toBe(true);
 		expect(isNavigationItemActive(menu, '/akun')).toBe(true);
 		expect(isNavigationItemActive(menu, '/hutang-piutang/debt-1')).toBe(true);
+		expect(isNavigationItemActive(menu, '/bantuan')).toBe(true);
+		expect(isNavigationItemActive(menu, '/privasi')).toBe(true);
+		expect(isNavigationItemActive(menu, '/tentang')).toBe(true);
 	});
 });

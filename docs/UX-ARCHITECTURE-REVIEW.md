@@ -11,7 +11,7 @@
 - [x] **UX-ARCH-04:** Make dated financial reports historically accurate.
 - [x] **UX-ARCH-05:** Rebuild tax as a current, versioned eligibility system.
 - [x] **UX-ARCH-06:** Reduce and group primary navigation.
-- [ ] **UX-ARCH-07:** Replace the current `Lainnya` and Settings dead-end structure.
+- [x] **UX-ARCH-07:** Replace the current `Lainnya` and Settings dead-end structure.
 - [ ] **UX-ARCH-08:** Consolidate reports into one canonical route hierarchy.
 - [ ] **UX-ARCH-09:** Rebuild transaction browsing around a server query contract.
 - [ ] **UX-ARCH-10:** Preserve transaction-entry context and partial outcomes.

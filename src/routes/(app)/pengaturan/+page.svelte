@@ -1,19 +1,18 @@
 <script lang="ts">
 	import { invalidateAll, goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import {
+		AlertTriangle,
 		ArrowLeft,
 		Download,
 		Upload,
 		Database,
 		Calendar,
-		AlertTriangle,
 		Loader2,
 		Store,
 		User,
 		LogOut,
-		Info,
-		Shield,
 		Settings,
 		Building2,
 		MapPin,
@@ -21,8 +20,13 @@
 		FileText,
 		Save
 	} from '@lucide/svelte';
-	import { APP_VERSION, BUSINESS_TYPES } from '$lib/constants';
+	import { BUSINESS_TYPES } from '$lib/constants';
 	import { getBusinessTypeLabel, formatDateTime } from '$lib/utils';
+	import {
+		getSettingsHref,
+		resolveSettingsSection,
+		type SettingsSectionId
+	} from '$lib/settings-navigation';
 	import { toast } from '$lib/components/ui/toast';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -39,16 +43,13 @@
 	let { data }: { data: PageData } = $props();
 
 	// Tab configuration
-	type SectionId = 'profil' | 'akun' | 'backup' | 'tentang';
-	const sectionTabs: { id: SectionId; label: string; icon: typeof Store }[] = [
+	const sectionTabs: { id: SettingsSectionId; label: string; icon: typeof Store }[] = [
 		{ id: 'profil', label: 'Profil Usaha', icon: Store },
 		{ id: 'akun', label: 'Akun Saya', icon: User },
-		{ id: 'backup', label: 'Cadangan', icon: Database },
-		{ id: 'tentang', label: 'Tentang', icon: Info }
+		{ id: 'data', label: 'Data & Cadangan', icon: Database }
 	];
 
-	// State for tabs/sections
-	let activeSection = $state<SectionId>('profil');
+	let activeSection = $derived(resolveSettingsSection(page.url.searchParams.get('bagian')));
 
 	// Backup/restore state
 	let backingUp = $state(false);
@@ -326,17 +327,17 @@
 		<!-- Section Tabs -->
 		<div class="flex gap-2 overflow-x-auto pb-2">
 			{#each sectionTabs as tab (tab.id)}
-				<button
-					type="button"
-					onclick={() => (activeSection = tab.id)}
+				<a
+					href={getSettingsHref(tab.id)}
 					class="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors {activeSection ===
 					tab.id
 						? 'bg-primary text-primary-foreground'
 						: 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
+					aria-current={activeSection === tab.id ? 'page' : undefined}
 				>
 					<tab.icon class="w-4 h-4" />
 					{tab.label}
-				</button>
+				</a>
 			{/each}
 		</div>
 
@@ -536,15 +537,6 @@
 						<Input id="email" type="email" value={data.user.email} disabled />
 						<p class="text-xs text-muted-foreground">Email tidak dapat diubah</p>
 					</div>
-
-					<!-- Change Password (coming soon) -->
-					<div class="flex items-center gap-3 pt-2 border-t">
-						<Shield class="w-4 h-4 text-muted-foreground" />
-						<div>
-							<p class="text-sm font-medium">Ubah Password</p>
-							<p class="text-xs text-muted-foreground">Fitur ini akan segera tersedia</p>
-						</div>
-					</div>
 				</div>
 
 				<!-- Logout Button -->
@@ -562,7 +554,7 @@
 		{/if}
 
 		<!-- Backup Section -->
-		{#if activeSection === 'backup'}
+		{#if activeSection === 'data'}
 			<section class="space-y-4">
 				<div class="flex items-center gap-2">
 					<Database class="w-5 h-5 text-primary" />
@@ -628,67 +620,11 @@
 				</div>
 			</section>
 		{/if}
-
-		<!-- About Section -->
-		{#if activeSection === 'tentang'}
-			<section class="space-y-4">
-				<div class="flex items-center gap-2">
-					<Info class="w-5 h-5 text-primary" />
-					<h2 class="text-lg font-semibold">Tentang Aplikasi</h2>
-				</div>
-
-				<div class="p-4 bg-card rounded-lg border space-y-4">
-					<div class="flex items-center gap-4">
-						<div class="w-16 h-16 bg-primary rounded-xl flex items-center justify-center">
-							<span class="text-3xl font-bold text-primary-foreground">B</span>
-						</div>
-						<div>
-							<h3 class="font-semibold text-xl">Buku UMKM</h3>
-							<p class="text-sm text-muted-foreground">Versi {APP_VERSION}</p>
-						</div>
-					</div>
-
-					<p class="text-sm text-muted-foreground">
-						Aplikasi bookkeeping gratis dan open-source untuk pelaku UMKM Indonesia. Dibuat dengan
-						cinta untuk membantu pengelolaan keuangan bisnis Anda.
-					</p>
-
-					<div class="pt-2 border-t space-y-2">
-						<p class="text-sm font-medium">Fitur Utama:</p>
-						<ul class="text-sm text-muted-foreground space-y-1">
-							<li>- Pencatatan transaksi pemasukan dan pengeluaran</li>
-							<li>- Manajemen hutang dan piutang</li>
-							<li>- Estimasi PPh Final UMKM berbasis profil</li>
-							<li>- Laporan keuangan (laba-rugi, neraca)</li>
-							<li>- Backup dan restore data</li>
-						</ul>
-					</div>
-				</div>
-
-				<!-- Tax Disclaimer -->
-				<div
-					class="p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg"
-				>
-					<div class="flex items-start gap-3">
-						<AlertTriangle class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-						<div class="text-sm text-amber-800 dark:text-amber-200">
-							<p class="font-medium">Disclaimer Pajak</p>
-							<p class="mt-1">
-								Perhitungan pajak dalam aplikasi ini bersifat membantu dan tidak menggantikan
-								perhitungan resmi dari pajak atau akuntan profesional. Pastikan untuk selalu
-								mengkonsultasikan dengan pajak atau akuntan terpercaya untuk kepatuhan pajak Anda.
-							</p>
-						</div>
-					</div>
-				</div>
-			</section>
-		{/if}
 	</div>
 
 	<!-- Footer -->
 	<footer class="px-4 py-4 border-t text-center">
 		<p class="text-sm text-muted-foreground">Dibuat dengan cinta untuk UMKM Indonesia</p>
-		<p class="text-xs text-muted-foreground mt-1">Buku UMKM v{APP_VERSION}</p>
 	</footer>
 </div>
 
