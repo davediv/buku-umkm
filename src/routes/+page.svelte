@@ -7,7 +7,7 @@
 		TrendingUp,
 		Zap,
 		BarChart3,
-		Wifi
+		Cloud
 	} from '@lucide/svelte';
 	import type { Component } from 'svelte';
 
@@ -28,13 +28,13 @@
 			desc: 'Buat laporan laba rugi, neraca, dan catatan keuangan sesuai standar SAK EMKM.'
 		},
 		{
-			icon: Wifi,
-			title: 'Offline-First',
-			desc: 'Bisa digunakan tanpa internet. Data tersinkron otomatis saat terhubung kembali.'
+			icon: Cloud,
+			title: 'Tersimpan di Akun',
+			desc: 'Catatan keuangan disimpan aman di akun Anda. Isian transaksi tetap menjadi draft jika koneksi terputus.'
 		}
 	];
 
-	const trustIndicators = ['100% Gratis', 'Offline-First', 'Data Aman di Perangkat'];
+	const trustIndicators = ['100% Gratis', 'Dapat Dipasang', 'Data Tersimpan di Akun'];
 </script>
 
 <svelte:head>

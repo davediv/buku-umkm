@@ -12,7 +12,7 @@ Built specifically for UMKM (Usaha Mikro, Kecil, dan Menengah), this app focuses
 - **Tax Calculation** — PPh 0.5% final tax calculation, tax history tracking, and billing code management
 - **Debt & Receivables** — Track hutang/piutang with payment schedules
 - **PDF & Excel Export** — Export reports and SPT tax forms
-- **Offline Support** — PWA with service worker for offline access
+- **Installable PWA** — Cached public shell, explicit connection status, and locally preserved transaction drafts
 - **Photo Storage** — Attach receipt photos to transactions (stored in Cloudflare R2)
 - **Backup & Restore** — Full data backup and restore capability
 
@@ -153,7 +153,7 @@ src/
 │   ├── components/         # Svelte components (shadcn-svelte)
 │   ├── tax/                # Tax calculation engine
 │   └── utils/              # Export utilities (PDF, Excel, SPT)
-└── service-worker.ts       # PWA offline support
+└── service-worker.ts       # PWA shell cache and offline fallback
 ```
 
 ## Deployment

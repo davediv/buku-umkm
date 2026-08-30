@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { onMount } from 'svelte';
 	import {
 		Home,
 		Receipt,
@@ -12,11 +11,11 @@
 		Plus
 	} from '@lucide/svelte';
 	import TaxReminder from '$lib/components/tax-reminder.svelte';
-	import SyncStatusIndicator from '$lib/components/sync-status-indicator.svelte';
+	import ConnectionStatus from '$lib/components/connection-status.svelte';
 	import Toast from '$lib/components/ui/toast/toast.svelte';
-	import { destroyStores, initStores } from '$lib/db/stores.svelte';
+	import type { LayoutData } from './$types';
 
-	let { children } = $props();
+	let { children, data }: { children: import('svelte').Snippet; data: LayoutData } = $props();
 
 	const navItems: Array<{ href: string; label: string; icon: typeof Home }> = [
 		{ href: '/beranda', label: 'Beranda', icon: Home },
@@ -40,40 +39,13 @@
 		page.url.pathname === '/transaksi/tambah' ||
 			page.url.pathname.match(/^\/transaksi\/[\w-]+$/) !== null
 	);
-
-	onMount(() => {
-		let initialized = false;
-		const initialize = () => {
-			initialized = true;
-			initStores();
-		};
-
-		if ('requestIdleCallback' in window) {
-			const idleId = window.requestIdleCallback(initialize, { timeout: 1500 });
-			return () => {
-				window.cancelIdleCallback(idleId);
-				if (initialized) destroyStores();
-			};
-		}
-
-		const timeoutId = setTimeout(initialize, 250);
-		return () => {
-			clearTimeout(timeoutId);
-			if (initialized) destroyStores();
-		};
-	});
 </script>
 
 <div class="flex min-h-screen flex-col bg-background">
+	<ConnectionStatus loadedAt={data.loadedAt} />
+
 	<!-- Tax Reminder Banner -->
 	<TaxReminder />
-
-	<!-- A single responsive sync indicator avoids duplicate polling and IndexedDB work. -->
-	<div
-		class="md:fixed md:bottom-0 md:left-0 md:z-[60] md:flex md:w-20 md:justify-center md:border-t md:border-border md:bg-card md:py-3"
-	>
-		<SyncStatusIndicator />
-	</div>
 
 	<!-- Main Content Area -->
 	<main class="flex-1 overflow-y-auto pb-20 md:pb-0 md:pl-20">

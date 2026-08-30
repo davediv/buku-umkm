@@ -4,7 +4,7 @@
 
 ## Executive Summary
 
-Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeeping with integrated PPh Final 0.5% tax compliance. The tech stack is SvelteKit (Svelte 5), Cloudflare Workers/D1/R2/KV, Drizzle ORM, Better Auth, shadcn-svelte, and TailwindCSS v4.
+Buku UMKM is a free, open-source, online-first PWA for Indonesian UMKM bookkeeping with integrated tax guidance. Cloudflare D1 is the source of truth; see [Data Ownership and Connectivity Contract](ARCHITECTURE-DATA-OWNERSHIP.md). The tech stack is SvelteKit (Svelte 5), Cloudflare Workers/D1/R2/KV, Drizzle ORM, Better Auth, shadcn-svelte, and TailwindCSS v4.
 
 ---
 
@@ -162,15 +162,15 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 - [x] **FEAT-P3-007**: Implement tax billing code summary PDF export — [`.claude/plans/FEAT-P3-007.md`](.claude/plans/FEAT-P3-007.md)
 
-### Offline-First PWA (F-016)
+### Superseded Offline-First PWA Work (F-016)
 
 - [x] **FEAT-P3-008**: Implement Service Worker for PWA asset caching — [`.claude/plans/FEAT-P3-008.md`](.claude/plans/FEAT-P3-008.md)
 
-- [x] **FEAT-P3-009**: Implement IndexedDB local storage for offline data — [`.claude/plans/FEAT-P3-009.md`](.claude/plans/FEAT-P3-009.md)
+- [x] **FEAT-P3-009**: ~~Implement IndexedDB local storage for offline data~~ — removed by the online-first architecture decision
 
-- [x] **FEAT-P3-010**: Implement offline-to-online sync engine — [`.claude/plans/FEAT-P3-010.md`](.claude/plans/FEAT-P3-010.md)
+- [x] **FEAT-P3-010**: ~~Implement offline-to-online sync engine~~ — removed by the online-first architecture decision
 
-- [x] **UI-P3-003**: Implement sync status indicator UI — [`.claude/plans/UI-P3-003.md`](.claude/plans/UI-P3-003.md)
+- [x] **UI-P3-003**: Replace sync controls with honest connectivity and stale-data status
 
 ### Onboarding (F-018)
 
@@ -232,7 +232,7 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 
 - [ ] **TEST-P4-004**: Write E2E tests for critical user flows — [`.claude/plans/TEST-P4-004.md`](.claude/plans/TEST-P4-004.md)
 
-- [ ] **TEST-P4-005**: Write unit tests for offline sync engine — [`.claude/plans/TEST-P4-005.md`](.claude/plans/TEST-P4-005.md)
+- [x] **TEST-P4-005**: ~~Write unit tests for offline sync engine~~ — no longer applicable
 
 - [ ] **TEST-P4-006**: Perform Lighthouse performance audit — [`.claude/plans/TEST-P4-006.md`](.claude/plans/TEST-P4-006.md)
 
@@ -316,5 +316,5 @@ Buku UMKM is a free, open-source, offline-first PWA for Indonesian UMKM bookkeep
 | Complete Drizzle schema | Blocks all API and feature work | DB-P1-001 |
 | D1 migration | Blocks all data operations | DB-P1-002 |
 | Tax engine implementation | Blocks tax UI and SPT export | FEAT-P2-001 |
-| IndexedDB + Sync engine | Blocks offline functionality | FEAT-P3-009, FEAT-P3-010 |
+| Server-authoritative data contract | Required for trustworthy financial records | UX-ARCH-02 |
 | Production D1/R2/KV setup | Blocks production deployment | DEPLOY-P4-001 through DEPLOY-P4-003 |
