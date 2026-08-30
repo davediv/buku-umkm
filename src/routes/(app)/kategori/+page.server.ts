@@ -87,30 +87,17 @@ export const actions: Actions = {
 			const newCode = await categoryQueries.generateNextCode(db, userId, type);
 
 			// Create the category
-			const categoryId = crypto.randomUUID();
-			await categoryQueries.create(db, {
+			const createdCategory = await categoryQueries.create(db, {
 				userId,
 				code: newCode,
 				name: name.trim(),
 				type
 			});
 
-			const now = new Date().toISOString();
 			return {
 				success: true,
 				message: 'Kategori berhasil dibuat',
-				category: {
-					id: categoryId,
-					code: newCode,
-					name: name.trim(),
-					type,
-					isSystem: false,
-					isActive: true,
-					icon: null,
-					color: null,
-					createdAt: now,
-					updatedAt: now
-				}
+				category: createdCategory
 			};
 		} catch {
 			console.error('Error creating category:');

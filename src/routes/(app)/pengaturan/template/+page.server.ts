@@ -76,7 +76,7 @@ export const actions: Actions = {
 			}
 
 			// Create the template
-			await transactionTemplateQueries.create(db, {
+			const createdTemplate = await transactionTemplateQueries.create(db, {
 				userId,
 				name: name.trim(),
 				type,
@@ -96,14 +96,8 @@ export const actions: Actions = {
 				success: true,
 				message: 'Template berhasil dibuat',
 				template: {
-					id: crypto.randomUUID(),
-					name: name.trim(),
-					type,
-					categoryId: categoryId || null,
-					categoryName,
-					description: description || null,
-					isSystem: false,
-					isActive: true
+					...createdTemplate,
+					categoryName
 				}
 			};
 		} catch {

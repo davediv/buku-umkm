@@ -25,6 +25,7 @@
 	let showAccountPicker = $state(false);
 	let draftReady = $state(false);
 	let draftRestored = $state(false);
+	let commandId = $state('');
 
 	// Photo state
 	let photos = $state<{ id: string; file: File; preview: string }[]>([]);
@@ -44,6 +45,7 @@
 	onMount(() => {
 		const draft = loadTransactionDraft();
 		if (draft) {
+			commandId = draft.commandId;
 			type = draft.type;
 			amount = draft.amount;
 			categoryId = categories.some((item) => item.id === draft.categoryId) ? draft.categoryId : '';
@@ -52,11 +54,12 @@
 			description = draft.description;
 			draftRestored = true;
 		}
+		if (!commandId) commandId = crypto.randomUUID();
 		draftReady = true;
 	});
 
 	$effect(() => {
-		const draft = { type, amount, categoryId, accountId, date, description };
+		const draft = { commandId, type, amount, categoryId, accountId, date, description };
 		if (!draftReady) return;
 
 		const timeout = window.setTimeout(() => saveTransactionDraft(draft), 250);
@@ -225,7 +228,7 @@
 
 			const response = await fetch('/api/transactions', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', 'Idempotency-Key': commandId },
 				body: JSON.stringify(payload)
 			});
 

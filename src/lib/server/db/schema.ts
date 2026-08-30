@@ -1,5 +1,5 @@
 import { relations, sql } from 'drizzle-orm';
-import { integer, sqliteTable, text, index } from 'drizzle-orm/sqlite-core';
+import { integer, sqliteTable, text, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 // Import auth tables to define cross-cutting relations
 import { user, session, account } from './auth.schema';
@@ -23,7 +23,8 @@ export const userRelations = relations(user, ({ many, one }) => ({
 	debtPayments: many(debtPayment),
 	taxRecords: many(taxRecord),
 	backups: many(backup),
-	transactionTemplates: many(transactionTemplate)
+	transactionTemplates: many(transactionTemplate),
+	financialCommands: many(financialCommand)
 }));
 
 // ============================================================================
@@ -79,6 +80,39 @@ export const onboardingState = sqliteTable('onboarding_state', {
 export const onboardingStateRelations = relations(onboardingState, ({ one }) => ({
 	user: one(user, {
 		fields: [onboardingState.userId],
+		references: [user.id]
+	})
+}));
+
+// ============================================================================
+// Idempotent Financial Commands
+// ============================================================================
+
+export const financialCommand = sqliteTable(
+	'financial_command',
+	{
+		id: text('id')
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		idempotencyKey: text('idempotency_key').notNull(),
+		kind: text('kind').notNull(),
+		result: text('result').notNull(), // JSON containing canonical entity identifiers
+		createdAt: integer('created_at', { mode: 'timestamp_ms' })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.notNull()
+	},
+	(table) => [
+		uniqueIndex('financial_command_user_key_unique').on(table.userId, table.idempotencyKey),
+		index('financial_command_user_created_idx').on(table.userId, table.createdAt)
+	]
+);
+
+export const financialCommandRelations = relations(financialCommand, ({ one }) => ({
+	user: one(user, {
+		fields: [financialCommand.userId],
 		references: [user.id]
 	})
 }));

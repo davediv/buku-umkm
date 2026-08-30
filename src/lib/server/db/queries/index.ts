@@ -199,17 +199,21 @@ export const categoryQueries = {
 			color?: string;
 		}
 	) {
-		return db.insert(category).values({
-			id: crypto.randomUUID(),
-			userId: data.userId,
-			code: data.code,
-			name: data.name,
-			type: data.type,
-			isSystem: false,
-			isActive: true,
-			icon: data.icon ?? null,
-			color: data.color ?? null
-		});
+		return db
+			.insert(category)
+			.values({
+				id: crypto.randomUUID(),
+				userId: data.userId,
+				code: data.code,
+				name: data.name,
+				type: data.type,
+				isSystem: false,
+				isActive: true,
+				icon: data.icon ?? null,
+				color: data.color ?? null
+			})
+			.returning()
+			.then((rows) => rows[0]);
 	},
 
 	/**
@@ -1962,16 +1966,20 @@ export const transactionTemplateQueries = {
 			isSystem?: boolean;
 		}
 	) {
-		return db.insert(transactionTemplate).values({
-			id: crypto.randomUUID(),
-			userId: data.userId,
-			name: data.name,
-			type: data.type,
-			categoryId: data.categoryId ?? null,
-			description: data.description ?? null,
-			isSystem: data.isSystem ?? false,
-			isActive: true
-		});
+		return db
+			.insert(transactionTemplate)
+			.values({
+				id: crypto.randomUUID(),
+				userId: data.userId,
+				name: data.name,
+				type: data.type,
+				categoryId: data.categoryId ?? null,
+				description: data.description ?? null,
+				isSystem: data.isSystem ?? false,
+				isActive: true
+			})
+			.returning()
+			.then((rows) => rows[0]);
 	},
 
 	/**

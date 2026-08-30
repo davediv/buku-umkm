@@ -137,21 +137,16 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		// Update the account
 		await chartOfAccountQueries.update(db, userId, accountId, updateData);
 
-		// Construct response from existing account and update data
-		const updatedName = updateData.name ?? existingAccount.name;
-		const updatedSubType = updateData.subType ?? existingAccount.subType;
+		const updatedAccount = await chartOfAccountQueries.findById(db, userId, accountId);
+		if (!updatedAccount) {
+			return json({ error: 'Akun gagal dimuat setelah diperbarui' }, { status: 500 });
+		}
 
 		return json({
 			message: 'Akun berhasil diperbarui',
 			account: {
-				id: existingAccount.id,
-				name: updatedName,
-				type: mapSchemaToApiType(updatedSubType),
-				balance: existingAccount.balance,
-				code: existingAccount.code,
-				isActive: existingAccount.isActive,
-				createdAt: existingAccount.createdAt,
-				updatedAt: new Date().toISOString()
+				...updatedAccount,
+				type: mapSchemaToApiType(updatedAccount.subType)
 			}
 		});
 	} catch {

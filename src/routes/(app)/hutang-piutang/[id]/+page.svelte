@@ -29,6 +29,7 @@
 	let paymentDate = $state(new Date().toISOString().split('T')[0]);
 	let paymentAccount = $state('');
 	let paymentNotes = $state('');
+	let paymentCommandId = $state('');
 
 	// Local mutable state — syncs from load data, allows optimistic updates
 	let debt = $state(data.debt);
@@ -67,6 +68,7 @@
 		paymentDate = new Date().toISOString().split('T')[0];
 		paymentAccount = '';
 		paymentNotes = '';
+		paymentCommandId = crypto.randomUUID();
 		showPaymentModal = true;
 	}
 
@@ -106,7 +108,10 @@
 		try {
 			const response = await fetch(`/api/debts/${debt.id}/payments`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: {
+					'Content-Type': 'application/json',
+					'Idempotency-Key': paymentCommandId
+				},
 				body: JSON.stringify({
 					amount,
 					date: paymentDate,

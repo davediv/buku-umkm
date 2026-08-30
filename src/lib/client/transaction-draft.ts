@@ -2,6 +2,7 @@ export const TRANSACTION_DRAFT_KEY = 'buku-umkm:transaction-draft:v1';
 
 export type TransactionDraft = {
 	version: 1;
+	commandId: string;
 	type: 'income' | 'expense';
 	amount: string;
 	categoryId: string;
@@ -18,6 +19,7 @@ function isTransactionDraft(value: unknown): value is TransactionDraft {
 	const draft = value as Record<string, unknown>;
 	return (
 		draft.version === 1 &&
+		typeof draft.commandId === 'string' &&
 		(draft.type === 'income' || draft.type === 'expense') &&
 		typeof draft.amount === 'string' &&
 		typeof draft.categoryId === 'string' &&
