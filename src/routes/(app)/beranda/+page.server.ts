@@ -2,6 +2,7 @@ import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { dashboardQueries, transactionQueries } from '$lib/server/db/queries';
 import { redirect } from '@sveltejs/kit';
+import { getTaxDashboardEstimate } from '$lib/tax/service';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Check authentication
@@ -20,10 +21,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	try {
 		// Run all queries in parallel for performance
-		const [overview, recentTransactions, cashFlow] = await Promise.all([
+		const [overview, recentTransactions, cashFlow, taxEstimate] = await Promise.all([
 			dashboardQueries.getOverview(db, userId, period as 'daily' | 'weekly' | 'monthly'),
 			transactionQueries.getRecent(db, userId, 5),
-			dashboardQueries.getCashFlow(db, userId, 6)
+			dashboardQueries.getCashFlow(db, userId, 6),
+			getTaxDashboardEstimate(db, userId)
 		]);
 		const { summary, periodStats, debtSummary, todayStats } = overview;
 
@@ -41,12 +43,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			categoryName: t.category?.name ?? null
 		}));
 
-		// Calculate PPh Final 0.5% tax from monthly income
-		const currentMonthTax = Math.floor(summary.monthlyIncome * 0.005);
-
-		// Tax threshold for WP OP (Perorangan)
-		const TAX_THRESHOLD_WP_OP = 500000000; // 500 juta
-
 		return {
 			dashboard: {
 				totalBalance: summary.totalAssets,
@@ -61,10 +57,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					expense: periodStats.expense,
 					profit: periodStats.profit
 				},
-				annualRevenue: summary.yearToDateRevenue,
-				currentMonthTax,
-				currentMonthRevenue: summary.monthlyIncome,
-				taxThreshold: TAX_THRESHOLD_WP_OP,
+				taxEstimate,
 				debts: {
 					piutang: debtSummary.piutang,
 					hutang: debtSummary.hutang,

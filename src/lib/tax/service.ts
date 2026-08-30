@@ -4,46 +4,114 @@
  * Contains reusable functions for fetching tax-related data from the database
  */
 
-import { taxRecord, userExtension, transaction } from '$lib/server/db/schema';
+import { businessProfile, taxProfile, taxRecord, transaction } from '$lib/server/db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import type { SQLiteDb } from '$lib/server/db';
-import type { TaxpayerType } from './types';
-import { TAX_TYPE, TAXPAYER_TYPE, getIndonesianMonthName } from './config';
+import type { TaxEligibilityDecision, TaxProfileData, TaxpayerType } from './types';
+import { REVENUE_THRESHOLD_WP_OP, TAX_TYPE, getIndonesianMonthName } from './config';
+import { evaluateTaxEligibility, getTaxpayerTypeForLegalForm } from './eligibility';
+import { decryptNPWP } from '$lib/server/crypto';
+import { calculateMonthlyTax } from './engine';
+import { todayInJakarta } from '$lib/shared/dates';
 
 // Re-export for backward compatibility
 export { getIndonesianMonthName };
-
-/**
- * Get taxpayer type for a user
- */
-export async function getTaxpayerType(db: SQLiteDb, userId: string): Promise<TaxpayerType> {
-	const userExt = await db
-		.select()
-		.from(userExtension)
-		.where(eq(userExtension.id, userId))
-		.limit(1);
-
-	return (userExt[0]?.npwpType as TaxpayerType) || TAXPAYER_TYPE.WP_OP;
-}
 
 /**
  * Get user extension data (NPWP, business name, etc.)
  */
 export async function getUserTaxData(
 	db: SQLiteDb,
-	userId: string
-): Promise<{ npwp: string; taxpayerType: TaxpayerType; businessName: string }> {
-	const userExt = await db
-		.select()
-		.from(userExtension)
-		.where(eq(userExtension.id, userId))
-		.limit(1);
+	userId: string,
+	taxYear = new Date().getFullYear()
+): Promise<{ npwp: string; taxpayerType: TaxpayerType | null; businessName: string }> {
+	const [profile, taxData] = await Promise.all([
+		db.select().from(businessProfile).where(eq(businessProfile.userId, userId)).limit(1),
+		getTaxProfile(db, userId, taxYear)
+	]);
+	const encryptedNpwp = profile[0]?.npwp;
 
 	return {
-		npwp: userExt[0]?.npwp || '',
-		taxpayerType: (userExt[0]?.npwpType as TaxpayerType) || TAXPAYER_TYPE.WP_OP,
-		businessName: userExt[0]?.businessName || ''
+		npwp: encryptedNpwp ? (await decryptNPWP(encryptedNpwp)) || '' : '',
+		taxpayerType: taxData ? getTaxpayerTypeForLegalForm(taxData.legalForm) : null,
+		businessName: profile[0]?.name || ''
 	};
+}
+
+function parseExternalMonthlyRevenue(value: string): number[] {
+	try {
+		const parsed = JSON.parse(value) as unknown;
+		return Array.isArray(parsed) ? parsed.map((amount) => Number(amount)) : [];
+	} catch {
+		return [];
+	}
+}
+
+export async function getTaxProfile(
+	db: SQLiteDb,
+	userId: string,
+	taxYear: number
+): Promise<TaxProfileData | null> {
+	const row = await db.query.taxProfile.findFirst({
+		where: (profiles, { and, eq }) =>
+			and(eq(profiles.userId, userId), eq(profiles.taxYear, taxYear))
+	});
+
+	if (!row) return null;
+
+	return {
+		id: row.id,
+		taxYear: row.taxYear,
+		legalForm: row.legalForm as TaxProfileData['legalForm'],
+		registeredAt: row.registeredAt,
+		finalRegimeStartYear: row.finalRegimeStartYear,
+		regimeChoice: row.regimeChoice as TaxProfileData['regimeChoice'],
+		everUsedGeneralRegime: row.everUsedGeneralRegime,
+		priorYearAggregatedRevenue: row.priorYearAggregatedRevenue,
+		externalMonthlyRevenue: parseExternalMonthlyRevenue(row.externalMonthlyRevenue),
+		revenueDataComplete: row.revenueDataComplete,
+		aggregationConfirmed: row.aggregationConfirmed,
+		hasProfessionalServiceIncome: row.hasProfessionalServiceIncome,
+		soleOwnerProvidesProfessionalServices: row.soleOwnerProvidesProfessionalServices,
+		usesOtherTaxFacility: row.usesOtherTaxFacility
+	};
+}
+
+export async function upsertTaxProfile(
+	db: SQLiteDb,
+	userId: string,
+	data: TaxProfileData
+): Promise<TaxProfileData> {
+	const values = {
+		id: data.id ?? crypto.randomUUID(),
+		userId,
+		taxYear: data.taxYear,
+		legalForm: data.legalForm,
+		registeredAt: data.registeredAt,
+		finalRegimeStartYear: data.finalRegimeStartYear,
+		regimeChoice: data.regimeChoice,
+		everUsedGeneralRegime: data.everUsedGeneralRegime,
+		priorYearAggregatedRevenue: data.priorYearAggregatedRevenue,
+		externalMonthlyRevenue: JSON.stringify(data.externalMonthlyRevenue),
+		revenueDataComplete: data.revenueDataComplete,
+		aggregationConfirmed: data.aggregationConfirmed,
+		hasProfessionalServiceIncome: data.hasProfessionalServiceIncome,
+		soleOwnerProvidesProfessionalServices: data.soleOwnerProvidesProfessionalServices,
+		usesOtherTaxFacility: data.usesOtherTaxFacility,
+		updatedAt: new Date()
+	};
+
+	await db
+		.insert(taxProfile)
+		.values(values)
+		.onConflictDoUpdate({
+			target: [taxProfile.userId, taxProfile.taxYear],
+			set: values
+		});
+
+	const saved = await getTaxProfile(db, userId, data.taxYear);
+	if (!saved) throw new Error('Tax profile was not persisted');
+	return saved;
 }
 
 /**
@@ -90,6 +158,109 @@ export function calculateMonthlyRevenues(
 		}
 	}
 	return monthlyAmounts;
+}
+
+export interface TaxYearContext {
+	profile: TaxProfileData | null;
+	eligibility: TaxEligibilityDecision;
+	recordedMonthlyRevenue: number[];
+	externalMonthlyRevenue: number[];
+	aggregatedMonthlyRevenue: number[];
+}
+
+export interface TaxDashboardEstimate {
+	status: 'estimate' | 'unavailable';
+	year: number;
+	month: number;
+	currentMonthRevenue: number;
+	annualRevenue: number;
+	currentMonthTax: number | null;
+	taxableRevenue: number | null;
+	thresholdAmount: number;
+	eligibility: TaxEligibilityDecision;
+}
+
+export async function getTaxYearContext(
+	db: SQLiteDb,
+	userId: string,
+	taxYear: number,
+	recordedMonthlyRevenue: number[]
+): Promise<TaxYearContext> {
+	const profile = await getTaxProfile(db, userId, taxYear);
+	const externalMonthlyRevenue =
+		profile?.externalMonthlyRevenue.length === 12
+			? profile.externalMonthlyRevenue
+			: Array(12).fill(0);
+	const aggregatedMonthlyRevenue = Array.from(
+		{ length: 12 },
+		(_, index) => (recordedMonthlyRevenue[index] ?? 0) + (externalMonthlyRevenue[index] ?? 0)
+	);
+	const currentYearAggregatedRevenue = aggregatedMonthlyRevenue.reduce(
+		(sum, amount) => sum + amount,
+		0
+	);
+
+	return {
+		profile,
+		eligibility: evaluateTaxEligibility(profile, taxYear, currentYearAggregatedRevenue),
+		recordedMonthlyRevenue,
+		externalMonthlyRevenue,
+		aggregatedMonthlyRevenue
+	};
+}
+
+export async function getTaxDashboardEstimate(
+	db: SQLiteDb,
+	userId: string
+): Promise<TaxDashboardEstimate> {
+	const [yearPart, monthPart] = todayInJakarta().split('-');
+	const year = Number(yearPart);
+	const month = Number(monthPart);
+	const recordedMonthlyRevenue = calculateMonthlyRevenues(
+		await getYearTransactions(db, userId, year)
+	);
+	const context = await getTaxYearContext(db, userId, year, recordedMonthlyRevenue);
+	const annualRevenue = calculateCumulativeRevenue(context.aggregatedMonthlyRevenue, month);
+	const currentMonthRevenue = context.aggregatedMonthlyRevenue[month - 1] ?? 0;
+	const taxpayerType = context.eligibility.taxpayerType;
+
+	if (context.eligibility.status !== 'eligible' || !taxpayerType) {
+		return {
+			status: 'unavailable',
+			year,
+			month,
+			currentMonthRevenue,
+			annualRevenue,
+			currentMonthTax: null,
+			taxableRevenue: null,
+			thresholdAmount: REVENUE_THRESHOLD_WP_OP,
+			eligibility: context.eligibility
+		};
+	}
+
+	const calculation = calculateMonthlyTax({
+		userId,
+		taxpayerType,
+		year,
+		month,
+		grossRevenue: currentMonthRevenue,
+		previousCumulativeRevenue: calculateCumulativeRevenue(
+			context.aggregatedMonthlyRevenue,
+			month - 1
+		)
+	});
+
+	return {
+		status: 'estimate',
+		year,
+		month,
+		currentMonthRevenue,
+		annualRevenue,
+		currentMonthTax: calculation.taxAmount,
+		taxableRevenue: calculation.taxableRevenue,
+		thresholdAmount: calculation.thresholdAmount,
+		eligibility: context.eligibility
+	};
 }
 
 /**

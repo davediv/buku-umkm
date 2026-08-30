@@ -22,6 +22,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
 	debts: many(debt),
 	debtPayments: many(debtPayment),
 	taxRecords: many(taxRecord),
+	taxProfiles: many(taxProfile),
 	backups: many(backup),
 	transactionTemplates: many(transactionTemplate),
 	financialCommands: many(financialCommand)
@@ -449,6 +450,64 @@ export const debtPaymentRelations = relations(debtPayment, ({ one }) => ({
 }));
 
 // ============================================================================
+// Tax Profile (versioned by tax year)
+// ============================================================================
+
+export const taxProfile = sqliteTable(
+	'tax_profile',
+	{
+		id: text('id')
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		taxYear: integer('tax_year').notNull(),
+		legalForm: text('legal_form').notNull(),
+		registeredAt: text('registered_at').notNull(),
+		finalRegimeStartYear: integer('final_regime_start_year').notNull(),
+		regimeChoice: text('regime_choice').notNull(),
+		everUsedGeneralRegime: integer('ever_used_general_regime', { mode: 'boolean' })
+			.default(false)
+			.notNull(),
+		priorYearAggregatedRevenue: integer('prior_year_aggregated_revenue').default(0).notNull(),
+		externalMonthlyRevenue: text('external_monthly_revenue').default('[]').notNull(),
+		revenueDataComplete: integer('revenue_data_complete', { mode: 'boolean' })
+			.default(false)
+			.notNull(),
+		aggregationConfirmed: integer('aggregation_confirmed', { mode: 'boolean' })
+			.default(false)
+			.notNull(),
+		hasProfessionalServiceIncome: integer('has_professional_service_income', {
+			mode: 'boolean'
+		})
+			.default(false)
+			.notNull(),
+		soleOwnerProvidesProfessionalServices: integer('sole_owner_provides_professional_services', {
+			mode: 'boolean'
+		})
+			.default(false)
+			.notNull(),
+		usesOtherTaxFacility: integer('uses_other_tax_facility', { mode: 'boolean' })
+			.default(false)
+			.notNull(),
+		...timestampColumns
+	},
+	(table) => [
+		uniqueIndex('tax_profile_user_year_unique').on(table.userId, table.taxYear),
+		index('tax_profile_user_idx').on(table.userId),
+		index('tax_profile_year_idx').on(table.taxYear)
+	]
+);
+
+export const taxProfileRelations = relations(taxProfile, ({ one }) => ({
+	user: one(user, {
+		fields: [taxProfile.userId],
+		references: [user.id]
+	})
+}));
+
+// ============================================================================
 // Tax Record (Pajak)
 // ============================================================================
 
@@ -468,7 +527,7 @@ export const taxRecord = sqliteTable(
 		taxRate: integer('tax_rate').notNull(), // Rate in basis points (50 = 0.5%)
 		taxAmount: integer('tax_amount').notNull(), // Calculated tax in Rupiah
 		status: text('status').notNull().default('unpaid'), // 'unpaid' | 'paid' | 'overdue'
-		billingCode: text('billing_code'), // NTPN code
+		billingCode: text('billing_code'), // Optional official billing/payment reference supplied by user
 		paymentDate: text('payment_date'), // ISO 8601 date when paid
 		notes: text('notes'),
 		...timestampColumns

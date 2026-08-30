@@ -101,7 +101,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			{
 				title: '5. Perpajakan',
 				content:
-					'Entitas memotong pajak penghasilan final 0,5% dari setiap transaksi pendapatan jasa sesuai dengan Peraturan Pemerintah Nomor 23 Tahun 2018 tentang Pajak Penghasilan atas Penghasilan dari Usaha yang Diterima atau Diedapatkan oleh Wajib Pajak yang Memiliki Bruto Tertentu.'
+					'Estimasi PPh Final UMKM hanya dapat digunakan setelah bentuk wajib pajak, periode fasilitas, pilihan rezim, dan omzet agregat diverifikasi terhadap aturan yang berlaku untuk tahun pajak terkait.'
 			},
 			{
 				title: '6. Periode Pelaporan',

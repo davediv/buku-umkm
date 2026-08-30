@@ -9,7 +9,7 @@
 - [x] **UX-ARCH-02:** Adopt and communicate one honest offline architecture.
 - [x] **UX-ARCH-03:** Introduce a single, typed financial mutation layer.
 - [x] **UX-ARCH-04:** Make dated financial reports historically accurate.
-- [ ] **UX-ARCH-05:** Rebuild tax as a current, versioned eligibility system.
+- [x] **UX-ARCH-05:** Rebuild tax as a current, versioned eligibility system.
 - [ ] **UX-ARCH-06:** Reduce and group primary navigation.
 - [ ] **UX-ARCH-07:** Replace the current `Lainnya` and Settings dead-end structure.
 - [ ] **UX-ARCH-08:** Consolidate reports into one canonical route hierarchy.

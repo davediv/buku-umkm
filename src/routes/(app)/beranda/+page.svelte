@@ -238,50 +238,67 @@
 			</div>
 		{/if}
 
-		<!-- Tax Status Widget -->
+		<!-- Tax estimate widget -->
 		<div class="rounded-xl border bg-card p-4">
-			<h2 class="mb-3 text-sm font-medium">Status Pajak (PPh Final 0.5%)</h2>
+			<div class="mb-3 flex items-center justify-between gap-3">
+				<h2 class="text-sm font-medium">Estimasi PPh Final UMKM 0,5%</h2>
+				<a href="/pajak" class="text-xs font-medium text-primary hover:underline">Lihat detail</a>
+			</div>
 
-			{#if dashboard.annualRevenue >= dashboard.taxThreshold}
-				<!-- Amount Due (for high revenue) -->
-				<div class="space-y-2">
-					<div class="flex justify-between text-sm">
-						<span class="text-muted-foreground">Pajak bulan ini:</span>
-						<span class="font-medium">{formatRupiah(dashboard.currentMonthTax)}</span>
-					</div>
-					<div class="flex justify-between text-sm">
-						<span class="text-muted-foreground">Omzet bulan ini:</span>
-						<span class="font-medium">{formatRupiah(dashboard.currentMonthRevenue)}</span>
-					</div>
-					<div class="border-t pt-2">
-						<p class="text-xs text-muted-foreground">
-							Anda telah melampaui batas threshold WP OP ({formatRupiah(dashboard.taxThreshold)})
-						</p>
-					</div>
+			{#if dashboard.taxEstimate.status === 'unavailable'}
+				<div class="space-y-3 text-sm">
+					<p class="text-muted-foreground">
+						{dashboard.taxEstimate.eligibility.reasons[0] ?? 'Estimasi belum tersedia.'}
+					</p>
+					<a
+						href="/pajak/profil?year={dashboard.taxEstimate.year}"
+						class="inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium"
+					>
+						Lengkapi profil pajak
+					</a>
 				</div>
-			{:else}
-				<!-- Progress Bar (for low revenue) -->
+			{:else if dashboard.taxEstimate.eligibility.individualTurnoverFacility && dashboard.taxEstimate.annualRevenue <= dashboard.taxEstimate.thresholdAmount}
 				<div class="space-y-2">
 					<div class="flex justify-between text-sm">
-						<span class="text-muted-foreground">Omzet tahun ini:</span>
-						<span class="font-medium">{formatRupiah(dashboard.annualRevenue)}</span>
+						<span class="text-muted-foreground">Omzet kumulatif tahun ini:</span>
+						<span class="font-medium">{formatRupiah(dashboard.taxEstimate.annualRevenue)}</span>
 					</div>
 					<div class="relative h-3 overflow-hidden rounded-full bg-muted">
 						<div
 							class="absolute inset-y-0 left-0 rounded-full bg-primary transition-all"
-							style="width: {getTaxProgress(dashboard.annualRevenue, dashboard.taxThreshold)}%"
+							style="width: {getTaxProgress(
+								dashboard.taxEstimate.annualRevenue,
+								dashboard.taxEstimate.thresholdAmount
+							)}%"
 						></div>
 					</div>
 					<div class="flex justify-between text-xs text-muted-foreground">
-						<span>0</span>
-						<span>{formatRupiah(dashboard.taxThreshold)}</span>
+						<span>Rp0</span>
+						<span>{formatRupiah(dashboard.taxEstimate.thresholdAmount)}</span>
 					</div>
 					<p class="pt-1 text-xs text-muted-foreground">
-						Progress threshold WP OP: {getTaxProgress(
-							dashboard.annualRevenue,
-							dashboard.taxThreshold
-						).toFixed(1)}%
+						Masih dalam fasilitas omzet WP Orang Pribadi. Ini bukan PTKP.
 					</p>
+				</div>
+			{:else}
+				<div class="space-y-2">
+					<div class="flex justify-between text-sm">
+						<span class="text-muted-foreground">Estimasi bulan ini:</span>
+						<span class="font-medium"
+							>{formatRupiah(dashboard.taxEstimate.currentMonthTax ?? 0)}</span
+						>
+					</div>
+					<div class="flex justify-between text-sm">
+						<span class="text-muted-foreground">Omzet bulan ini:</span>
+						<span class="font-medium"
+							>{formatRupiah(dashboard.taxEstimate.currentMonthRevenue)}</span
+						>
+					</div>
+					<div class="border-t pt-2">
+						<p class="text-xs text-muted-foreground">
+							Estimasi—verifikasi sebelum membayar atau melapor.
+						</p>
+					</div>
 				</div>
 			{/if}
 		</div>

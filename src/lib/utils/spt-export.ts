@@ -72,7 +72,7 @@ const getStatusLabel = getTaxStatusLabel;
 export function generateSPTFilename(year: number, format: SPTExportFormat): string {
 	const timestamp = new Date().toISOString().split('T')[0];
 	const ext = format === 'xlsx' ? 'xlsx' : 'pdf';
-	return `SPT_Tahunan_${year}_${timestamp}.${ext}`;
+	return `Draft_Pendukung_SPT_${year}_${timestamp}.${ext}`;
 }
 
 /**
@@ -89,8 +89,8 @@ export async function exportSPTToExcel(
 
 	// Sheet 1: Ringkasan
 	const summaryData: (string | number)[][] = [
-		['LAPORAN SPT TAHUNAN'],
-		['PPh Final 0.5% (UMKM)'],
+		['DRAFT PENDUKUNG SPT TAHUNAN'],
+		['Estimasi PPh Final 0,5% (UMKM)'],
 		[`Tahun Pajak: ${sptData.year}`],
 		[''],
 		['DATA WAJIB PAJAK'],
@@ -110,10 +110,10 @@ export async function exportSPTToExcel(
 		[''],
 		['STATUS'],
 		[
-			'Batas Threshold (WP OP)',
+			'Fasilitas Omzet (WP Orang Pribadi)',
 			sptData.summary.thresholdAmount ? formatRupiah(sptData.summary.thresholdAmount) : 'N/A'
 		],
-		['Threshold Terlewati', sptData.summary.thresholdExceeded ? 'Ya' : 'Tidak']
+		['Fasilitas Omzet Terlewati', sptData.summary.thresholdExceeded ? 'Ya' : 'Tidak']
 	];
 
 	const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
@@ -143,7 +143,7 @@ export async function exportSPTToExcel(
 			month.taxRate,
 			month.taxAmount,
 			getStatusLabel(month.taxStatus),
-			month.isBelowThreshold ? 'Di bawah threshold' : '-'
+			month.isBelowThreshold ? 'Dalam fasilitas omzet' : '-'
 		]);
 	});
 
@@ -180,10 +180,10 @@ export async function exportSPTToExcel(
 		[''],
 		['CATATAN:'],
 		[
-			'Data ini dihasilkan berdasarkan perhitungan PPh Final 0.5% sesuai ketentuan perpajakan Indonesia.'
+			'Data ini adalah estimasi PPh Final UMKM 0,5% berdasarkan profil dan omzet yang dikonfirmasi pengguna.'
 		],
 		[
-			'Untuk WP Orang Pribadi dengan pendapatan kumulatif di bawah Rp500.000.000,- tidak dikenakan PPh Final.'
+			'Untuk WP Orang Pribadi yang memenuhi syarat, bagian omzet usaha kumulatif sampai Rp500.000.000 tidak dikenai PPh Final.'
 		]
 	];
 
@@ -230,11 +230,11 @@ export async function exportSPTToPDF(
 	const addHeader = () => {
 		setFont('bold', 16);
 		doc.setTextColor(...primaryColor);
-		doc.text('LAPORAN SPT TAHUNAN', pageWidth / 2, yPos, { align: 'center' });
+		doc.text('DRAFT PENDUKUNG SPT TAHUNAN', pageWidth / 2, yPos, { align: 'center' });
 		yPos += 7;
 
 		setFont('bold', 12);
-		doc.text('PPh Final 0.5% (UMKM)', pageWidth / 2, yPos, { align: 'center' });
+		doc.text('Estimasi PPh Final 0,5% (UMKM)', pageWidth / 2, yPos, { align: 'center' });
 		yPos += 6;
 
 		setFont('normal', 11);
@@ -364,19 +364,19 @@ export async function exportSPTToPDF(
 
 	yPos = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
 
-	// Threshold info
+	// Individual gross-turnover facility info
 	if (sptData.taxpayerType === TAXPAYER_TYPE.WP_OP) {
 		addSectionTitle('INFORMASI THRESHOLD');
 
 		setFont('normal', 10);
 		doc.text(
-			`Batas Threshold WP OP: ${sptData.summary.thresholdAmount ? formatRupiah(sptData.summary.thresholdAmount) : 'Rp 500.000.000.000'}`,
+			`Fasilitas omzet WP Orang Pribadi: ${sptData.summary.thresholdAmount ? formatRupiah(sptData.summary.thresholdAmount) : 'Rp 500.000.000'}`,
 			margin,
 			yPos
 		);
 		yPos += 5;
 		doc.text(
-			`Status Threshold: ${sptData.summary.thresholdExceeded ? 'TERLEWATI' : 'BELUM TERLEWATI'}`,
+			`Status Fasilitas Omzet: ${sptData.summary.thresholdExceeded ? 'TERLEWATI' : 'BELUM TERLEWATI'}`,
 			margin,
 			yPos
 		);

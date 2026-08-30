@@ -116,16 +116,16 @@
 						<div class={styles.text}>
 							<p class="font-semibold">
 								{#if reminderData.urgencyLevel === 'high' && reminderData.daysUntilDue === 0}
-									Pajak Terlambat!
+									Periksa Estimasi Pajak
 								{:else}
-									Reminder Pajak Bulanan
+									Pengingat Estimasi Pajak
 								{/if}
 							</p>
 							<p class="text-sm mt-1">
-								Pajak {getIndonesianMonthName(reminderData.previousMonth || 0)}
+								Estimasi {getIndonesianMonthName(reminderData.previousMonth || 0)}
 								{reminderData.previousMonthYear}
 								sebesar <span class="font-bold">{formatRupiah(reminderData.taxAmount || 0)}</span>
-								harus dibayar paling lambat tanggal {reminderData.dueDateDay}.
+								perlu diverifikasi sebelum batas penyetoran tanggal {reminderData.dueDateDay}.
 							</p>
 							{#if reminderData.daysUntilDue !== undefined && reminderData.daysUntilDue > 0}
 								<p class="text-sm mt-1 opacity-75">
@@ -136,7 +136,7 @@
 									{/if}
 								</p>
 							{:else if reminderData.daysUntilDue === 0}
-								<p class="text-sm mt-1 font-medium">Sudah terlambat! Segera bayarkan hari ini.</p>
+								<p class="text-sm mt-1 font-medium">Tinjau kewajiban dan status pembayaran Anda.</p>
 							{/if}
 						</div>
 
@@ -157,7 +157,7 @@
 							class="inline-flex items-center gap-2 {styles.buttonBg} text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
 						>
 							<Receipt class="w-4 h-4" />
-							Buat Kode Billing
+							Panduan Pembayaran
 						</a>
 						<a
 							href="/pajak"

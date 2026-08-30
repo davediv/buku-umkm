@@ -1,6 +1,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { AlertCircle, CheckCircle2, Circle, Plus, Receipt } from '@lucide/svelte';
+	import {
+		AlertCircle,
+		CheckCircle2,
+		Circle,
+		ExternalLink,
+		Plus,
+		Receipt,
+		Settings2
+	} from '@lucide/svelte';
 	import {
 		Table,
 		TableBody,
@@ -19,43 +27,49 @@
 		AlertDialogAction,
 		AlertDialogCancel
 	} from '$lib/components/ui/alert-dialog';
-	import type { TaxpayerType } from '$lib/tax/types';
+	import type { TaxEligibilityDecision, TaxpayerType } from '$lib/tax/types';
 
 	interface TaxSummary {
 		year: number;
 		month: number;
 		currentMonthRevenue: number;
-		currentMonthTax: number;
+		currentMonthTax: number | null;
 		cumulativeAnnualRevenue: number;
 		thresholdPercentage: number;
 		thresholdAmount: number;
-		paymentStatus: string;
-		taxableRevenue: number;
-		isBelowThreshold: boolean;
-		taxpayerType: TaxpayerType;
+		paymentStatus: string | null;
+		taxableRevenue: number | null;
+		isBelowThreshold: boolean | null;
+		taxpayerType: TaxpayerType | null;
+		calculationStatus: 'estimate' | 'unavailable';
+		profileConfigured: boolean;
+		eligibility: TaxEligibilityDecision;
 	}
 
 	interface TaxHistoryMonth {
 		year: number;
 		month: number;
 		grossRevenue: number;
-		taxableRevenue: number;
-		taxAmount: number;
-		taxRate: number;
-		status: string;
+		taxableRevenue: number | null;
+		taxAmount: number | null;
+		taxRate: number | null;
+		status: string | null;
 		paymentDate: string | null;
 		billingCode: string | null;
-		isBelowThreshold: boolean;
+		isBelowThreshold: boolean | null;
 		cumulativeRevenue: number;
-		thresholdPercentage: number;
+		thresholdPercentage: number | null;
 	}
 
 	interface TaxHistory {
 		year: number;
-		taxpayerType: TaxpayerType;
+		taxpayerType: TaxpayerType | null;
+		calculationStatus: 'estimate' | 'unavailable';
+		profileConfigured: boolean;
+		eligibility: TaxEligibilityDecision;
 		totalGrossRevenue: number;
-		totalTaxableRevenue: number;
-		totalTaxAmount: number;
+		totalTaxableRevenue: number | null;
+		totalTaxAmount: number | null;
 		thresholdInfo: {
 			threshold: number;
 			currentRevenue: number;
@@ -148,13 +162,24 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Pajak — Buku UMKM</title>
+</svelte:head>
+
 <div class="p-4 md:p-6 space-y-6">
 	<!-- Header -->
-	<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+	<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 		<div>
 			<h1 class="text-2xl font-bold">Pajak</h1>
-			<p class="text-sm text-muted-foreground">Ringkasan pajak PPh Final 0.5%</p>
+			<p class="text-sm text-muted-foreground">Estimasi PPh Final UMKM 0,5%</p>
 		</div>
+		<a
+			href="/pajak/profil?year={data.summary?.year ?? new Date().getFullYear()}"
+			class="inline-flex h-10 items-center justify-center gap-2 rounded-md border bg-background px-4 font-medium transition-colors hover:bg-muted"
+		>
+			<Settings2 class="h-4 w-4" />
+			Profil pajak
+		</a>
 	</div>
 
 	{#if data.error}
@@ -166,14 +191,36 @@
 		</div>
 	{/if}
 
-	<!-- Tax Summary Card -->
-	{#if data.summary}
+	{#if data.summary?.calculationStatus === 'unavailable'}
+		<section class="space-y-4 rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-950">
+			<div class="flex items-start gap-3">
+				<AlertCircle class="mt-0.5 h-5 w-5 flex-shrink-0" />
+				<div class="space-y-2">
+					<h2 class="font-semibold">
+						{data.summary.profileConfigured
+							? 'Estimasi belum dapat ditampilkan'
+							: `Lengkapi profil pajak ${data.summary.year}`}
+					</h2>
+					{#each data.summary.eligibility.reasons as reason (reason)}
+						<p class="text-sm">{reason}</p>
+					{/each}
+				</div>
+			</div>
+			<a
+				href="/pajak/profil?year={data.summary.year}"
+				class="inline-flex h-10 items-center rounded-md bg-primary px-4 font-medium text-primary-foreground"
+			>
+				{data.summary.profileConfigured ? 'Tinjau profil pajak' : 'Isi profil pajak'}
+			</a>
+		</section>
+	{:else if data.summary}
+		<!-- Tax Summary Card -->
 		<div class="bg-card border rounded-lg p-6 space-y-6">
 			<!-- WP OP Threshold Progress Bar -->
 			{#if data.summary.taxpayerType === TAXPAYER_TYPE.WP_OP}
 				<div class="space-y-3">
 					<div class="flex items-center justify-between">
-						<span class="text-sm font-medium">Batas Penghasilan Tidak Kena Pajak (PTKP)</span>
+						<span class="text-sm font-medium">Fasilitas omzet WP Orang Pribadi</span>
 						<span class="text-sm text-muted-foreground">
 							{formatRupiah(data.summary.cumulativeAnnualRevenue)} dari {formatRupiah(
 								data.summary.thresholdAmount
@@ -210,7 +257,7 @@
 						>
 							<AlertCircle class="w-4 h-4 flex-shrink-0" />
 							<span class="text-sm"
-								>Penghasilan sudah mencapai 80% dari batas PTKP. Siapkan dana pajak.</span
+								>Omzet sudah mencapai 80% dari fasilitas Rp500 juta. Tinjau kesiapan pajak.</span
 							>
 						</div>
 					{:else if showThresholdAlert(data.summary.thresholdPercentage) === 'critical'}
@@ -219,7 +266,8 @@
 						>
 							<AlertCircle class="w-4 h-4 flex-shrink-0" />
 							<span class="text-sm"
-								>Penghasilan sudah melebihi batas PTKP! Pajak PPh Final 0.5% sudah wajib dibayar.</span
+								>Omzet sudah melewati fasilitas Rp500 juta. Bagian omzet berikutnya masuk dasar
+								estimasi PPh Final.</span
 							>
 						</div>
 					{/if}
@@ -230,20 +278,23 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 				<div>
 					<p class="text-sm text-muted-foreground">
-						Pajak Bulan {getIndonesianMonthName(data.summary.month)}
+						Estimasi bulan {getIndonesianMonthName(data.summary.month)}
 						{data.summary.year}
 					</p>
 					{#if data.summary.isBelowThreshold}
 						<p class="text-2xl font-bold text-green-600">Belum kena pajak</p>
 					{:else}
-						<p class="text-2xl font-bold">{formatRupiah(data.summary.currentMonthTax)}</p>
+						<p class="text-2xl font-bold">{formatRupiah(data.summary.currentMonthTax ?? 0)}</p>
 					{/if}
 				</div>
 
 				<div>
 					<p class="text-sm text-muted-foreground">Status Pembayaran</p>
 					<div class="flex items-center gap-2 mt-1">
-						{#if data.summary.paymentStatus === TAX_STATUS.PAID}
+						{#if (data.summary.currentMonthTax ?? 0) <= 0}
+							<Circle class="w-5 h-5 text-gray-400" />
+							<span class="text-lg font-medium text-muted-foreground">Tidak ada pembayaran</span>
+						{:else if data.summary.paymentStatus === TAX_STATUS.PAID}
 							<CheckCircle2 class="w-5 h-5 text-green-600" />
 							<span class="text-lg font-medium text-green-600">Sudah Dibayar</span>
 						{:else}
@@ -256,7 +307,7 @@
 
 			<!-- Mark as Paid Button -->
 			<div class="flex flex-wrap gap-3">
-				{#if data.summary.paymentStatus !== TAX_STATUS.PAID && !data.summary.isBelowThreshold}
+				{#if data.summary.paymentStatus !== TAX_STATUS.PAID && (data.summary.currentMonthTax ?? 0) > 0}
 					<button
 						onclick={() => (showConfirmDialog = true)}
 						class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md font-medium transition-colors"
@@ -265,24 +316,40 @@
 						Tandai Sudah Dibayar
 					</button>
 				{/if}
-				{#if !data.summary.isBelowThreshold}
+				{#if (data.summary.currentMonthTax ?? 0) > 0}
 					<a
 						href="/pajak/kode-billing/{data.summary.year}/{data.summary.month}"
 						class="inline-flex items-center justify-center gap-2 border bg-background hover:bg-muted h-10 px-4 py-2 rounded-md font-medium transition-colors"
 					>
 						<Receipt class="w-4 h-4" />
-						Kode Billing
+						Panduan pembayaran
 					</a>
 				{/if}
+			</div>
+
+			<div class="border-t pt-4 text-sm text-muted-foreground">
+				<p>
+					Hasil ini adalah estimasi berdasarkan data yang Anda konfirmasi, bukan ketetapan pajak
+					atau kode billing resmi.
+				</p>
+				<a
+					href={data.summary.eligibility.rule.sourceUrl}
+					target="_blank"
+					rel="noreferrer"
+					class="mt-2 inline-flex items-center gap-1 font-medium text-primary hover:underline"
+				>
+					Dasar aturan: {data.summary.eligibility.rule.name}
+					<ExternalLink class="h-3.5 w-3.5" />
+				</a>
 			</div>
 		</div>
 	{/if}
 
 	<!-- Tax History Table -->
-	{#if data.history && data.history.months.length > 0}
+	{#if data.history?.calculationStatus === 'estimate' && data.history.months.length > 0}
 		<div class="bg-card border rounded-lg overflow-hidden">
 			<div class="p-4 border-b">
-				<h2 class="text-lg font-semibold">Riwayat Pajak {data.history.year}</h2>
+				<h2 class="text-lg font-semibold">Riwayat estimasi pajak {data.history.year}</h2>
 			</div>
 
 			<div class="overflow-x-auto">
@@ -299,12 +366,15 @@
 					</TableHeader>
 					<TableBody>
 						{#each data.history.months as record (record.year + '-' + record.month)}
-							{@const statusBadge = getStatusBadge(record.status, !record.isBelowThreshold)}
+							{@const statusBadge = getStatusBadge(
+								record.status ?? '',
+								record.taxAmount !== null && record.taxAmount > 0
+							)}
 							<TableRow>
 								<TableCell>
 									{#if record.status === TAX_STATUS.PAID}
 										<CheckCircle2 class="w-4 h-4 text-green-600" />
-									{:else if record.taxAmount > 0}
+									{:else if (record.taxAmount ?? 0) > 0}
 										<Circle class="w-4 h-4 text-yellow-600" />
 									{:else}
 										<Circle class="w-4 h-4 text-gray-400" />
@@ -323,7 +393,7 @@
 									{#if record.isBelowThreshold}
 										<span class="text-muted-foreground">-</span>
 									{:else}
-										{formatRupiah(record.taxAmount)}
+										{formatRupiah(record.taxAmount ?? 0)}
 									{/if}
 								</TableCell>
 								<TableCell>
@@ -334,12 +404,12 @@
 									</span>
 								</TableCell>
 								<TableCell>
-									{#if !record.isBelowThreshold}
+									{#if (record.taxAmount ?? 0) > 0}
 										<a
 											href="/pajak/kode-billing/{record.year}/{record.month}"
 											class="text-primary hover:underline text-sm"
 										>
-											Kode Billing
+											Panduan
 										</a>
 									{/if}
 								</TableCell>
@@ -349,7 +419,7 @@
 				</Table>
 			</div>
 		</div>
-	{:else if data.history}
+	{:else if data.history?.calculationStatus === 'estimate'}
 		<!-- Empty State -->
 		<div class="flex flex-col items-center justify-center py-12 text-center">
 			<div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
@@ -388,10 +458,10 @@
 			{data.summary?.year || ''} sebagai sudah dibayar?
 		</AlertDialogDescription>
 
-		{#if data.summary && !data.summary.isBelowThreshold}
+		{#if data.summary && (data.summary.currentMonthTax ?? 0) > 0}
 			<div class="bg-muted rounded-lg p-4 mt-4 mb-4">
 				<p class="text-sm text-muted-foreground">Jumlah Pajak</p>
-				<p class="text-xl font-bold">{formatRupiah(data.summary.currentMonthTax)}</p>
+				<p class="text-xl font-bold">{formatRupiah(data.summary.currentMonthTax ?? 0)}</p>
 			</div>
 		{/if}
 

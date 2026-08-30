@@ -47,13 +47,14 @@
 	const today = todayInJakarta();
 
 	// SPT Tahunan state
-	let sptYear = $state(new Date().getFullYear());
+	let sptYear = $state(Number(today.slice(0, 4)));
 	let sptData = $state<SPTTaxData | null>(null);
 	let sptLoading = $state(false);
 	let sptExportLoading = $state(false);
+	let sptError = $state<string | null>(null);
 
 	// Generate available years (current year and 5 years back)
-	let availableYears = $derived(Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i));
+	let availableYears = $derived(Array.from({ length: 6 }, (_, i) => Number(today.slice(0, 4)) - i));
 
 	// Use data directly - no need for redundant state
 	let selectedReportType = $derived<ReportType>((data.reportType as ReportType) || 'laba-rugi');
@@ -165,15 +166,17 @@
 	async function fetchSPTData() {
 		sptLoading = true;
 		sptData = null;
+		sptError = null;
 		try {
 			const response = await fetch(`/api/tax/annual?year=${sptYear}`);
-			const result = (await response.json()) as { data?: SPTTaxData };
+			const result = (await response.json()) as { data?: SPTTaxData; error?: string };
+			if (!response.ok) throw new Error(result.error || 'Estimasi pajak tidak tersedia.');
 			if (result.data) {
 				sptData = result.data;
 			}
 		} catch (error) {
 			console.error('Error fetching SPT data:', error);
-			toast.error('Gagal memuat data', 'Terjadi kesalahan saat memuat data SPT Tahunan');
+			sptError = error instanceof Error ? error.message : 'Estimasi pajak tidak tersedia.';
 		} finally {
 			sptLoading = false;
 		}
@@ -325,7 +328,7 @@
 					: 'bg-muted hover:bg-muted/80'}"
 			>
 				<FolderArchive class="w-4 h-4" />
-				SPT Tahunan
+				Draft SPT Tahunan
 			</button>
 		</div>
 
@@ -1073,7 +1076,7 @@
 			{:else if selectedReportType === 'spt-tahunan'}
 				<!-- SPT Tahunan Content -->
 				<div class="text-center">
-					<p class="text-sm text-muted-foreground">SPT Tahunan PPh Final 0.5%</p>
+					<p class="text-sm text-muted-foreground">Draft pendukung estimasi PPh Final 0,5%</p>
 				</div>
 
 				<!-- Year Selector -->
@@ -1095,6 +1098,19 @@
 					<!-- Loading State -->
 					<div class="flex justify-center py-12">
 						<Loader2 class="w-8 h-8 animate-spin text-muted-foreground" />
+					</div>
+				{:else if sptError}
+					<div
+						class="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-amber-950"
+					>
+						<p class="font-medium">Draft belum dapat dibuat</p>
+						<p class="mt-1 text-sm">{sptError}</p>
+						<a
+							href="/pajak/profil?year={sptYear}"
+							class="mt-4 inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+						>
+							Tinjau profil pajak
+						</a>
 					</div>
 				{:else if sptData}
 					<!-- SPT Data Display -->
@@ -1141,7 +1157,7 @@
 									</p>
 								</div>
 								<div class="p-3 bg-muted/50 rounded-lg">
-									<p class="text-sm text-muted-foreground">Status Threshold</p>
+									<p class="text-sm text-muted-foreground">Status fasilitas omzet</p>
 									<p
 										class="text-xl font-semibold {sptData.summary.thresholdExceeded
 											? 'text-red-600'

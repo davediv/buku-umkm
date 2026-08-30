@@ -30,6 +30,8 @@
 		thresholdAmount: number;
 		cumulativeRevenue: number;
 		thresholdPercentage: number;
+		calculationStatus: 'estimate';
+		officialBillingUrl: string;
 	} | null>(null);
 
 	// Load data on mount
@@ -48,14 +50,14 @@
 
 			if (!response.ok) {
 				const errData = (await response.json()) as { error?: string };
-				throw new Error(errData.error || 'Failed to fetch billing code data');
+				throw new Error(errData.error || 'Panduan pembayaran gagal dimuat');
 			}
 
 			const result = (await response.json()) as { data: typeof billingData };
 			billingData = result.data;
 		} catch (err) {
 			console.error('Error loading billing data:', err);
-			error = err instanceof Error ? err.message : 'Failed to load billing data';
+			error = err instanceof Error ? err.message : 'Panduan pembayaran gagal dimuat';
 		} finally {
 			loading = false;
 		}
@@ -82,7 +84,9 @@
 			// Title
 			doc.setFontSize(16);
 			doc.setFont('helvetica', 'bold');
-			doc.text('KODE BILLING PAJAK PPH FINAL 0.5%', pageWidth / 2, 20, { align: 'center' });
+			doc.text('RINGKASAN ESTIMASI PPH FINAL UMKM 0,5%', pageWidth / 2, 20, {
+				align: 'center'
+			});
 
 			// Subtitle
 			doc.setFontSize(10);
@@ -143,12 +147,20 @@
 			// Footer
 			doc.setFontSize(8);
 			doc.setFont('helvetica', 'italic');
+			doc.text(
+				'Bukan kode billing resmi. Buat kode billing melalui Coretax DJP.',
+				pageWidth / 2,
+				275,
+				{
+					align: 'center'
+				}
+			);
 			doc.text('Dicetak dari Buku UMKM - Aplikasi Pencatatan Keuangan UMKM', pageWidth / 2, 280, {
 				align: 'center'
 			});
 
 			// Save
-			doc.save(`kode-billing-${billingData.tahun}-${month.toString().padStart(2, '0')}.pdf`);
+			doc.save(`panduan-pembayaran-${billingData.tahun}-${month.toString().padStart(2, '0')}.pdf`);
 		} catch (err) {
 			console.error('Failed to export billing PDF:', err);
 		} finally {
@@ -156,6 +168,10 @@
 		}
 	}
 </script>
+
+<svelte:head>
+	<title>Panduan Pembayaran Pajak — Buku UMKM</title>
+</svelte:head>
 
 <div class="p-4 md:p-6 space-y-6">
 	<!-- Header -->
@@ -168,7 +184,7 @@
 			<ArrowLeft class="w-5 h-5" />
 		</button>
 		<div>
-			<h1 class="text-2xl font-bold">Kode Billing Pajak</h1>
+			<h1 class="text-2xl font-bold">Panduan pembayaran pajak</h1>
 			<p class="text-sm text-muted-foreground">
 				Bulan {billingData?.bulan || ''}
 				{billingData?.tahun || year}
@@ -195,18 +211,34 @@
 			>
 				<CheckCircle2 class="w-5 h-5 flex-shrink-0" />
 				<div>
-					<p class="font-medium">Tidak Kena Pajak</p>
+					<p class="font-medium">Tidak ada estimasi PPh Final bulan ini</p>
 					<p class="text-sm">
-						Penghasilan bulan ini belum melebihi PTKP. Tidak perlu melakukan pembayaran pajak.
+						Omzet kumulatif masih berada dalam fasilitas Rp500 juta untuk WP Orang Pribadi.
 					</p>
 				</div>
 			</div>
 		{/if}
 
-		<!-- Billing Code Summary Card -->
+		<div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+			<p class="font-medium">Ini bukan kode billing resmi.</p>
+			<p class="mt-1">
+				Gunakan data estimasi berikut sebagai panduan, lalu verifikasi dan buat kode billing melalui
+				Coretax DJP.
+			</p>
+			<a
+				href={billingData.officialBillingUrl}
+				target="_blank"
+				rel="noreferrer"
+				class="mt-3 inline-flex h-10 items-center rounded-md bg-primary px-4 font-medium text-primary-foreground"
+			>
+				Buka Coretax DJP
+			</a>
+		</div>
+
+		<!-- Payment preparation summary -->
 		<div class="bg-card border rounded-lg p-6 space-y-6">
 			<div class="flex items-center justify-between">
-				<h2 class="text-lg font-semibold">Ringkasan Kode Billing</h2>
+				<h2 class="text-lg font-semibold">Data persiapan pembayaran</h2>
 				<button
 					onclick={exportPDF}
 					disabled={exportingPdf}
@@ -220,7 +252,7 @@
 
 			<!-- NPWP -->
 			<div class="space-y-2">
-				<label class="text-sm text-muted-foreground">NPWP</label>
+				<p class="text-sm text-muted-foreground">NPWP</p>
 				<div class="flex items-center gap-2">
 					<div class="flex-1 bg-muted rounded-lg px-4 py-3 font-mono text-lg">
 						{billingData.npwp || '-'}
@@ -237,7 +269,7 @@
 
 			<!-- Nama WP -->
 			<div class="space-y-2">
-				<label class="text-sm text-muted-foreground">Nama Wajib Pajak</label>
+				<p class="text-sm text-muted-foreground">Nama Wajib Pajak</p>
 				<div class="flex items-center gap-2">
 					<div class="flex-1 bg-muted rounded-lg px-4 py-3 font-medium">
 						{billingData.namaWp || '-'}
@@ -254,7 +286,7 @@
 
 			<!-- KAP -->
 			<div class="space-y-2">
-				<label class="text-sm text-muted-foreground">KAP (Kode Akun Pajak)</label>
+				<p class="text-sm text-muted-foreground">KAP (Kode Akun Pajak)</p>
 				<div class="flex items-center gap-2">
 					<div class="flex-1 bg-muted rounded-lg px-4 py-3 font-mono text-lg">
 						{billingData.kap}
@@ -271,7 +303,7 @@
 
 			<!-- KJS -->
 			<div class="space-y-2">
-				<label class="text-sm text-muted-foreground">KJS (Kode Jenis Setoran)</label>
+				<p class="text-sm text-muted-foreground">KJS (Kode Jenis Setoran)</p>
 				<div class="flex items-center gap-2">
 					<div class="flex-1 bg-muted rounded-lg px-4 py-3 font-mono text-lg">
 						{billingData.kjs}
@@ -288,7 +320,7 @@
 
 			<!-- Masa Pajak -->
 			<div class="space-y-2">
-				<label class="text-sm text-muted-foreground">Masa Pajak</label>
+				<p class="text-sm text-muted-foreground">Masa Pajak</p>
 				<div class="flex items-center gap-2">
 					<div class="flex-1 bg-muted rounded-lg px-4 py-3 font-medium">
 						{billingData.masaPajak}
@@ -305,7 +337,7 @@
 
 			<!-- Tahun Pajak -->
 			<div class="space-y-2">
-				<label class="text-sm text-muted-foreground">Tahun Pajak</label>
+				<p class="text-sm text-muted-foreground">Tahun Pajak</p>
 				<div class="flex items-center gap-2">
 					<div class="flex-1 bg-muted rounded-lg px-4 py-3 font-medium">
 						{billingData.tahun}
@@ -323,7 +355,7 @@
 
 			<!-- Jumlah Setor -->
 			<div class="space-y-2">
-				<label class="text-sm text-muted-foreground">Jumlah Setor</label>
+				<p class="text-sm text-muted-foreground">Jumlah Setor</p>
 				<div class="flex items-center gap-2">
 					<div class="flex-1 bg-muted rounded-lg px-4 py-3 font-bold text-xl">
 						{formatRupiah(billingData.jumlahSetor)}
@@ -354,11 +386,13 @@
 				</div>
 				<div>
 					<p class="text-muted-foreground">Tarif Pajak</p>
-					<p class="font-medium">0.5%</p>
+					<p class="font-medium">0,5%</p>
 				</div>
 				<div>
 					<p class="text-muted-foreground">Jenis Wajib Pajak</p>
-					<p class="font-medium">{billingData.taxpayerType === 'WP_OP' ? 'WPOP' : 'Badan'}</p>
+					<p class="font-medium">
+						{billingData.taxpayerType === 'perorangan' ? 'WP Orang Pribadi' : 'WP Badan'}
+					</p>
 				</div>
 			</div>
 		</div>

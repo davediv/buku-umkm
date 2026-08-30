@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { dashboardQueries, transactionQueries } from '$lib/server/db/queries';
+import { getTaxDashboardEstimate } from '$lib/tax/service';
 
 type PeriodParam = 'daily' | 'weekly' | 'monthly';
 
@@ -24,9 +25,10 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	try {
 		// Run all queries in parallel for performance
 		// Note: When period is 'daily', periodStats already contains today's data
-		const [overview, recentTransactions] = await Promise.all([
+		const [overview, recentTransactions, taxEstimate] = await Promise.all([
 			dashboardQueries.getOverview(db, userId, period),
-			transactionQueries.getRecent(db, userId, 5)
+			transactionQueries.getRecent(db, userId, 5),
+			getTaxDashboardEstimate(db, userId)
 		]);
 		const { summary, periodStats, debtSummary, todayStats } = overview;
 
@@ -43,9 +45,6 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			accountName: t.account?.name ?? '',
 			categoryName: t.category?.name ?? null
 		}));
-
-		// Calculate PPh Final 0.5% tax from monthly income (already in summary)
-		const currentMonthTax = Math.floor(summary.monthlyIncome * 0.005);
 
 		return json({
 			data: {
@@ -64,11 +63,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 					expense: periodStats.expense,
 					profit: periodStats.profit
 				},
-				// Cumulative annual revenue (for tax threshold)
-				annualRevenue: summary.yearToDateRevenue,
-				// Current month tax amount (PPh Final 0.5%)
-				currentMonthTax,
-				currentMonthRevenue: summary.monthlyIncome,
+				taxEstimate,
 				// Outstanding debts
 				debts: {
 					piutang: debtSummary.piutang,
