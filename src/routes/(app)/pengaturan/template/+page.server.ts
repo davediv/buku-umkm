@@ -1,7 +1,7 @@
 import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
 import { categoryQueries, transactionTemplateQueries } from '$lib/server/db/queries';
-import { redirect, fail } from '@sveltejs/kit';
+import { error as httpError, redirect, fail } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Check authentication
@@ -40,13 +40,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 			categories,
 			templates: mappedTemplates
 		};
-	} catch {
-		console.error('Error fetching templates:');
-		return {
-			categories: { income: [], expense: [] },
-			templates: [],
-			error: 'Gagal memuat data template'
-		};
+	} catch (cause) {
+		console.error('Error fetching templates:', cause);
+		throw httpError(500, 'Template transaksi tidak dapat dimuat. Data Anda tidak diubah.');
 	}
 };
 

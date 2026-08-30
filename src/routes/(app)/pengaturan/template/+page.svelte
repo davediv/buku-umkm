@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
 		FileText,
@@ -12,7 +13,7 @@
 		Shield,
 		ArrowLeft
 	} from '@lucide/svelte';
-	import { toast } from '$lib/components/ui/toast';
+	import OperationStatus from '$lib/components/operation-status.svelte';
 	import {
 		AlertDialog,
 		AlertDialogTitle,
@@ -40,6 +41,7 @@
 	let showDeleteConfirm = $state(false);
 	let deleteTargetId = $state<string | null>(null);
 	let activeTab = $state<'income' | 'expense'>('income');
+	let operationStatus = $state<{ kind: 'success' | 'error'; message: string } | null>(null);
 	let transactionReturnTo = $derived(
 		getSafeTransactionReturn(page.url.searchParams.get('return_to'))
 	);
@@ -70,6 +72,7 @@
 
 	// Open modal for creating new template
 	function openCreateModal() {
+		operationStatus = null;
 		editingTemplate = null;
 		name = '';
 		type = activeTab;
@@ -86,6 +89,7 @@
 		categoryId: string | null;
 		description: string | null;
 	}) {
+		operationStatus = null;
 		editingTemplate = { ...tmpl, type: tmpl.type as 'income' | 'expense' };
 		name = tmpl.name;
 		type = tmpl.type as 'income' | 'expense';
@@ -108,11 +112,29 @@
 	function handleSubmit() {
 		loading = true;
 		return async ({ result }: { result: { type: string; data?: Record<string, unknown> } }) => {
-			loading = false;
-			if (result.type === 'success' && result.data?.template) {
-				const newTemplate = result.data.template as (typeof templates)[number];
-				templates = [...templates, newTemplate];
-				closeModal();
+			try {
+				if (result.type === 'success') {
+					operationStatus = {
+						kind: 'success',
+						message:
+							typeof result.data?.message === 'string'
+								? result.data.message
+								: 'Template berhasil disimpan.'
+					};
+					await invalidateAll();
+					closeModal();
+					return;
+				}
+
+				operationStatus = {
+					kind: 'error',
+					message:
+						typeof result.data?.error === 'string'
+							? result.data.error
+							: 'Template belum dapat disimpan.'
+				};
+			} finally {
+				loading = false;
 			}
 		};
 	}
@@ -121,26 +143,33 @@
 	async function handleToggle(templateId: string, currentActive: boolean) {
 		togglingId = templateId;
 		try {
-			const formData = new FormData();
-			formData.append('id', templateId);
-			formData.append('isActive', String(!currentActive));
-
-			const response = await fetch('?/toggle', {
-				method: 'POST',
-				body: formData
+			const response = await fetch(`/api/templates/${templateId}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ isActive: !currentActive })
 			});
+			const resData = (await response.json()) as { error?: string; message?: string };
 
 			if (response.ok) {
-				templates = templates.map((t) =>
-					t.id === templateId ? { ...t, isActive: !currentActive } : t
-				);
+				await invalidateAll();
+				operationStatus = {
+					kind: 'success',
+					message:
+						resData.message ??
+						`Template berhasil ${currentActive ? 'dinonaktifkan' : 'diaktifkan'}.`
+				};
 			} else {
-				const resData = (await response.json()) as { error?: string };
-				toast.error(resData.error || 'Gagal mengubah status');
+				operationStatus = {
+					kind: 'error',
+					message: resData.error || 'Status template belum dapat diubah.'
+				};
 			}
 		} catch (error) {
 			console.error('Error toggling template:', error);
-			toast.error('Terjadi kesalahan server');
+			operationStatus = {
+				kind: 'error',
+				message: 'Tidak dapat terhubung ke server. Status template belum diubah.'
+			};
 		} finally {
 			togglingId = null;
 		}
@@ -164,23 +193,29 @@
 		deletingId = deleteTargetId;
 		showDeleteConfirm = false;
 		try {
-			const formData = new FormData();
-			formData.append('id', deleteTargetId);
-
-			const response = await fetch('?/delete', {
-				method: 'POST',
-				body: formData
+			const response = await fetch(`/api/templates/${deleteTargetId}`, {
+				method: 'DELETE'
 			});
+			const resData = (await response.json()) as { error?: string; message?: string };
 
 			if (response.ok) {
-				templates = templates.filter((t) => t.id !== deleteTargetId);
+				await invalidateAll();
+				operationStatus = {
+					kind: 'success',
+					message: resData.message ?? 'Template berhasil dihapus.'
+				};
 			} else {
-				const resData = (await response.json()) as { error?: string };
-				toast.error(resData.error || 'Gagal menghapus template');
+				operationStatus = {
+					kind: 'error',
+					message: resData.error || 'Template belum dapat dihapus.'
+				};
 			}
 		} catch (error) {
 			console.error('Error deleting template:', error);
-			toast.error('Terjadi kesalahan server');
+			operationStatus = {
+				kind: 'error',
+				message: 'Tidak dapat terhubung ke server. Template belum dihapus.'
+			};
 		} finally {
 			deletingId = null;
 			deleteTargetId = null;
@@ -238,6 +273,15 @@
 
 	<!-- Template List -->
 	<div class="flex-1 overflow-y-auto p-4">
+		{#if operationStatus && !showModal}
+			<div class="mb-4">
+				<OperationStatus
+					kind={operationStatus.kind}
+					message={operationStatus.message}
+					ondismiss={() => (operationStatus = null)}
+				/>
+			</div>
+		{/if}
 		{#if currentTemplates.length > 0}
 			<div class="space-y-2">
 				{#each currentTemplates as tmpl (tmpl.id)}
@@ -357,6 +401,9 @@
 				use:enhance={handleSubmit}
 				class="p-4 space-y-4"
 			>
+				{#if operationStatus}
+					<OperationStatus kind={operationStatus.kind} message={operationStatus.message} />
+				{/if}
 				{#if editingTemplate}
 					<input type="hidden" name="id" value={editingTemplate.id} />
 				{/if}

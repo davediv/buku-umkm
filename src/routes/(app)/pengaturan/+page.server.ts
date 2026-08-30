@@ -1,4 +1,4 @@
-import { redirect } from '@sveltejs/kit';
+import { error as httpError, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { businessProfileQueries } from '$lib/server/db/queries';
@@ -17,8 +17,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 	let profile = null;
 	try {
 		profile = await businessProfileQueries.findByUserId(db, userId);
-	} catch {
-		console.error('Error fetching profile');
+	} catch (cause) {
+		console.error('Error fetching profile', cause);
+		throw httpError(500, 'Profil usaha tidak dapat dimuat. Data Anda tidak diubah.');
 	}
 
 	// Decrypt NPWP for display
@@ -27,8 +28,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 		try {
 			const decrypted = await decryptNPWP(profile.npwp);
 			displayNpwp = decrypted ? formatNPWP(decrypted) : null;
-		} catch {
-			displayNpwp = null;
+		} catch (cause) {
+			console.error('Error decrypting NPWP', cause);
+			throw httpError(500, 'NPWP tidak dapat dimuat dengan aman. Data Anda tidak diubah.');
 		}
 	}
 

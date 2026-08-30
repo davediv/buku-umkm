@@ -14,6 +14,7 @@
 		X,
 		Plus
 	} from '@lucide/svelte';
+	import OperationStatus from '$lib/components/operation-status.svelte';
 	import { getDebtDueState } from '$lib/debts/list';
 	import { todayInJakarta } from '$lib/shared/dates';
 	import { formatRupiah, formatDate } from '$lib/utils';
@@ -203,12 +204,7 @@
 	</div>
 
 	{#if success}
-		<div
-			class="rounded-md border border-green-500 bg-green-500/10 p-3 text-sm text-green-800"
-			role="status"
-		>
-			{success}
-		</div>
+		<OperationStatus kind="success" message={success} ondismiss={() => (success = null)} />
 	{/if}
 
 	<!-- Amount Cards -->

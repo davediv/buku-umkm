@@ -10,6 +10,7 @@
 		Download,
 		Receipt
 	} from '@lucide/svelte';
+	import PageErrorState from '$lib/components/page-error-state.svelte';
 	import ReportNavigation from '$lib/components/reports/report-navigation.svelte';
 	import { toast } from '$lib/components/ui/toast';
 	import { formatRupiah, getComparisonText, getMaxCategoryValue } from '$lib/utils';
@@ -102,22 +103,7 @@
 	<ReportNavigation />
 
 	{#if hasError}
-		<!-- Error State -->
-		<div class="flex flex-col items-center justify-center py-12 text-center">
-			<div class="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-				<Receipt class="w-8 h-8 text-destructive" />
-			</div>
-			<h3 class="text-lg font-medium mb-2">Gagal memuat data</h3>
-			<p class="text-sm text-muted-foreground mb-6 max-w-sm">
-				{data.error || 'Terjadi kesalahan saat memuat data laporan'}
-			</p>
-			<button
-				onclick={() => goto('/laporan/laba-rugi')}
-				class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
-			>
-				Coba Lagi
-			</button>
-		</div>
+		<PageErrorState message={data.error || 'Terjadi kesalahan saat memuat data laporan'} />
 	{:else if !profitLoss}
 		<!-- Skeleton Loading State -->
 		<div class="space-y-6 animate-pulse">

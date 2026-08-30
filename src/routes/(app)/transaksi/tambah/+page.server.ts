@@ -5,7 +5,7 @@ import {
 	chartOfAccountQueries,
 	transactionTemplateQueries
 } from '$lib/server/db/queries';
-import { redirect } from '@sveltejs/kit';
+import { error as httpError, redirect } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Check authentication
@@ -49,13 +49,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 			accounts,
 			templates: mappedTemplates
 		};
-	} catch {
-		console.error('Error loading transaction form data:');
-		return {
-			categories: { income: [], expense: [] },
-			accounts: [],
-			templates: [],
-			error: 'Gagal memuat data'
-		};
+	} catch (cause) {
+		console.error('Error loading transaction form data:', cause);
+		throw httpError(500, 'Formulir transaksi tidak dapat dimuat. Draft Anda tetap tersimpan.');
 	}
 };

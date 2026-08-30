@@ -21,11 +21,11 @@ function addToast(t: Omit<Toast, 'id'>) {
 
 	toasts = [...toasts, newToast];
 
-	// Auto-remove after 2 seconds
+	// Leave enough time for users and assistive technology to read the outcome.
 	const timer = setTimeout(() => {
 		timers.delete(id);
 		removeToast(id);
-	}, 2000);
+	}, 5000);
 	timers.set(id, timer);
 
 	return id;

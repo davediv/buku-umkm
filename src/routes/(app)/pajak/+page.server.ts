@@ -22,6 +22,9 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
 			fetch('/api/tax/summary'),
 			fetch(`/api/tax/history?year=${currentYear}`)
 		]);
+		if (!summaryRes.ok || !historyRes.ok) {
+			throw new Error('Tax API returned an unsuccessful response');
+		}
 
 		const summaryJson = await summaryRes.json();
 		const historyJson = await historyRes.json();
@@ -34,12 +37,12 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
 			history: historyData.data || null,
 			error: null
 		};
-	} catch {
-		console.error('Error loading tax data');
+	} catch (cause) {
+		console.error('Error loading tax data', cause);
 		return {
 			summary: null,
 			history: null,
-			error: 'Failed to load tax data'
+			error: 'Data pajak tidak dapat dimuat. Data Anda tidak diubah.'
 		};
 	}
 };

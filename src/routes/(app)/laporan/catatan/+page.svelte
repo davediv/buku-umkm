@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { Download, FileText, ChevronLeft, Printer } from '@lucide/svelte';
+	import PageErrorState from '$lib/components/page-error-state.svelte';
 	import ReportNavigation from '$lib/components/reports/report-navigation.svelte';
 	import { toast } from '$lib/components/ui/toast';
 	import { formatDateLong } from '$lib/utils';
@@ -135,18 +136,9 @@
 	</header>
 
 	{#if hasError}
-		<!-- Error State -->
-		<div class="max-w-4xl mx-auto px-4 py-12">
-			<div
-				class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center"
-			>
-				<FileText class="w-12 h-12 text-red-500 mx-auto mb-4" />
-				<h2 class="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">Gagal Memuat Data</h2>
-				<p class="text-red-600 dark:text-red-400">
-					{data.error || 'Terjadi kesalahan saat memuat catatan atas laporan keuangan'}
-				</p>
-			</div>
-		</div>
+		<PageErrorState
+			message={data.error || 'Terjadi kesalahan saat memuat catatan atas laporan keuangan'}
+		/>
 	{:else if catatan}
 		<!-- Report Content: dims while loading to avoid layout shift -->
 		<main
