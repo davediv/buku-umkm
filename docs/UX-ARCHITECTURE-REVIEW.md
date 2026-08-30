@@ -5,7 +5,7 @@
 
 ## Implementation checklist
 
-- [ ] **UX-ARCH-01:** Make onboarding server-authoritative and idempotent.
+- [x] **UX-ARCH-01:** Make onboarding server-authoritative and idempotent.
 - [ ] **UX-ARCH-02:** Adopt and communicate one honest offline architecture.
 - [ ] **UX-ARCH-03:** Introduce a single, typed financial mutation layer.
 - [ ] **UX-ARCH-04:** Make dated financial reports historically accurate.
