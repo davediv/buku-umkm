@@ -16,7 +16,6 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let error = $derived(data.error);
 	let type = $state<'income' | 'expense'>(
 		(data.transaction?.type as 'income' | 'expense') || 'expense'
 	);
@@ -188,131 +187,110 @@
 	<title>Edit Transaksi - Buku UMKM</title>
 </svelte:head>
 
-{#if error}
-	<div class="flex min-h-screen flex-col bg-background">
-		<header class="flex items-center gap-3 border-b px-4 py-3">
+<div class="flex min-h-screen flex-col bg-background">
+	<header
+		class="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-4 py-3"
+	>
+		<div class="flex items-center gap-3">
 			<a
 				href="/transaksi"
 				class="-ml-2 flex h-11 w-11 items-center justify-center rounded-full hover:bg-secondary"
 				aria-label="Kembali ke daftar transaksi"><ArrowLeft class="h-5 w-5" /></a
 			>
-			<h1 class="text-lg font-semibold">Transaksi</h1>
-		</header>
-		<main class="flex flex-1 items-center justify-center p-4 text-center">
-			<div>
-				<p class="mb-4 text-destructive">{error}</p>
-				<a href="/transaksi" class="min-h-11 text-primary hover:underline"
-					>Kembali ke daftar transaksi</a
-				>
-			</div>
-		</main>
-	</div>
-{:else}
-	<div class="flex min-h-screen flex-col bg-background">
-		<header
-			class="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-4 py-3"
+			<h1 class="text-lg font-semibold">Edit Transaksi</h1>
+		</div>
+		<button
+			type="button"
+			onclick={() => (showDeleteConfirm = true)}
+			class="flex h-11 w-11 items-center justify-center rounded-full text-destructive hover:bg-destructive/10"
+			aria-label="Hapus transaksi"><Trash2 class="h-5 w-5" /></button
 		>
-			<div class="flex items-center gap-3">
-				<a
-					href="/transaksi"
-					class="-ml-2 flex h-11 w-11 items-center justify-center rounded-full hover:bg-secondary"
-					aria-label="Kembali ke daftar transaksi"><ArrowLeft class="h-5 w-5" /></a
-				>
-				<h1 class="text-lg font-semibold">Edit Transaksi</h1>
-			</div>
-			<button
-				type="button"
-				onclick={() => (showDeleteConfirm = true)}
-				class="flex h-11 w-11 items-center justify-center rounded-full text-destructive hover:bg-destructive/10"
-				aria-label="Hapus transaksi"><Trash2 class="h-5 w-5" /></button
-			>
-		</header>
+	</header>
 
-		{#snippet receiptFields()}
-			<section class="space-y-2" aria-labelledby="stored-receipt-title">
-				<div class="flex items-center justify-between gap-3">
-					<div>
-						<h2 id="stored-receipt-title" class="text-sm font-medium text-muted-foreground">
-							Foto nota <span class="font-normal">(opsional)</span>
-						</h2>
-						{#if photos.length > 0}<p class="text-xs text-muted-foreground">
-								{photos.length}/{MAX_PHOTOS} foto
-							</p>{/if}
-					</div>
-					{#if canAddPhoto}<button
-							type="button"
-							onclick={() => (showPhotoSourceMenu = true)}
-							disabled={uploadingPhoto}
-							class="inline-flex min-h-11 items-center gap-1 text-sm text-primary hover:underline disabled:opacity-50"
-							><Camera class="h-4 w-4" />{uploadingPhoto ? 'Mengunggah…' : 'Tambah'}</button
-						>{/if}
+	{#snippet receiptFields()}
+		<section class="space-y-2" aria-labelledby="stored-receipt-title">
+			<div class="flex items-center justify-between gap-3">
+				<div>
+					<h2 id="stored-receipt-title" class="text-sm font-medium text-muted-foreground">
+						Foto nota <span class="font-normal">(opsional)</span>
+					</h2>
+					{#if photos.length > 0}<p class="text-xs text-muted-foreground">
+							{photos.length}/{MAX_PHOTOS} foto
+						</p>{/if}
 				</div>
-				{#if photos.length > 0}
-					<div class="flex flex-wrap gap-3">
-						{#each photos as photo, index (photo.id)}
-							<div class="group relative">
-								<button
-									type="button"
-									onclick={() => viewPhoto(index)}
-									class="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-									><img
-										src={photo.r2Url}
-										alt={`Foto nota ${index + 1}`}
-										class="h-20 w-20 rounded-lg border object-cover"
-									/></button
-								>
-								<button
-									type="button"
-									onclick={() => confirmRemovePhoto(photo.id)}
-									class="absolute -right-2 -top-2 flex min-h-8 min-w-8 items-center justify-center rounded-full bg-destructive text-white sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
-									aria-label={`Hapus foto nota ${index + 1}`}><Trash2 class="h-4 w-4" /></button
-								>
-							</div>
-						{/each}
-					</div>
-				{:else}
-					<button
+				{#if canAddPhoto}<button
 						type="button"
 						onclick={() => (showPhotoSourceMenu = true)}
 						disabled={uploadingPhoto}
-						class="flex min-h-16 w-full items-center justify-center gap-2 rounded-lg border border-dashed text-muted-foreground hover:bg-muted/50 disabled:opacity-50"
-						><Image class="h-5 w-5" />{uploadingPhoto
-							? 'Mengunggah foto…'
-							: 'Tambah foto nota'}</button
-					>
-				{/if}
-				<input
-					bind:this={fileInputRef}
-					type="file"
-					accept="image/jpeg,image/png"
-					onchange={handleFileSelect}
-					class="hidden"
-					aria-label="Pilih file foto nota"
-				/>
-			</section>
-		{/snippet}
+						class="inline-flex min-h-11 items-center gap-1 text-sm text-primary hover:underline disabled:opacity-50"
+						><Camera class="h-4 w-4" />{uploadingPhoto ? 'Mengunggah…' : 'Tambah'}</button
+					>{/if}
+			</div>
+			{#if photos.length > 0}
+				<div class="flex flex-wrap gap-3">
+					{#each photos as photo, index (photo.id)}
+						<div class="group relative">
+							<button
+								type="button"
+								onclick={() => viewPhoto(index)}
+								class="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								><img
+									src={photo.r2Url}
+									alt={`Foto nota ${index + 1}`}
+									class="h-20 w-20 rounded-lg border object-cover"
+								/></button
+							>
+							<button
+								type="button"
+								onclick={() => confirmRemovePhoto(photo.id)}
+								class="absolute -right-2 -top-2 flex min-h-8 min-w-8 items-center justify-center rounded-full bg-destructive text-white sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+								aria-label={`Hapus foto nota ${index + 1}`}><Trash2 class="h-4 w-4" /></button
+							>
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<button
+					type="button"
+					onclick={() => (showPhotoSourceMenu = true)}
+					disabled={uploadingPhoto}
+					class="flex min-h-16 w-full items-center justify-center gap-2 rounded-lg border border-dashed text-muted-foreground hover:bg-muted/50 disabled:opacity-50"
+					><Image class="h-5 w-5" />{uploadingPhoto
+						? 'Mengunggah foto…'
+						: 'Tambah foto nota'}</button
+				>
+			{/if}
+			<input
+				bind:this={fileInputRef}
+				type="file"
+				accept="image/jpeg,image/png"
+				onchange={handleFileSelect}
+				class="hidden"
+				aria-label="Pilih file foto nota"
+			/>
+		</section>
+	{/snippet}
 
-		<TransactionForm
-			formId="edit-transaction"
-			mode="edit"
-			bind:type
-			bind:amount
-			bind:categoryId
-			bind:accountId
-			bind:date
-			bind:description
-			bind:referenceNumber
-			bind:notes
-			categoriesByType={categories}
-			{accounts}
-			returnTo={`/transaksi/${transactionId}`}
-			busy={loading}
-			submitLabel="Simpan perubahan"
-			onsubmit={handleSubmit}
-			attachments={receiptFields}
-		/>
-	</div>
-{/if}
+	<TransactionForm
+		formId="edit-transaction"
+		mode="edit"
+		bind:type
+		bind:amount
+		bind:categoryId
+		bind:accountId
+		bind:date
+		bind:description
+		bind:referenceNumber
+		bind:notes
+		categoriesByType={categories}
+		{accounts}
+		returnTo={`/transaksi/${transactionId}`}
+		busy={loading}
+		submitLabel="Simpan perubahan"
+		onsubmit={handleSubmit}
+		attachments={receiptFields}
+	/>
+</div>
 
 {#if showPhotoSourceMenu}
 	<div

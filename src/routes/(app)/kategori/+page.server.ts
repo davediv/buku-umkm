@@ -1,7 +1,7 @@
 import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
 import { categoryQueries, transactionQueries } from '$lib/server/db/queries';
-import { redirect, fail } from '@sveltejs/kit';
+import { error as httpError, redirect, fail } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Check authentication
@@ -44,15 +44,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 				}
 			}
 		};
-	} catch {
-		console.error('Error fetching categories:');
-		return {
-			categories: {
-				income: { all: [], groups: {} },
-				expense: { all: [], groups: {} }
-			},
-			error: 'Gagal memuat data kategori'
-		};
+	} catch (cause) {
+		console.error('Error fetching categories:', cause);
+		throw httpError(500, 'Kategori tidak dapat dimuat. Data Anda tidak diubah.');
 	}
 };
 

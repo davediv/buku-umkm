@@ -6,7 +6,7 @@ import {
 	chartOfAccountQueries,
 	transactionPhotoQueries
 } from '$lib/server/db/queries';
-import { redirect } from '@sveltejs/kit';
+import { error as httpError, isHttpError, redirect } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	// Check authentication
@@ -28,7 +28,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		]);
 
 		if (!transaction) {
-			return { error: 'Transaksi tidak ditemukan' };
+			throw httpError(404, 'Transaksi tidak ditemukan.');
 		}
 
 		const categories = {
@@ -44,8 +44,9 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			accounts,
 			photos
 		};
-	} catch {
-		console.error('Error loading transaction:');
-		return { error: 'Gagal memuat data transaksi' };
+	} catch (cause) {
+		if (isHttpError(cause)) throw cause;
+		console.error('Error loading transaction:', cause);
+		throw httpError(500, 'Transaksi tidak dapat dimuat. Data Anda tidak diubah.');
 	}
 };

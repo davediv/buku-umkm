@@ -1,7 +1,7 @@
 import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
 import { chartOfAccountQueries } from '$lib/server/db/queries';
-import { redirect, fail } from '@sveltejs/kit';
+import { error as httpError, redirect, fail } from '@sveltejs/kit';
 import { chartOfAccount } from '$lib/server/db/schema';
 import {
 	ACCOUNT_TYPE_MAP,
@@ -41,12 +41,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 		return {
 			accounts: mappedAccounts
 		};
-	} catch {
-		console.error('Error fetching accounts:');
-		return {
-			accounts: [],
-			error: 'Gagal memuat data akun'
-		};
+	} catch (cause) {
+		console.error('Error fetching accounts:', cause);
+		throw httpError(500, 'Kas dan rekening tidak dapat dimuat. Data Anda tidak diubah.');
 	}
 };
 

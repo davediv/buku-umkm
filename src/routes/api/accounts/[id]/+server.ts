@@ -190,7 +190,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		if (hasTxns) {
 			return json(
 				{
-					error: 'Tidak dapat menghapus akun yang memiliki transaksi. Nonaktifkan akun instead.'
+					error: 'Akun yang memiliki transaksi terkait belum dapat dinonaktifkan.'
 				},
 				{ status: 400 }
 			);

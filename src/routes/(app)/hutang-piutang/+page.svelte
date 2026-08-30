@@ -10,6 +10,7 @@
 		Search,
 		X
 	} from '@lucide/svelte';
+	import OperationStatus from '$lib/components/operation-status.svelte';
 	import { getDebtDueState } from '$lib/debts/list';
 	import { getDebtDetailHref, getDebtHref } from '$lib/debts/query';
 	import { todayInJakarta } from '$lib/shared/dates';
@@ -298,12 +299,11 @@
 	</form>
 
 	{#if successMessage}
-		<div
-			class="rounded-md border border-green-500 bg-green-500/10 p-3 text-sm text-green-800"
-			role="status"
-		>
-			{successMessage}
-		</div>
+		<OperationStatus
+			kind="success"
+			message={successMessage}
+			ondismiss={() => (successMessage = null)}
+		/>
 	{/if}
 
 	<div class="flex flex-wrap items-center justify-between gap-2">

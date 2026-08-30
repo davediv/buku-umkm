@@ -11,6 +11,7 @@
 		ChevronRight,
 		Plus
 	} from '@lucide/svelte';
+	import PageErrorState from '$lib/components/page-error-state.svelte';
 	import { CashFlowChart } from '$lib/components/ui/charts';
 	import { formatRupiah, formatDateSlash } from '$lib/utils';
 	import type { PageData } from './$types';
@@ -68,22 +69,7 @@
 	</div>
 
 	{#if hasError}
-		<!-- Error State -->
-		<div class="flex flex-col items-center justify-center py-12 text-center">
-			<div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
-				<Receipt class="h-8 w-8 text-destructive" />
-			</div>
-			<h2 class="mb-2 text-lg font-medium">Gagal memuat data</h2>
-			<p class="mb-6 max-w-sm text-sm text-muted-foreground">
-				{data.error || 'Terjadi kesalahan saat memuat data dashboard'}
-			</p>
-			<button
-				onclick={() => goto('/beranda')}
-				class="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-md bg-primary px-4 py-3 text-base font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-			>
-				Coba Lagi
-			</button>
-		</div>
+		<PageErrorState message={data.error || 'Terjadi kesalahan saat memuat data dashboard'} />
 	{:else if !dashboard}
 		<!-- Skeleton Loading State -->
 		<div class="animate-pulse space-y-6">

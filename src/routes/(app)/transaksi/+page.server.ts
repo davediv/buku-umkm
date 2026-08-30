@@ -1,12 +1,8 @@
 import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import { redirect } from '@sveltejs/kit';
+import { error as httpError, redirect } from '@sveltejs/kit';
 import { getTransactionPage } from '$lib/server/transactions/list';
-import {
-	getTransactionHref,
-	getTransactionPagination,
-	parseTransactionQuery
-} from '$lib/transactions/query';
+import { getTransactionHref, parseTransactionQuery } from '$lib/transactions/query';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Check authentication
@@ -19,14 +15,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	let result: Awaited<ReturnType<typeof getTransactionPage>>;
 	try {
 		result = await getTransactionPage(getDb(), locals.user.id, query);
-	} catch (error) {
-		console.error('Error loading transactions:', error);
-		return {
-			transactions: [],
-			query,
-			pagination: getTransactionPagination(0, query.page, query.pageSize),
-			error: 'Gagal memuat transaksi'
-		};
+	} catch (cause) {
+		console.error('Error loading transactions:', cause);
+		throw httpError(500, 'Transaksi tidak dapat dimuat. Data Anda tidak diubah.');
 	}
 
 	if (result.query.page !== query.page) {

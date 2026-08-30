@@ -2,7 +2,6 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
-		AlertCircle,
 		Calendar,
 		ChevronDown,
 		ChevronLeft,
@@ -22,6 +21,7 @@
 		AlertDialogDescription,
 		AlertDialogTitle
 	} from '$lib/components/ui/alert-dialog';
+	import OperationStatus from '$lib/components/operation-status.svelte';
 	import { toast } from '$lib/components/ui/toast';
 	import {
 		getTransactionHref,
@@ -43,6 +43,7 @@
 	let query = $derived(data.query);
 	let pagination = $derived(data.pagination);
 	let successMessage = $derived(getSuccessMessage(page.url.searchParams.get('success')));
+	let operationStatus = $state<{ kind: 'success' | 'error'; message: string } | null>(null);
 	let deletingId = $state<string | null>(null);
 	let showDeleteConfirm = $state<string | null>(null);
 	let isExporting = $state(false);
@@ -125,25 +126,27 @@
 
 	async function handleDelete(transactionId: string) {
 		deletingId = transactionId;
+		operationStatus = null;
 		try {
 			const response = await fetch(`/api/transactions/${transactionId}`, { method: 'DELETE' });
-			if (!response.ok) {
-				const result = (await response.json()) as { error?: string };
-				throw new Error(result.error || 'Gagal menghapus transaksi');
-			}
+			const result = (await response.json()) as { error?: string; message?: string };
+			if (!response.ok) throw new Error(result.error || 'Gagal menghapus transaksi');
 
-			toast.success('Transaksi dihapus');
 			if (data.transactions.length === 1 && pagination.page > 1) {
 				await goto(getTransactionHref(query, { page: pagination.page - 1 }), { noScroll: true });
 			} else {
 				await invalidateAll();
 			}
+			operationStatus = {
+				kind: 'success',
+				message: result.message ?? 'Transaksi berhasil dihapus.'
+			};
 		} catch (error) {
 			console.error('Error deleting transaction:', error);
-			toast.error(
-				'Gagal menghapus',
-				error instanceof Error ? error.message : 'Terjadi kesalahan server'
-			);
+			operationStatus = {
+				kind: 'error',
+				message: error instanceof Error ? error.message : 'Transaksi belum dapat dihapus.'
+			};
 		} finally {
 			deletingId = null;
 			showDeleteConfirm = null;
@@ -229,13 +232,14 @@
 		</div>
 	</header>
 
-	{#if successMessage}
-		<div
-			class="rounded-md border border-green-500 bg-green-500/10 p-3 text-sm text-green-700"
-			role="status"
-		>
-			{successMessage}
-		</div>
+	{#if operationStatus}
+		<OperationStatus
+			kind={operationStatus.kind}
+			message={operationStatus.message}
+			ondismiss={() => (operationStatus = null)}
+		/>
+	{:else if successMessage}
+		<OperationStatus kind="success" message={successMessage} />
 	{/if}
 
 	<form
@@ -335,20 +339,7 @@
 		<p>{pagination.total.toLocaleString('id-ID')} hasil</p>
 	</div>
 
-	{#if data.error}
-		<section
-			class="flex flex-col items-center justify-center rounded-xl border border-destructive/30 bg-destructive/5 py-12 text-center"
-		>
-			<AlertCircle class="mb-3 h-10 w-10 text-destructive" />
-			<h2 class="font-semibold">Transaksi tidak dapat dimuat</h2>
-			<p class="mt-1 text-sm text-muted-foreground">{data.error}</p>
-			<a
-				href={getTransactionHref(query)}
-				class="mt-4 inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
-				>Coba lagi</a
-			>
-		</section>
-	{:else if data.transactions.length > 0}
+	{#if data.transactions.length > 0}
 		<div class="overflow-hidden rounded-xl border bg-card">
 			<div class="overflow-x-auto">
 				<table class="w-full min-w-[760px]">

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
 		ArrowLeft,
@@ -14,7 +15,7 @@
 		ToggleRight,
 		Shield
 	} from '@lucide/svelte';
-	import { toast } from '$lib/components/ui/toast';
+	import OperationStatus from '$lib/components/operation-status.svelte';
 	import {
 		AlertDialog,
 		AlertDialogTitle,
@@ -23,9 +24,9 @@
 		AlertDialogCancel
 	} from '$lib/components/ui/alert-dialog';
 	import { getSafeTransactionReturn } from '$lib/client/transaction-return';
-	import type { PageData, ActionData } from './$types';
+	import type { PageData } from './$types';
 
-	let { data, form }: { data: PageData; form: ActionData } = $props();
+	let { data }: { data: PageData } = $props();
 
 	// State
 	let showModal = $state(false);
@@ -36,6 +37,7 @@
 	let showDeleteConfirm = $state(false);
 	let deleteTargetId = $state<string | null>(null);
 	let activeTab = $state<'income' | 'expense'>('income');
+	let operationStatus = $state<{ kind: 'success' | 'error'; message: string } | null>(null);
 	let transactionReturnTo = $derived(
 		getSafeTransactionReturn(page.url.searchParams.get('return_to'))
 	);
@@ -61,6 +63,7 @@
 
 	// Open modal for creating new category
 	function openCreateModal() {
+		operationStatus = null;
 		editingCategory = null;
 		name = '';
 		type = activeTab;
@@ -69,6 +72,7 @@
 
 	// Open modal for editing
 	function openEditModal(category: { id: string; name: string }) {
+		operationStatus = null;
 		editingCategory = category;
 		name = category.name;
 		type = activeTab;
@@ -83,34 +87,33 @@
 		type = activeTab;
 	}
 
-	// Helper to group categories by SAK EMKM code prefix
-	function groupByCodePrefix<T extends { code: string }>(cats: T[]) {
-		const groups: Record<string, T[]> = {};
-		for (const cat of cats) {
-			const prefix = cat.code.charAt(0);
-			if (!groups[prefix]) {
-				groups[prefix] = [];
-			}
-			groups[prefix].push(cat);
-		}
-		return groups;
-	}
-
 	// Handle form submission
 	function handleSubmit() {
 		loading = true;
 		return async ({ result }: { result: { type: string; data?: Record<string, unknown> } }) => {
-			loading = false;
-			if (result.type === 'success' && result.data?.category) {
-				const newCat = result.data.category as (typeof incomeCategories.all)[number];
-				if (newCat.type === 'income') {
-					const all = [...incomeCategories.all, newCat];
-					incomeCategories = { all, groups: groupByCodePrefix(all) };
-				} else {
-					const all = [...expenseCategories.all, newCat];
-					expenseCategories = { all, groups: groupByCodePrefix(all) };
+			try {
+				if (result.type === 'success') {
+					operationStatus = {
+						kind: 'success',
+						message:
+							typeof result.data?.message === 'string'
+								? result.data.message
+								: 'Kategori berhasil disimpan.'
+					};
+					await invalidateAll();
+					closeModal();
+					return;
 				}
-				closeModal();
+
+				operationStatus = {
+					kind: 'error',
+					message:
+						typeof result.data?.error === 'string'
+							? result.data.error
+							: 'Kategori belum dapat disimpan.'
+				};
+			} finally {
+				loading = false;
 			}
 		};
 	}
@@ -119,31 +122,33 @@
 	async function handleToggle(categoryId: string, currentActive: boolean) {
 		togglingId = categoryId;
 		try {
-			const formData = new FormData();
-			formData.append('id', categoryId);
-			formData.append('isActive', String(!currentActive));
-
-			const response = await fetch('?/toggle', {
-				method: 'POST',
-				body: formData
+			const response = await fetch(`/api/categories/${categoryId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ isActive: !currentActive })
 			});
+			const resData = (await response.json()) as { error?: string; message?: string };
 
 			if (response.ok) {
-				const toggleInList = (cats: typeof incomeCategories): typeof incomeCategories => {
-					const all = cats.all.map((c) =>
-						c.id === categoryId ? { ...c, isActive: !currentActive } : c
-					);
-					return { all, groups: groupByCodePrefix(all) };
+				await invalidateAll();
+				operationStatus = {
+					kind: 'success',
+					message:
+						resData.message ??
+						`Kategori berhasil ${currentActive ? 'dinonaktifkan' : 'diaktifkan'}.`
 				};
-				incomeCategories = toggleInList(incomeCategories);
-				expenseCategories = toggleInList(expenseCategories);
 			} else {
-				const resData = (await response.json()) as { error?: string };
-				toast.error(resData.error || 'Gagal mengubah status');
+				operationStatus = {
+					kind: 'error',
+					message: resData.error || 'Status kategori belum dapat diubah.'
+				};
 			}
 		} catch (error) {
 			console.error('Error toggling category:', error);
-			toast.error('Terjadi kesalahan server');
+			operationStatus = {
+				kind: 'error',
+				message: 'Tidak dapat terhubung ke server. Status kategori belum diubah.'
+			};
 		} finally {
 			togglingId = null;
 		}
@@ -167,26 +172,29 @@
 		deletingId = deleteTargetId;
 		showDeleteConfirm = false;
 		try {
-			const formData = new FormData();
-			formData.append('id', deleteTargetId);
-
-			const response = await fetch('?/delete', {
-				method: 'POST',
-				body: formData
+			const response = await fetch(`/api/categories/${deleteTargetId}`, {
+				method: 'DELETE'
 			});
+			const resData = (await response.json()) as { error?: string; message?: string };
 
 			if (response.ok) {
-				const updatedIncome = incomeCategories.all.filter((c) => c.id !== deleteTargetId);
-				incomeCategories = { all: updatedIncome, groups: groupByCodePrefix(updatedIncome) };
-				const updatedExpense = expenseCategories.all.filter((c) => c.id !== deleteTargetId);
-				expenseCategories = { all: updatedExpense, groups: groupByCodePrefix(updatedExpense) };
+				await invalidateAll();
+				operationStatus = {
+					kind: 'success',
+					message: resData.message ?? 'Kategori berhasil dihapus.'
+				};
 			} else {
-				const resData = (await response.json()) as { error?: string };
-				toast.error(resData.error || 'Gagal menghapus kategori');
+				operationStatus = {
+					kind: 'error',
+					message: resData.error || 'Kategori belum dapat dihapus.'
+				};
 			}
 		} catch (error) {
 			console.error('Error deleting category:', error);
-			toast.error('Terjadi kesalahan server');
+			operationStatus = {
+				kind: 'error',
+				message: 'Tidak dapat terhubung ke server. Kategori belum dihapus.'
+			};
 		} finally {
 			deletingId = null;
 			deleteTargetId = null;
@@ -254,18 +262,12 @@
 		</button>
 	</div>
 
-	<!-- Error/Success Message -->
-	{#if form?.error}
-		<div
-			class="bg-destructive/10 border border-destructive text-destructive text-sm p-3 rounded-md"
-		>
-			{form.error}
-		</div>
-	{/if}
-	{#if form?.success}
-		<div class="bg-green-500/10 border border-green-500 text-green-500 text-sm p-3 rounded-md">
-			{form.message}
-		</div>
+	{#if operationStatus && !showModal}
+		<OperationStatus
+			kind={operationStatus.kind}
+			message={operationStatus.message}
+			ondismiss={() => (operationStatus = null)}
+		/>
 	{/if}
 
 	<!-- Categories List Grouped by SAK EMKM -->
@@ -398,6 +400,9 @@
 				use:enhance={handleSubmit}
 				class="space-y-4"
 			>
+				{#if operationStatus}
+					<OperationStatus kind={operationStatus.kind} message={operationStatus.message} />
+				{/if}
 				{#if editingCategory}
 					<input type="hidden" name="id" value={editingCategory.id} />
 				{/if}
@@ -461,12 +466,13 @@
 		if (!open) closeDeleteDialog();
 	}}
 >
-	<AlertDialogTitle>Hapus Kategori?</AlertDialogTitle>
+	<AlertDialogTitle>Hapus atau Nonaktifkan Kategori?</AlertDialogTitle>
 	<AlertDialogDescription>
-		Kategori yang dihapus tidak dapat dikembalikan. Apakah Anda yakin ingin melanjutkan?
+		Kategori yang belum dipakai akan dihapus. Jika sudah memiliki transaksi, kategori hanya
+		dinonaktifkan agar catatan lama tetap utuh.
 	</AlertDialogDescription>
 	<div class="flex gap-3 mt-6">
 		<AlertDialogCancel onclick={closeDeleteDialog}>Batal</AlertDialogCancel>
-		<AlertDialogAction onclick={handleDelete}>Hapus</AlertDialogAction>
+		<AlertDialogAction onclick={handleDelete}>Lanjutkan</AlertDialogAction>
 	</div>
 </AlertDialog>

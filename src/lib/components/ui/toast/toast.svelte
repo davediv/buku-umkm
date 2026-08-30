@@ -16,6 +16,9 @@
 			class="px-4 py-3 rounded-lg shadow-lg border {variantStyles[
 				t.variant
 			]} min-w-[280px] max-w-sm"
+			role={t.variant === 'error' || t.variant === 'warning' ? 'alert' : 'status'}
+			aria-live={t.variant === 'error' || t.variant === 'warning' ? 'assertive' : 'polite'}
+			aria-atomic="true"
 			transition:fly={{ y: 20, duration: 200 }}
 		>
 			<p class="font-medium text-sm">{t.title}</p>

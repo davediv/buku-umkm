@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
 		ArrowLeft,
@@ -14,7 +14,7 @@
 		ArrowLeftRight
 	} from '@lucide/svelte';
 	import { formatRupiah } from '$lib/utils';
-	import { toast } from '$lib/components/ui/toast';
+	import OperationStatus from '$lib/components/operation-status.svelte';
 	import {
 		AlertDialog,
 		AlertDialogTitle,
@@ -23,10 +23,10 @@
 		AlertDialogCancel
 	} from '$lib/components/ui/alert-dialog';
 	import { getSafeTransactionReturn } from '$lib/client/transaction-return';
-	import type { PageData, ActionData } from './$types';
+	import type { PageData } from './$types';
 	import { todayInJakarta } from '$lib/shared/dates';
 
-	let { data, form }: { data: PageData; form: ActionData } = $props();
+	let { data }: { data: PageData } = $props();
 
 	// State
 	let showModal = $state(false);
@@ -35,6 +35,7 @@
 	let deletingId = $state<string | null>(null);
 	let showDeleteConfirm = $state(false);
 	let deleteTargetId = $state<string | null>(null);
+	let operationStatus = $state<{ kind: 'success' | 'error'; message: string } | null>(null);
 	let transactionReturnTo = $derived(
 		getSafeTransactionReturn(page.url.searchParams.get('return_to'))
 	);
@@ -89,6 +90,7 @@
 
 	// Open modal for creating new account
 	function openCreateModal() {
+		operationStatus = null;
 		editingAccount = null;
 		name = '';
 		type = 'cash';
@@ -99,6 +101,7 @@
 
 	// Open modal for editing
 	function openEditModal(account: { id: string; name: string; type: string }) {
+		operationStatus = null;
 		editingAccount = account;
 		name = account.name;
 		type = account.type as 'cash' | 'bank' | 'ewallet';
@@ -191,14 +194,14 @@
 				})
 			});
 
-			const result = (await response.json()) as { error?: string };
+			const result = (await response.json()) as { error?: string; message?: string };
 
 			if (!response.ok) {
 				transferError = result.error ?? 'Gagal melakukan transfer';
 				return;
 			}
 
-			transferSuccess = 'Transfer berhasil dibuat';
+			transferSuccess = result.message ?? 'Transfer berhasil dibuat';
 			setTimeout(() => {
 				closeTransferModal();
 				goto('/akun', { invalidateAll: true });
@@ -215,11 +218,29 @@
 	function handleSubmit() {
 		loading = true;
 		return async ({ result }: { result: { type: string; data?: Record<string, unknown> } }) => {
-			loading = false;
-			if (result.type === 'success' && result.data?.account) {
-				const newAccount = result.data.account as (typeof accounts)[number];
-				accounts = [...accounts, newAccount];
-				closeModal();
+			try {
+				if (result.type === 'success') {
+					operationStatus = {
+						kind: 'success',
+						message:
+							typeof result.data?.message === 'string'
+								? result.data.message
+								: 'Kas atau rekening berhasil disimpan.'
+					};
+					await invalidateAll();
+					closeModal();
+					return;
+				}
+
+				operationStatus = {
+					kind: 'error',
+					message:
+						typeof result.data?.error === 'string'
+							? result.data.error
+							: 'Kas atau rekening belum dapat disimpan.'
+				};
+			} finally {
+				loading = false;
 			}
 		};
 	}
@@ -246,15 +267,26 @@
 				method: 'DELETE'
 			});
 
+			const resData = (await response.json()) as { error?: string; message?: string };
+
 			if (response.ok) {
-				accounts = accounts.filter((a) => a.id !== deleteTargetId);
+				await invalidateAll();
+				operationStatus = {
+					kind: 'success',
+					message: resData.message ?? 'Kas atau rekening berhasil dinonaktifkan.'
+				};
 			} else {
-				const resData = (await response.json()) as { error?: string };
-				toast.error(resData.error || 'Gagal menghapus akun');
+				operationStatus = {
+					kind: 'error',
+					message: resData.error || 'Kas atau rekening belum dapat dihapus.'
+				};
 			}
 		} catch (error) {
 			console.error('Error deleting account:', error);
-			toast.error('Terjadi kesalahan server');
+			operationStatus = {
+				kind: 'error',
+				message: 'Tidak dapat terhubung ke server. Data belum dihapus.'
+			};
 		} finally {
 			deletingId = null;
 			deleteTargetId = null;
@@ -310,18 +342,12 @@
 		<p class="text-3xl font-bold">{formatRupiah(totalBalance)}</p>
 	</div>
 
-	<!-- Error/Success Message -->
-	{#if form?.error}
-		<div
-			class="bg-destructive/10 border border-destructive text-destructive text-sm p-3 rounded-md"
-		>
-			{form.error}
-		</div>
-	{/if}
-	{#if form?.success}
-		<div class="bg-green-500/10 border border-green-500 text-green-500 text-sm p-3 rounded-md">
-			{form.message}
-		</div>
+	{#if operationStatus && !showModal}
+		<OperationStatus
+			kind={operationStatus.kind}
+			message={operationStatus.message}
+			ondismiss={() => (operationStatus = null)}
+		/>
 	{/if}
 
 	<!-- Accounts List -->
@@ -352,7 +378,7 @@
 								onclick={() => promptDelete(account.id)}
 								disabled={deletingId === account.id}
 								class="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors disabled:opacity-50"
-								aria-label="Hapus akun"
+								aria-label="Nonaktifkan akun"
 							>
 								<Trash2 class="w-4 h-4" />
 							</button>
@@ -406,22 +432,12 @@
 				</button>
 			</div>
 
-			<!-- Error Message -->
 			{#if transferError}
-				<div
-					class="bg-destructive/10 border border-destructive text-destructive text-sm p-3 rounded-md mb-4"
-				>
-					{transferError}
-				</div>
+				<div class="mb-4"><OperationStatus kind="error" message={transferError} /></div>
 			{/if}
 
-			<!-- Success Message -->
 			{#if transferSuccess}
-				<div
-					class="bg-green-500/10 border border-green-500 text-green-500 text-sm p-3 rounded-md mb-4"
-				>
-					{transferSuccess}
-				</div>
+				<div class="mb-4"><OperationStatus kind="success" message={transferSuccess} /></div>
 			{/if}
 
 			<div class="space-y-4">
@@ -553,6 +569,9 @@
 				use:enhance={handleSubmit}
 				class="space-y-4"
 			>
+				{#if operationStatus}
+					<OperationStatus kind={operationStatus.kind} message={operationStatus.message} />
+				{/if}
 				{#if editingAccount}
 					<input type="hidden" name="id" value={editingAccount.id} />
 				{/if}
@@ -644,12 +663,13 @@
 		if (!open) closeDeleteDialog();
 	}}
 >
-	<AlertDialogTitle>Hapus Akun?</AlertDialogTitle>
+	<AlertDialogTitle>Nonaktifkan Akun?</AlertDialogTitle>
 	<AlertDialogDescription>
-		Akun yang dihapus tidak dapat dikembalikan. Apakah Anda yakin ingin melanjutkan?
+		Akun akan disembunyikan dari pilihan transaksi baru. Data keuangan yang sudah tercatat tidak
+		akan diubah.
 	</AlertDialogDescription>
 	<div class="flex gap-3 mt-6">
 		<AlertDialogCancel onclick={closeDeleteDialog}>Batal</AlertDialogCancel>
-		<AlertDialogAction onclick={handleDelete}>Hapus</AlertDialogAction>
+		<AlertDialogAction onclick={handleDelete}>Nonaktifkan</AlertDialogAction>
 	</div>
 </AlertDialog>
