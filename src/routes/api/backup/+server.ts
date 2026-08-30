@@ -45,7 +45,7 @@ export const POST: RequestHandler = async ({ locals }) => {
 			// Categories
 			categoryQueries.findAll(db, userId),
 			// Transactions
-			transactionQueries.findAll(db, userId),
+			transactionQueries.findForExport(db, userId),
 			// Debts
 			debtQueries.findAll(db, userId),
 			// Debt payments - use direct query as no query helper exists

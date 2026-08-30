@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, lt, inArray, sql } from 'drizzle-orm';
+import { asc, desc, eq, and, gte, lte, lt, inArray, like, or, sql } from 'drizzle-orm';
 import type { SQLiteDb } from '../index';
 import { todayInJakarta } from '$lib/shared/dates';
 import {
@@ -267,52 +267,102 @@ export const categoryQueries = {
 // Transaction Queries
 // ============================================================================
 
+export interface TransactionListOptions {
+	limit?: number;
+	offset?: number;
+	accountId?: string;
+	categoryId?: string;
+	type?: 'income' | 'expense' | 'transfer';
+	startDate?: string;
+	endDate?: string;
+	search?: string;
+	sortBy?: 'date' | 'amount';
+	sortOrder?: 'asc' | 'desc';
+	includeInactive?: boolean;
+}
+
+function getTransactionListConditions(
+	db: SQLiteDb,
+	userId: string,
+	options?: TransactionListOptions
+) {
+	const conditions = [eq(transaction.userId, userId)];
+
+	if (!options?.includeInactive) conditions.push(eq(transaction.isActive, true));
+	if (options?.accountId) conditions.push(eq(transaction.accountId, options.accountId));
+	if (options?.categoryId) conditions.push(eq(transaction.categoryId, options.categoryId));
+	if (options?.type) conditions.push(eq(transaction.type, options.type));
+	if (options?.startDate) conditions.push(gte(transaction.date, options.startDate));
+	if (options?.endDate) conditions.push(lte(transaction.date, options.endDate));
+
+	const search = options?.search?.replace(/[%_]/g, '').trim();
+	if (search) {
+		const pattern = `%${search}%`;
+		const matchingCategoryIds = db
+			.select({ id: category.id })
+			.from(category)
+			.where(and(eq(category.userId, userId), like(category.name, pattern)));
+		const matchingAccountIds = db
+			.select({ id: chartOfAccount.id })
+			.from(chartOfAccount)
+			.where(and(eq(chartOfAccount.userId, userId), like(chartOfAccount.name, pattern)));
+
+		conditions.push(
+			or(
+				like(transaction.description, pattern),
+				like(transaction.referenceNumber, pattern),
+				like(transaction.notes, pattern),
+				inArray(transaction.categoryId, matchingCategoryIds),
+				inArray(transaction.accountId, matchingAccountIds),
+				inArray(transaction.toAccountId, matchingAccountIds)
+			)!
+		);
+	}
+
+	return conditions;
+}
+
+function getTransactionOrder(options?: TransactionListOptions) {
+	const direction = options?.sortOrder === 'asc' ? asc : desc;
+	if (options?.sortBy === 'amount') {
+		return [direction(transaction.amount), desc(transaction.date), desc(transaction.createdAt)];
+	}
+	return [direction(transaction.date), direction(transaction.createdAt), direction(transaction.id)];
+}
+
 export const transactionQueries = {
 	/**
 	 * Get all transactions for a user with pagination
 	 */
-	findAll(
-		db: SQLiteDb,
-		userId: string,
-		options?: {
-			limit?: number;
-			offset?: number;
-			accountId?: string;
-			categoryId?: string;
-			type?: 'income' | 'expense' | 'transfer';
-			startDate?: string;
-			endDate?: string;
-			includeInactive?: boolean;
-		}
-	) {
-		const conditions = [eq(transaction.userId, userId)];
-
-		// Default to only active transactions
-		if (!options?.includeInactive) {
-			conditions.push(eq(transaction.isActive, true));
-		}
-
-		if (options?.accountId) {
-			conditions.push(eq(transaction.accountId, options.accountId));
-		}
-		if (options?.categoryId) {
-			conditions.push(eq(transaction.categoryId, options.categoryId));
-		}
-		if (options?.type) {
-			conditions.push(eq(transaction.type, options.type));
-		}
-		if (options?.startDate) {
-			conditions.push(gte(transaction.date, options.startDate));
-		}
-		if (options?.endDate) {
-			conditions.push(lte(transaction.date, options.endDate));
-		}
+	findAll(db: SQLiteDb, userId: string, options?: TransactionListOptions) {
+		const conditions = getTransactionListConditions(db, userId, options);
 
 		return db.query.transaction.findMany({
-			where: conditions.length > 0 ? and(...conditions) : undefined,
-			orderBy: (transactions, { desc }) => [desc(transactions.date), desc(transactions.createdAt)],
+			where: and(...conditions),
+			orderBy: getTransactionOrder(options),
 			limit: options?.limit ?? 50,
 			offset: options?.offset ?? 0,
+			with: {
+				account: true,
+				category: true,
+				toAccount: true
+			}
+		});
+	},
+
+	async count(db: SQLiteDb, userId: string, options?: TransactionListOptions) {
+		const [result] = await db
+			.select({ count: sql<number>`COUNT(*)` })
+			.from(transaction)
+			.where(and(...getTransactionListConditions(db, userId, options)));
+		return Number(result?.count ?? 0);
+	},
+
+	findForExport(db: SQLiteDb, userId: string, options?: TransactionListOptions) {
+		const conditions = getTransactionListConditions(db, userId, options);
+		return db.query.transaction.findMany({
+			where: and(...conditions),
+			orderBy: getTransactionOrder(options),
 			with: {
 				account: true,
 				category: true,
