@@ -1,8 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
-import { transaction } from '$lib/server/db/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
 import { calculateMonthlyTax } from '$lib/tax/engine';
 import {
 	calculateMonthlyRevenues,
@@ -10,14 +8,16 @@ import {
 	getTaxRecordForMonth,
 	getUserTaxData,
 	getIndonesianMonthName,
-	formatMasaPajak
+	formatMasaPajak,
+	getTaxYearContext,
+	getYearTransactions
 } from '$lib/tax/service';
 import { TAX_STATUS } from '$lib/tax/config';
 
 /**
  * GET /api/tax/billing-code/[year]/[month]
  *
- * Returns billing code prep data:
+ * Returns fields that help the user create an official billing code in Coretax:
  * - KAP (Kode Akun Pajak): 411128 (PPh Final Pasal 4(2))
  * - KJS (Kode Jenis Setoran): 420 (PPh Final)
  * - NPWP: User's NPWP
@@ -54,29 +54,21 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		}
 
 		// Get user data (NPWP, taxpayer type, business name)
-		const userTaxData = await getUserTaxData(db, userId);
-
-		// Get transactions up to the specified month
-		const yearStartDate = `${year}-01-01`;
-		const monthEndDate = `${year}-${month.toString().padStart(2, '0')}-31`;
-
-		const transactions = await db
-			.select({
-				date: transaction.date,
-				amount: transaction.amount
-			})
-			.from(transaction)
-			.where(
-				and(
-					eq(transaction.userId, userId),
-					eq(transaction.type, 'income'),
-					gte(transaction.date, yearStartDate),
-					lte(transaction.date, monthEndDate)
-				)
+		const userTaxData = await getUserTaxData(db, userId, year);
+		const recordedMonthlyRevenue = calculateMonthlyRevenues(
+			await getYearTransactions(db, userId, year, month)
+		);
+		const context = await getTaxYearContext(db, userId, year, recordedMonthlyRevenue);
+		if (context.eligibility.status !== 'eligible' || !userTaxData.taxpayerType) {
+			return json(
+				{
+					error: context.eligibility.reasons[0] || 'Estimasi pajak tidak tersedia.',
+					eligibility: context.eligibility
+				},
+				{ status: 422 }
 			);
-
-		// Calculate monthly revenues
-		const monthlyAmounts = calculateMonthlyRevenues(transactions);
+		}
+		const monthlyAmounts = context.aggregatedMonthlyRevenue;
 
 		// Calculate cumulative revenue up to this month
 		const previousCumulativeRevenue = calculateCumulativeRevenue(monthlyAmounts, month - 1);
@@ -116,7 +108,10 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 			// Additional info
 			thresholdAmount: taxCalculation.thresholdAmount,
 			cumulativeRevenue: taxCalculation.cumulativeRevenue,
-			thresholdPercentage: taxCalculation.thresholdPercentage
+			thresholdPercentage: taxCalculation.thresholdPercentage,
+			calculationStatus: 'estimate',
+			eligibility: context.eligibility,
+			officialBillingUrl: 'https://coretaxdjp.pajak.go.id/'
 		};
 
 		return json({ data: response });

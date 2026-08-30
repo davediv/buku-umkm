@@ -178,7 +178,7 @@ export const id = {
 	tax: {
 		title: 'Pajak',
 		overview: 'Ringkasan Pajak',
-		pphFinal: 'PPh Final 0.5%',
+		pphFinal: 'Estimasi PPh Final 0,5%',
 		taxableIncome: 'Penghasilan Kena Pajak',
 		taxDue: 'Pajak Terutang',
 		taxPaid: 'Pajak Dibayar',
@@ -187,7 +187,7 @@ export const id = {
 		quarterly: 'Tahunan',
 		annual: 'Tahunan',
 		taxReturn: 'SPT',
-		taxBilling: 'Kode Billing',
+		taxBilling: 'Panduan Pembayaran',
 		taxPaidSuccess: 'Pembayaran pajak berhasil',
 		taxDueDate: 'Jatuh Tempo Pembayaran'
 	},

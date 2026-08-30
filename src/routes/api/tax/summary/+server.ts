@@ -1,14 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
-import { transaction } from '$lib/server/db/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
 import { calculateMonthlyTax, getThresholdInfo } from '$lib/tax/engine';
 import {
 	calculateMonthlyRevenues,
 	calculateCumulativeRevenue,
 	getTaxRecordForMonth,
-	getTaxpayerType
+	getTaxYearContext,
+	getYearTransactions
 } from '$lib/tax/service';
 import { TAX_STATUS } from '$lib/tax/config';
 
@@ -32,55 +31,43 @@ export const GET: RequestHandler = async ({ locals }) => {
 	const db = getDb();
 
 	try {
-		// Get taxpayer type
-		const taxpayerType = await getTaxpayerType(db, userId);
-
 		// Get current year and month
 		const now = new Date();
 		const currentYear = now.getFullYear();
 		const currentMonth = now.getMonth() + 1; // 1-12
-
-		// Get all income transactions for the current year
-		const yearStartDate = `${currentYear}-01-01`;
-		const yearEndDate = `${currentYear}-12-31`;
-
-		const transactions = await db
-			.select({
-				date: transaction.date,
-				amount: transaction.amount
-			})
-			.from(transaction)
-			.where(
-				and(
-					eq(transaction.userId, userId),
-					eq(transaction.type, 'income'),
-					gte(transaction.date, yearStartDate),
-					lte(transaction.date, yearEndDate)
-				)
-			);
-
-		// Calculate monthly revenues
-		const monthlyRevenues = calculateMonthlyRevenues(transactions);
+		const recordedMonthlyRevenue = calculateMonthlyRevenues(
+			await getYearTransactions(db, userId, currentYear)
+		);
+		const context = await getTaxYearContext(db, userId, currentYear, recordedMonthlyRevenue);
+		const taxpayerType = context.eligibility.taxpayerType;
+		const calculationAvailable = context.eligibility.status === 'eligible' && taxpayerType !== null;
 
 		// Calculate cumulative revenue up to current month
-		const cumulativeRevenue = calculateCumulativeRevenue(monthlyRevenues, currentMonth);
-		const previousCumulativeRevenue = calculateCumulativeRevenue(monthlyRevenues, currentMonth - 1);
+		const cumulativeRevenue = calculateCumulativeRevenue(
+			context.aggregatedMonthlyRevenue,
+			currentMonth
+		);
+		const previousCumulativeRevenue = calculateCumulativeRevenue(
+			context.aggregatedMonthlyRevenue,
+			currentMonth - 1
+		);
 
 		// Calculate current month tax using the engine
-		const currentMonthRevenue = monthlyRevenues[currentMonth - 1];
-
-		const taxCalculation = calculateMonthlyTax({
-			userId,
-			taxpayerType,
-			year: currentYear,
-			month: currentMonth,
-			grossRevenue: currentMonthRevenue,
-			previousCumulativeRevenue
-		});
+		const currentMonthRevenue = context.aggregatedMonthlyRevenue[currentMonth - 1] ?? 0;
+		const taxCalculation = calculationAvailable
+			? calculateMonthlyTax({
+					userId,
+					taxpayerType,
+					year: currentYear,
+					month: currentMonth,
+					grossRevenue: currentMonthRevenue,
+					previousCumulativeRevenue
+				})
+			: null;
 
 		// Get tax record status for current month
 		const taxRec = await getTaxRecordForMonth(db, userId, currentYear, currentMonth);
-		const paymentStatus = taxRec?.status || TAX_STATUS.UNPAID;
+		const paymentStatus = calculationAvailable ? taxRec?.status || TAX_STATUS.UNPAID : null;
 
 		// Get threshold info
 		const thresholdInfo = getThresholdInfo(cumulativeRevenue);
@@ -90,14 +77,19 @@ export const GET: RequestHandler = async ({ locals }) => {
 			year: currentYear,
 			month: currentMonth,
 			currentMonthRevenue,
-			currentMonthTax: taxCalculation.taxAmount,
+			recordedCurrentMonthRevenue: context.recordedMonthlyRevenue[currentMonth - 1] ?? 0,
+			externalCurrentMonthRevenue: context.externalMonthlyRevenue[currentMonth - 1] ?? 0,
+			currentMonthTax: taxCalculation?.taxAmount ?? null,
 			cumulativeAnnualRevenue: cumulativeRevenue,
 			thresholdPercentage: thresholdInfo.percentage,
 			thresholdAmount: thresholdInfo.threshold,
 			paymentStatus,
-			taxableRevenue: taxCalculation.taxableRevenue,
-			isBelowThreshold: taxCalculation.isBelowThreshold,
-			taxpayerType
+			taxableRevenue: taxCalculation?.taxableRevenue ?? null,
+			isBelowThreshold: taxCalculation?.isBelowThreshold ?? null,
+			taxpayerType,
+			calculationStatus: calculationAvailable ? 'estimate' : 'unavailable',
+			profileConfigured: context.profile !== null,
+			eligibility: context.eligibility
 		};
 
 		return json({ data: response });

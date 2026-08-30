@@ -31,6 +31,7 @@ export const POST: RequestHandler = async ({ locals }) => {
 			transactions,
 			debts,
 			debtPayments,
+			taxProfiles,
 			taxRecords,
 			templates,
 			photos
@@ -49,6 +50,10 @@ export const POST: RequestHandler = async ({ locals }) => {
 			debtQueries.findAll(db, userId),
 			// Debt payments - use direct query as no query helper exists
 			db.query.debtPayment.findMany({
+				where: (table, { eq }) => eq(table.userId, userId)
+			}),
+			// Tax profiles (one snapshot per tax year)
+			db.query.taxProfile.findMany({
 				where: (table, { eq }) => eq(table.userId, userId)
 			}),
 			// Tax records
@@ -168,6 +173,26 @@ export const POST: RequestHandler = async ({ locals }) => {
 				createdAt: dp.createdAt?.toISOString() ?? null
 			})),
 
+			// Tax eligibility profiles
+			taxProfiles: taxProfiles.map((profile) => ({
+				id: profile.id,
+				taxYear: profile.taxYear,
+				legalForm: profile.legalForm,
+				registeredAt: profile.registeredAt,
+				finalRegimeStartYear: profile.finalRegimeStartYear,
+				regimeChoice: profile.regimeChoice,
+				everUsedGeneralRegime: profile.everUsedGeneralRegime,
+				priorYearAggregatedRevenue: profile.priorYearAggregatedRevenue,
+				externalMonthlyRevenue: profile.externalMonthlyRevenue,
+				revenueDataComplete: profile.revenueDataComplete,
+				aggregationConfirmed: profile.aggregationConfirmed,
+				hasProfessionalServiceIncome: profile.hasProfessionalServiceIncome,
+				soleOwnerProvidesProfessionalServices: profile.soleOwnerProvidesProfessionalServices,
+				usesOtherTaxFacility: profile.usesOtherTaxFacility,
+				createdAt: profile.createdAt?.toISOString() ?? null,
+				updatedAt: profile.updatedAt?.toISOString() ?? null
+			})),
+
 			// Tax records
 			taxRecords: taxRecords.map((tr) => ({
 				id: tr.id,
@@ -218,6 +243,7 @@ export const POST: RequestHandler = async ({ locals }) => {
 			transactions.length +
 			debts.length +
 			debtPayments.length +
+			taxProfiles.length +
 			taxRecords.length +
 			templates.length;
 

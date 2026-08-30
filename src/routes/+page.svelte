@@ -19,8 +19,8 @@
 		},
 		{
 			icon: Calculator,
-			title: 'Pajak Otomatis',
-			desc: 'Hitung PPh Final 0.5% secara otomatis. Siapkan kode billing dengan mudah setiap bulan.'
+			title: 'Estimasi Pajak Terarah',
+			desc: 'Periksa kelayakan PPh Final UMKM, buat estimasi 0,5%, lalu lanjutkan ke panduan resmi Coretax.'
 		},
 		{
 			icon: BarChart3,
@@ -41,7 +41,7 @@
 	<title>Buku UMKM - Aplikasi Keuangan Gratis untuk Bisnis Anda</title>
 	<meta
 		name="description"
-		content="Kelola keuangan bisnis Anda dengan mudah. Aplikasi bookkeeping gratis untuk UMKM Indonesia dengan fitur pajak PPh Final 0.5%."
+		content="Kelola keuangan bisnis Anda dengan mudah. Aplikasi pembukuan gratis untuk UMKM Indonesia dengan estimasi PPh Final yang memeriksa kelayakan."
 	/>
 </svelte:head>
 
@@ -94,8 +94,8 @@
 			<p
 				class="animate-fade-up animation-delay-200 mt-5 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg"
 			>
-				Catat transaksi, hitung pajak PPh Final 0.5%, dan buat laporan keuangan sesuai SAK EMKM
-				dalam satu aplikasi.
+				Catat transaksi, siapkan estimasi PPh Final UMKM, dan buat laporan keuangan dalam satu
+				aplikasi.
 			</p>
 
 			<div class="animate-fade-up animation-delay-300 mt-8 flex flex-col gap-3 sm:flex-row">

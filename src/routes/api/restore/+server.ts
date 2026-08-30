@@ -7,6 +7,7 @@ import {
 	transaction,
 	debt,
 	debtPayment,
+	taxProfile,
 	taxRecord,
 	businessProfile,
 	transactionPhoto,
@@ -96,6 +97,7 @@ async function clearUserData(db: DbClient, userId: string): Promise<void> {
 	await Promise.all([
 		db.delete(transaction).where(eq(transaction.userId, userId)),
 		db.delete(transactionTemplate).where(eq(transactionTemplate.userId, userId)),
+		db.delete(taxProfile).where(eq(taxProfile.userId, userId)),
 		db.delete(taxRecord).where(eq(taxRecord.userId, userId))
 	]);
 	// Wave 3: base tables (no FK dependents remaining)
@@ -122,10 +124,12 @@ async function insertBackupData(
 		transactions: Array<Record<string, unknown>>;
 		debts: Array<Record<string, unknown>>;
 		debtPayments: Array<Record<string, unknown>>;
+		taxProfiles?: Array<Record<string, unknown>>;
 		taxRecords: Array<Record<string, unknown>>;
 		templates: Array<Record<string, unknown>>;
 		photos: Array<Record<string, unknown>>;
 	};
+	const taxProfiles = backup.taxProfiles ?? [];
 
 	// Insert business profiles
 	if (backup.businessProfiles.length > 0) {
@@ -277,6 +281,33 @@ async function insertBackupData(
 			createdAt: parseDateToDate(dp.createdAt as string | null | undefined)
 		}));
 		await db.insert(debtPayment).values(payments);
+	}
+
+	// Insert versioned tax eligibility profiles (absent in backups before schema 1.2).
+	if (taxProfiles.length > 0) {
+		const profiles = taxProfiles.map((profile) => ({
+			id: profile.id as string,
+			userId,
+			taxYear: profile.taxYear as number,
+			legalForm: profile.legalForm as string,
+			registeredAt: profile.registeredAt as string,
+			finalRegimeStartYear: profile.finalRegimeStartYear as number,
+			regimeChoice: profile.regimeChoice as string,
+			everUsedGeneralRegime: Boolean(profile.everUsedGeneralRegime),
+			priorYearAggregatedRevenue: Number(profile.priorYearAggregatedRevenue) || 0,
+			externalMonthlyRevenue:
+				typeof profile.externalMonthlyRevenue === 'string'
+					? profile.externalMonthlyRevenue
+					: JSON.stringify(Array(12).fill(0)),
+			revenueDataComplete: Boolean(profile.revenueDataComplete),
+			aggregationConfirmed: Boolean(profile.aggregationConfirmed),
+			hasProfessionalServiceIncome: Boolean(profile.hasProfessionalServiceIncome),
+			soleOwnerProvidesProfessionalServices: Boolean(profile.soleOwnerProvidesProfessionalServices),
+			usesOtherTaxFacility: Boolean(profile.usesOtherTaxFacility),
+			createdAt: parseDateToDate(profile.createdAt as string | null | undefined),
+			updatedAt: parseDateToDate(profile.updatedAt as string | null | undefined)
+		}));
+		await db.insert(taxProfile).values(profiles);
 	}
 
 	// Insert tax records

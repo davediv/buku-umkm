@@ -1,14 +1,15 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
-import { taxRecord, transaction } from '$lib/server/db/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { taxRecord } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 import { calculateMonthlyTax } from '$lib/tax/engine';
 import {
 	calculateMonthlyRevenues,
 	calculateCumulativeRevenue,
 	getTaxRecordForMonth,
-	getTaxpayerType
+	getTaxYearContext,
+	getYearTransactions
 } from '$lib/tax/service';
 import { TAX_TYPE, TAX_STATUS } from '$lib/tax/config';
 
@@ -55,30 +56,21 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		const paymentDate = body.paymentDate || new Date().toISOString().split('T')[0];
 		const billingCode = body.billingCode || null;
 
-		// Get taxpayer type
-		const taxpayerType = await getTaxpayerType(db, userId);
-
-		// Get transactions up to the specified month
-		const yearStartDate = `${year}-01-01`;
-		const monthEndDate = `${year}-${month.toString().padStart(2, '0')}-31`;
-
-		const transactions = await db
-			.select({
-				date: transaction.date,
-				amount: transaction.amount
-			})
-			.from(transaction)
-			.where(
-				and(
-					eq(transaction.userId, userId),
-					eq(transaction.type, 'income'),
-					gte(transaction.date, yearStartDate),
-					lte(transaction.date, monthEndDate)
-				)
+		const recordedMonthlyRevenue = calculateMonthlyRevenues(
+			await getYearTransactions(db, userId, year, month)
+		);
+		const context = await getTaxYearContext(db, userId, year, recordedMonthlyRevenue);
+		const taxpayerType = context.eligibility.taxpayerType;
+		if (context.eligibility.status !== 'eligible' || !taxpayerType) {
+			return json(
+				{
+					error: context.eligibility.reasons[0] || 'Estimasi pajak tidak tersedia.',
+					eligibility: context.eligibility
+				},
+				{ status: 422 }
 			);
-
-		// Calculate monthly revenues
-		const monthlyAmounts = calculateMonthlyRevenues(transactions);
+		}
+		const monthlyAmounts = context.aggregatedMonthlyRevenue;
 
 		// Calculate cumulative revenue up to this month
 		const previousCumulativeRevenue = calculateCumulativeRevenue(monthlyAmounts, month - 1);
@@ -92,6 +84,12 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			grossRevenue: monthlyAmounts[month - 1],
 			previousCumulativeRevenue
 		});
+		if (taxCalculation.taxAmount <= 0) {
+			return json(
+				{ error: 'Tidak ada estimasi pajak untuk ditandai sebagai dibayar.' },
+				{ status: 409 }
+			);
+		}
 
 		// Check if there's an existing tax record for this month
 		const existingRecord = await getTaxRecordForMonth(db, userId, year, month);

@@ -36,6 +36,13 @@
       "when": 1788078360906,
       "tag": "0004_faithful_loa",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1788079543438,
+      "tag": "0005_nasty_mister_fear",
+      "breakpoints": true
     }
   ]
 }

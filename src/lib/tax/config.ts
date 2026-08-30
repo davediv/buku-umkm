@@ -2,7 +2,7 @@
  * Tax Configuration
  *
  * PPh Final 0.5% configuration for Indonesian UMKM taxpayers
- * Based on PMK 99/2018 and PP 23/2018
+ * Calculation constants shared by the versioned eligibility rules.
  */
 
 /** Tax rate in basis points (50 = 0.5%) */
@@ -34,6 +34,24 @@ export const TAX_STATUS = {
 export const TAXPAYER_TYPE = {
 	WP_OP: 'perorangan', // WP OP - Wajib Pajak Orang Pribadi
 	WP_BADAN: 'badan' // WP Badan - Wajib Pajak Badan
+} as const;
+
+/** Legal forms used to determine regime eligibility. */
+export const TAX_LEGAL_FORM = {
+	INDIVIDUAL: 'individual',
+	SINGLE_MEMBER_COMPANY: 'single_member_company',
+	COOPERATIVE: 'cooperative',
+	CV: 'cv',
+	FIRM: 'firm',
+	LIMITED_COMPANY: 'limited_company',
+	VILLAGE_ENTERPRISE: 'village_enterprise',
+	PERMANENT_ESTABLISHMENT: 'permanent_establishment',
+	OTHER: 'other'
+} as const;
+
+export const TAX_REGIME_CHOICE = {
+	FINAL_UMKM: 'final_umkm',
+	GENERAL: 'general'
 } as const;
 
 /**
@@ -118,4 +136,20 @@ export function getIndonesianMonthName(month: number): string {
  */
 export function getTaxpayerTypeLabel(type: string): string {
 	return type === TAXPAYER_TYPE.WP_BADAN ? 'WP Badan' : 'WP Orang Pribadi';
+}
+
+export function getTaxLegalFormLabel(type: string): string {
+	const labels: Record<string, string> = {
+		[TAX_LEGAL_FORM.INDIVIDUAL]: 'Orang Pribadi',
+		[TAX_LEGAL_FORM.SINGLE_MEMBER_COMPANY]: 'Perseroan Perorangan (1 orang)',
+		[TAX_LEGAL_FORM.COOPERATIVE]: 'Koperasi',
+		[TAX_LEGAL_FORM.CV]: 'CV',
+		[TAX_LEGAL_FORM.FIRM]: 'Firma',
+		[TAX_LEGAL_FORM.LIMITED_COMPANY]: 'Perseroan Terbatas (PT)',
+		[TAX_LEGAL_FORM.VILLAGE_ENTERPRISE]: 'BUM Desa/BUM Desa Bersama',
+		[TAX_LEGAL_FORM.PERMANENT_ESTABLISHMENT]: 'Bentuk Usaha Tetap',
+		[TAX_LEGAL_FORM.OTHER]: 'Bentuk lainnya'
+	};
+
+	return labels[type] ?? 'Tidak diketahui';
 }

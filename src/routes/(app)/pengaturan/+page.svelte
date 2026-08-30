@@ -658,7 +658,7 @@
 						<ul class="text-sm text-muted-foreground space-y-1">
 							<li>- Pencatatan transaksi pemasukan dan pengeluaran</li>
 							<li>- Manajemen hutang dan piutang</li>
-							<li>- Perhitungan pajak PPh Final 0.5%</li>
+							<li>- Estimasi PPh Final UMKM berbasis profil</li>
 							<li>- Laporan keuangan (laba-rugi, neraca)</li>
 							<li>- Backup dan restore data</li>
 						</ul>

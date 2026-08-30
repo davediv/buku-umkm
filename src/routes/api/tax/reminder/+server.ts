@@ -1,16 +1,15 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
-import { transaction } from '$lib/server/db/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
 import { calculateMonthlyTax } from '$lib/tax/engine';
 import {
 	calculateMonthlyRevenues,
 	calculateCumulativeRevenue,
 	getTaxRecordForMonth,
-	getTaxpayerType
+	getTaxYearContext,
+	getYearTransactions
 } from '$lib/tax/service';
-import { TAX_STATUS, REVENUE_THRESHOLD_WP_OP } from '$lib/tax/config';
+import { TAX_STATUS } from '$lib/tax/config';
 
 /**
  * GET /api/tax/reminder
@@ -66,40 +65,21 @@ export const GET: RequestHandler = async ({ locals }) => {
 			});
 		}
 
-		// Get taxpayer type
-		const taxpayerType = await getTaxpayerType(db, userId);
-
-		// If no taxpayer type configured, don't show reminder
-		if (!taxpayerType) {
+		const recordedMonthlyRevenue = calculateMonthlyRevenues(
+			await getYearTransactions(db, userId, previousMonthYear, previousMonth)
+		);
+		const context = await getTaxYearContext(db, userId, previousMonthYear, recordedMonthlyRevenue);
+		const taxpayerType = context.eligibility.taxpayerType;
+		if (context.eligibility.status !== 'eligible' || !taxpayerType) {
 			return json({
 				data: {
 					showReminder: false,
-					reason: 'no_taxpayer_type'
+					reason: 'tax_estimate_unavailable',
+					eligibility: context.eligibility
 				}
 			});
 		}
-
-		// Get all income transactions for the previous month year up to previous month
-		const yearStartDate = `${previousMonthYear}-01-01`;
-		const monthEndDate = `${previousMonthYear}-${previousMonth.toString().padStart(2, '0')}-31`;
-
-		const transactions = await db
-			.select({
-				date: transaction.date,
-				amount: transaction.amount
-			})
-			.from(transaction)
-			.where(
-				and(
-					eq(transaction.userId, userId),
-					eq(transaction.type, 'income'),
-					gte(transaction.date, yearStartDate),
-					lte(transaction.date, monthEndDate)
-				)
-			);
-
-		// Calculate monthly revenues
-		const monthlyRevenues = calculateMonthlyRevenues(transactions);
+		const monthlyRevenues = context.aggregatedMonthlyRevenue;
 
 		// Calculate cumulative revenue up to previous month
 		const cumulativeRevenue = calculateCumulativeRevenue(monthlyRevenues, previousMonth);
@@ -128,18 +108,6 @@ export const GET: RequestHandler = async ({ locals }) => {
 					showReminder: false,
 					reason: 'below_threshold',
 					taxAmount: 0
-				}
-			});
-		}
-
-		// For WP OP: only show if cumulative revenue > 500M
-		if (taxpayerType === 'perorangan' && cumulativeRevenue <= REVENUE_THRESHOLD_WP_OP) {
-			return json({
-				data: {
-					showReminder: false,
-					reason: 'wp_op_below_threshold',
-					cumulativeRevenue,
-					threshold: REVENUE_THRESHOLD_WP_OP
 				}
 			});
 		}
@@ -185,7 +153,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 			urgencyLevel,
 			billingCodeUrl: `/pajak/kode-billing/${previousMonthYear}/${previousMonth}`,
 			taxpayerType,
-			cumulativeRevenue
+			cumulativeRevenue,
+			calculationStatus: 'estimate'
 		};
 
 		return json({ data: response });
