@@ -16,7 +16,11 @@
 	<title>Masuk - Buku UMKM</title>
 </svelte:head>
 
-<div class="relative flex min-h-screen flex-col items-center justify-center bg-background p-4">
+<main
+	id="main-content"
+	tabindex="-1"
+	class="relative flex min-h-screen flex-col items-center justify-center bg-background p-4"
+>
 	<!-- Decorative background -->
 	<div
 		class="pointer-events-none fixed inset-0 -z-10"
@@ -110,4 +114,4 @@
 			>
 		</p>
 	</div>
-</div>
+</main>

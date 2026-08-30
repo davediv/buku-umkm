@@ -9,4 +9,6 @@
 	<title>Halaman Tidak Dapat Dimuat - Buku UMKM</title>
 </svelte:head>
 
-<PageErrorState status={page.status} {message} homeHref="/" />
+<main id="main-content" tabindex="-1">
+	<PageErrorState status={page.status} {message} homeHref="/" />
+</main>

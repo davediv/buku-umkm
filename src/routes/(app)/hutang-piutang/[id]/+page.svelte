@@ -17,6 +17,7 @@
 	} from '@lucide/svelte';
 	import OperationStatus from '$lib/components/operation-status.svelte';
 	import ContextBackLink from '$lib/components/context-back-link.svelte';
+	import { Dialog } from '$lib/components/ui/dialog';
 	import { getDebtDueState } from '$lib/debts/list';
 	import { getSafeDebtListHref } from '$lib/debts/query';
 	import { todayInJakarta } from '$lib/shared/dates';
@@ -337,143 +338,135 @@
 </div>
 
 <!-- Payment Modal -->
-{#if showPaymentModal}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="payment-modal-title"
-		tabindex="-1"
-		onclick={(event) => event.target === event.currentTarget && !loading && closePaymentModal()}
-		onkeydown={(event) => event.key === 'Escape' && !loading && closePaymentModal()}
-	>
-		<div
-			class="bg-white border rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
+<Dialog
+	open={showPaymentModal}
+	onopenchange={(open) => !open && !loading && closePaymentModal()}
+	closeOnEscape={!loading}
+	closeOnOutsideClick={!loading}
+	labelledby="payment-modal-title"
+	class="max-h-[90vh] overflow-y-auto"
+>
+	<div class="flex items-center justify-between mb-6">
+		<h2 id="payment-modal-title" class="text-lg font-semibold">
+			{debt.type === 'piutang' ? 'Catat Penerimaan Piutang' : 'Catat Pembayaran Utang'}
+		</h2>
+		<button
+			type="button"
+			onclick={closePaymentModal}
+			disabled={loading}
+			class="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
+			aria-label="Tutup"
 		>
-			<div class="flex items-center justify-between mb-6">
-				<h2 id="payment-modal-title" class="text-lg font-semibold">
-					{debt.type === 'piutang' ? 'Catat Penerimaan Piutang' : 'Catat Pembayaran Utang'}
-				</h2>
-				<button
-					type="button"
-					onclick={closePaymentModal}
-					disabled={loading}
-					class="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
-					aria-label="Tutup"
-				>
-					<X class="w-5 h-5" />
-				</button>
-			</div>
+			<X class="w-5 h-5" />
+		</button>
+	</div>
 
-			<!-- Current Amount Info -->
-			<div class="mb-6 p-3 bg-muted/50 rounded-lg">
-				<div class="flex justify-between text-sm">
-					<span class="text-muted-foreground">Sisa Tagihan</span>
-					<span
-						class="font-semibold {dueState.kind === 'paid' ? 'text-green-600' : 'text-red-600'}"
-					>
-						{formatRupiah(debt.remainingAmount)}
-					</span>
-				</div>
-			</div>
-
-			<form onsubmit={handlePaymentSubmit} class="space-y-4">
-				<div class="space-y-2">
-					<label for="paymentAmount" class="text-sm font-medium">
-						{debt.type === 'piutang' ? 'Jumlah diterima' : 'Jumlah dibayar'} *
-					</label>
-					<input
-						id="paymentAmount"
-						type="number"
-						bind:value={paymentAmount}
-						min="1"
-						max={debt.remainingAmount}
-						placeholder="Contoh: 500000"
-						class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-						required
-					/>
-					<p class="text-xs text-muted-foreground">
-						Maksimal: {formatRupiah(debt.remainingAmount)}
-					</p>
-				</div>
-
-				<div class="space-y-2">
-					<label for="paymentDate" class="text-sm font-medium">Tanggal *</label>
-					<input
-						id="paymentDate"
-						type="date"
-						bind:value={paymentDate}
-						min={debt.date}
-						max={data.today}
-						class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-						required
-					/>
-				</div>
-
-				<div class="space-y-2">
-					<label for="paymentAccount" class="text-sm font-medium">
-						{debt.type === 'piutang' ? 'Diterima ke kas/rekening' : 'Dibayar dari kas/rekening'} *
-					</label>
-					<select
-						id="paymentAccount"
-						bind:value={paymentAccount}
-						class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-						required
-					>
-						<option value="">Pilih kas atau rekening</option>
-						{#each accounts as account (account.id)}
-							<option value={account.id}>
-								{account.name} ({account.code})
-							</option>
-						{/each}
-					</select>
-					<p class="text-xs text-muted-foreground">
-						Saldo rekening akan {debt.type === 'piutang' ? 'bertambah' : 'berkurang'} sebesar pembayaran.
-					</p>
-				</div>
-
-				<div class="space-y-2">
-					<label for="paymentNotes" class="text-sm font-medium">Keterangan</label>
-					<textarea
-						id="paymentNotes"
-						bind:value={paymentNotes}
-						placeholder="Contoh: Pembayaran pertama"
-						rows="2"
-						class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-					></textarea>
-				</div>
-
-				{#if error}
-					<div
-						class="bg-destructive/10 border border-destructive text-destructive text-sm p-3 rounded-md flex items-center gap-2"
-						role="alert"
-					>
-						<AlertCircle class="w-4 h-4" />
-						{error}
-					</div>
-				{/if}
-				<div class="flex gap-3 pt-4">
-					<button
-						type="button"
-						onclick={closePaymentModal}
-						disabled={loading}
-						class="flex-1 px-4 py-2 border rounded-md text-sm font-medium hover:bg-secondary transition-colors"
-					>
-						Batal
-					</button>
-					<button
-						type="submit"
-						disabled={loading}
-						class="flex-1 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
-					>
-						{loading
-							? 'Menyimpan…'
-							: debt.type === 'piutang'
-								? 'Simpan penerimaan'
-								: 'Simpan pembayaran'}
-					</button>
-				</div>
-			</form>
+	<!-- Current Amount Info -->
+	<div class="mb-6 p-3 bg-muted/50 rounded-lg">
+		<div class="flex justify-between text-sm">
+			<span class="text-muted-foreground">Sisa Tagihan</span>
+			<span class="font-semibold {dueState.kind === 'paid' ? 'text-green-600' : 'text-red-600'}">
+				{formatRupiah(debt.remainingAmount)}
+			</span>
 		</div>
 	</div>
-{/if}
+
+	<form onsubmit={handlePaymentSubmit} class="space-y-4">
+		<div class="space-y-2">
+			<label for="paymentAmount" class="text-sm font-medium">
+				{debt.type === 'piutang' ? 'Jumlah diterima' : 'Jumlah dibayar'} *
+			</label>
+			<input
+				data-dialog-initial-focus
+				id="paymentAmount"
+				type="number"
+				bind:value={paymentAmount}
+				min="1"
+				max={debt.remainingAmount}
+				placeholder="Contoh: 500000"
+				class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+				required
+			/>
+			<p class="text-xs text-muted-foreground">
+				Maksimal: {formatRupiah(debt.remainingAmount)}
+			</p>
+		</div>
+
+		<div class="space-y-2">
+			<label for="paymentDate" class="text-sm font-medium">Tanggal *</label>
+			<input
+				id="paymentDate"
+				type="date"
+				bind:value={paymentDate}
+				min={debt.date}
+				max={data.today}
+				class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+				required
+			/>
+		</div>
+
+		<div class="space-y-2">
+			<label for="paymentAccount" class="text-sm font-medium">
+				{debt.type === 'piutang' ? 'Diterima ke kas/rekening' : 'Dibayar dari kas/rekening'} *
+			</label>
+			<select
+				id="paymentAccount"
+				bind:value={paymentAccount}
+				class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+				required
+			>
+				<option value="">Pilih kas atau rekening</option>
+				{#each accounts as account (account.id)}
+					<option value={account.id}>
+						{account.name} ({account.code})
+					</option>
+				{/each}
+			</select>
+			<p class="text-xs text-muted-foreground">
+				Saldo rekening akan {debt.type === 'piutang' ? 'bertambah' : 'berkurang'} sebesar pembayaran.
+			</p>
+		</div>
+
+		<div class="space-y-2">
+			<label for="paymentNotes" class="text-sm font-medium">Keterangan</label>
+			<textarea
+				id="paymentNotes"
+				bind:value={paymentNotes}
+				placeholder="Contoh: Pembayaran pertama"
+				rows="2"
+				class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+			></textarea>
+		</div>
+
+		{#if error}
+			<div
+				class="bg-destructive/10 border border-destructive text-destructive text-sm p-3 rounded-md flex items-center gap-2"
+				role="alert"
+			>
+				<AlertCircle class="w-4 h-4" />
+				{error}
+			</div>
+		{/if}
+		<div class="flex gap-3 pt-4">
+			<button
+				type="button"
+				onclick={closePaymentModal}
+				disabled={loading}
+				class="flex-1 px-4 py-2 border rounded-md text-sm font-medium hover:bg-secondary transition-colors"
+			>
+				Batal
+			</button>
+			<button
+				type="submit"
+				disabled={loading}
+				class="flex-1 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
+			>
+				{loading
+					? 'Menyimpan…'
+					: debt.type === 'piutang'
+						? 'Simpan penerimaan'
+						: 'Simpan pembayaran'}
+			</button>
+		</div>
+	</form>
+</Dialog>

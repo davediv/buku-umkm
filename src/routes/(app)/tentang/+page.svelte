@@ -29,7 +29,7 @@
 		</div>
 	</header>
 
-	<main class="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
+	<div class="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
 		<section class="flex items-start gap-4 rounded-xl border bg-card p-5">
 			<div
 				class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"
@@ -84,5 +84,5 @@
 				</div>
 			</div>
 		</section>
-	</main>
+	</div>
 </div>

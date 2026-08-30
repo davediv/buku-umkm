@@ -254,7 +254,7 @@
 	</div>
 
 	<!-- Main Content -->
-	<main class="flex-1 px-4 pb-8">
+	<main id="main-content" tabindex="-1" class="flex-1 px-4 pb-8">
 		<div class="max-w-md mx-auto">
 			{#if errors.submit}
 				<div

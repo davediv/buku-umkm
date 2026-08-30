@@ -16,6 +16,8 @@
 		Shield
 	} from '@lucide/svelte';
 	import OperationStatus from '$lib/components/operation-status.svelte';
+	import { Dialog } from '$lib/components/ui/dialog';
+	import { TabList } from '$lib/components/ui/tabs';
 	import {
 		AlertDialog,
 		AlertDialogTitle,
@@ -240,9 +242,14 @@
 	</div>
 
 	<!-- Tabs -->
-	<div class="flex gap-2 border-b">
+	<TabList label="Jenis kategori" class="flex gap-2 border-b">
 		<a
+			id="category-income-tab"
 			href={incomeHref}
+			role="tab"
+			aria-selected={activeTab === 'income'}
+			aria-controls="category-panel"
+			tabindex={activeTab === 'income' ? 0 : -1}
 			class="flex items-center gap-2 px-4 py-2 border-b-2 transition-colors {activeTab === 'income'
 				? 'border-primary text-primary font-medium'
 				: 'border-transparent text-muted-foreground hover:text-foreground'}"
@@ -254,7 +261,12 @@
 			>
 		</a>
 		<a
+			id="category-expense-tab"
 			href={expenseHref}
+			role="tab"
+			aria-selected={activeTab === 'expense'}
+			aria-controls="category-panel"
+			tabindex={activeTab === 'expense' ? 0 : -1}
 			class="flex items-center gap-2 px-4 py-2 border-b-2 transition-colors {activeTab === 'expense'
 				? 'border-primary text-primary font-medium'
 				: 'border-transparent text-muted-foreground hover:text-foreground'}"
@@ -265,7 +277,7 @@
 				>{expenseCategories.all.length}</span
 			>
 		</a>
-	</div>
+	</TabList>
 
 	{#if operationStatus && !showModal}
 		<OperationStatus
@@ -276,193 +288,192 @@
 	{/if}
 
 	<!-- Categories List Grouped by SAK EMKM -->
-	{#if currentCategories.all.length > 0}
-		<div class="space-y-6">
-			{#each Object.entries(currentCategories.groups) as [prefix, categories] (prefix)}
-				<div class="bg-card border rounded-lg overflow-hidden">
-					<div class="bg-muted/50 px-4 py-2 border-b">
-						<h3 class="font-medium text-sm">
-							{sakEmkmGroups[prefix] || `Kelompok ${prefix}xxx`}
-						</h3>
-					</div>
-					<div class="divide-y">
-						{#each categories as category (category.id)}
-							<div
-								class="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors {!category.isActive
-									? 'opacity-50'
-									: ''}"
-							>
-								<div class="flex items-center gap-3">
-									<div
-										class="w-3 h-3 rounded-full"
-										style="background-color: {category.color || '#6b7280'}"
-									></div>
-									<div>
-										<div class="flex items-center gap-2">
-											<span class="font-medium">{category.name}</span>
-											{#if category.isSystem}
-												<span
-													class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded"
-												>
-													<Shield class="w-3 h-3" />
-													Sistem
-												</span>
-											{/if}
-											{#if !category.isActive}
-												<span
-													class="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded"
-												>
-													Nonaktif
-												</span>
-											{/if}
+	<div
+		id="category-panel"
+		role="tabpanel"
+		aria-labelledby={`category-${activeTab}-tab`}
+		tabindex="0"
+	>
+		{#if currentCategories.all.length > 0}
+			<div class="space-y-6">
+				{#each Object.entries(currentCategories.groups) as [prefix, categories] (prefix)}
+					<div class="bg-card border rounded-lg overflow-hidden">
+						<div class="bg-muted/50 px-4 py-2 border-b">
+							<h3 class="font-medium text-sm">
+								{sakEmkmGroups[prefix] || `Kelompok ${prefix}xxx`}
+							</h3>
+						</div>
+						<div class="divide-y">
+							{#each categories as category (category.id)}
+								<div
+									class="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors {!category.isActive
+										? 'opacity-50'
+										: ''}"
+								>
+									<div class="flex items-center gap-3">
+										<div
+											class="w-3 h-3 rounded-full"
+											style="background-color: {category.color || '#6b7280'}"
+										></div>
+										<div>
+											<div class="flex items-center gap-2">
+												<span class="font-medium">{category.name}</span>
+												{#if category.isSystem}
+													<span
+														class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded"
+													>
+														<Shield class="w-3 h-3" />
+														Sistem
+													</span>
+												{/if}
+												{#if !category.isActive}
+													<span
+														class="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded"
+													>
+														Nonaktif
+													</span>
+												{/if}
+											</div>
+											<p class="text-xs text-muted-foreground">Kode: {category.code}</p>
 										</div>
-										<p class="text-xs text-muted-foreground">Kode: {category.code}</p>
+									</div>
+									<div class="flex gap-1">
+										{#if !category.isSystem}
+											<button
+												onclick={() => openEditModal(category)}
+												class="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
+												aria-label="Edit kategori"
+											>
+												<Pencil class="w-4 h-4" />
+											</button>
+											<button
+												onclick={() => promptDelete(category.id)}
+												disabled={deletingId === category.id}
+												class="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors disabled:opacity-50"
+												aria-label="Hapus kategori"
+											>
+												<Trash2 class="w-4 h-4" />
+											</button>
+										{/if}
+										<button
+											onclick={() => handleToggle(category.id, category.isActive)}
+											disabled={togglingId === category.id}
+											class="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors disabled:opacity-50"
+											aria-label={category.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+										>
+											{#if category.isActive}
+												<ToggleRight class="w-4 h-4 text-green-500" />
+											{:else}
+												<ToggleLeft class="w-4 h-4" />
+											{/if}
+										</button>
 									</div>
 								</div>
-								<div class="flex gap-1">
-									{#if !category.isSystem}
-										<button
-											onclick={() => openEditModal(category)}
-											class="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
-											aria-label="Edit kategori"
-										>
-											<Pencil class="w-4 h-4" />
-										</button>
-										<button
-											onclick={() => promptDelete(category.id)}
-											disabled={deletingId === category.id}
-											class="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors disabled:opacity-50"
-											aria-label="Hapus kategori"
-										>
-											<Trash2 class="w-4 h-4" />
-										</button>
-									{/if}
-									<button
-										onclick={() => handleToggle(category.id, category.isActive)}
-										disabled={togglingId === category.id}
-										class="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors disabled:opacity-50"
-										aria-label={category.isActive ? 'Nonaktifkan' : 'Aktifkan'}
-									>
-										{#if category.isActive}
-											<ToggleRight class="w-4 h-4 text-green-500" />
-										{:else}
-											<ToggleLeft class="w-4 h-4" />
-										{/if}
-									</button>
-								</div>
-							</div>
-						{/each}
+							{/each}
+						</div>
 					</div>
-				</div>
-			{/each}
-		</div>
-	{:else}
-		<!-- Empty State -->
-		<div class="flex flex-col items-center justify-center py-12 text-center">
-			<div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-				<Tags class="w-8 h-8 text-muted-foreground" />
+				{/each}
 			</div>
-			<h3 class="text-lg font-medium mb-2">Belum ada kategori</h3>
-			<p class="text-sm text-muted-foreground mb-6 max-w-sm">
-				Yuk, buat kategori pertama Anda untuk mulai mengklasifikasikan transaksi!
-			</p>
-			<button
-				onclick={openCreateModal}
-				class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
-			>
-				<Plus class="w-4 h-4" />
-				Tambah Kategori
-			</button>
-		</div>
-	{/if}
+		{:else}
+			<!-- Empty State -->
+			<div class="flex flex-col items-center justify-center py-12 text-center">
+				<div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+					<Tags class="w-8 h-8 text-muted-foreground" />
+				</div>
+				<h3 class="text-lg font-medium mb-2">Belum ada kategori</h3>
+				<p class="text-sm text-muted-foreground mb-6 max-w-sm">
+					Yuk, buat kategori pertama Anda untuk mulai mengklasifikasikan transaksi!
+				</p>
+				<button
+					onclick={openCreateModal}
+					class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+				>
+					<Plus class="w-4 h-4" />
+					Tambah Kategori
+				</button>
+			</div>
+		{/if}
+	</div>
 </div>
 
 <!-- Modal for Create/Edit Category -->
-{#if showModal}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="modal-title"
-	>
-		<div class="bg-white border rounded-lg shadow-xl w-full max-w-md p-6">
-			<div class="flex items-center justify-between mb-6">
-				<h2 id="modal-title" class="text-lg font-semibold">
-					{editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}
-				</h2>
-				<button
-					onclick={closeModal}
-					class="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
-					aria-label="Tutup"
-				>
-					<X class="w-5 h-5" />
-				</button>
-			</div>
-
-			<form
-				method="post"
-				action={editingCategory ? '?/update' : '?/create'}
-				use:enhance={handleSubmit}
-				class="space-y-4"
-			>
-				{#if operationStatus}
-					<OperationStatus kind={operationStatus.kind} message={operationStatus.message} />
-				{/if}
-				{#if editingCategory}
-					<input type="hidden" name="id" value={editingCategory.id} />
-				{/if}
-
-				<div class="space-y-2">
-					<label for="name" class="text-sm font-medium">Nama Kategori</label>
-					<input
-						id="name"
-						name="name"
-						type="text"
-						bind:value={name}
-						placeholder="Contoh: Penjualan Makanan, Beban Listrik"
-						class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-						required
-					/>
-				</div>
-
-				{#if !editingCategory}
-					<div class="space-y-2">
-						<label for="type" class="text-sm font-medium">Tipe Kategori</label>
-						<select
-							id="type"
-							name="type"
-							bind:value={type}
-							class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-						>
-							<option value="income">Pemasukan</option>
-							<option value="expense">Pengeluaran</option>
-						</select>
-						<p class="text-xs text-muted-foreground">
-							Pemasukan untuk menerima uang, Pengeluaran untuk pengeluaran uang
-						</p>
-					</div>
-				{/if}
-
-				<div class="flex gap-3 pt-4">
-					<button
-						type="button"
-						onclick={closeModal}
-						class="flex-1 px-4 py-2 border rounded-md text-sm font-medium hover:bg-secondary transition-colors"
-					>
-						Batal
-					</button>
-					<button
-						type="submit"
-						disabled={loading}
-						class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-					>
-						{loading ? 'Menyimpan...' : editingCategory ? 'Simpan Perubahan' : 'Buat Kategori'}
-					</button>
-				</div>
-			</form>
-		</div>
+<Dialog open={showModal} onopenchange={(open) => !open && closeModal()} labelledby="modal-title">
+	<div class="flex items-center justify-between mb-6">
+		<h2 id="modal-title" class="text-lg font-semibold">
+			{editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}
+		</h2>
+		<button
+			onclick={closeModal}
+			class="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
+			aria-label="Tutup"
+		>
+			<X class="w-5 h-5" />
+		</button>
 	</div>
-{/if}
+
+	<form
+		method="post"
+		action={editingCategory ? '?/update' : '?/create'}
+		use:enhance={handleSubmit}
+		class="space-y-4"
+	>
+		{#if operationStatus}
+			<OperationStatus kind={operationStatus.kind} message={operationStatus.message} />
+		{/if}
+		{#if editingCategory}
+			<input type="hidden" name="id" value={editingCategory.id} />
+		{/if}
+
+		<div class="space-y-2">
+			<label for="name" class="text-sm font-medium">Nama Kategori</label>
+			<input
+				data-dialog-initial-focus
+				id="name"
+				name="name"
+				type="text"
+				bind:value={name}
+				placeholder="Contoh: Penjualan Makanan, Beban Listrik"
+				class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+				required
+			/>
+		</div>
+
+		{#if !editingCategory}
+			<div class="space-y-2">
+				<label for="type" class="text-sm font-medium">Tipe Kategori</label>
+				<select
+					id="type"
+					name="type"
+					bind:value={type}
+					class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					<option value="income">Pemasukan</option>
+					<option value="expense">Pengeluaran</option>
+				</select>
+				<p class="text-xs text-muted-foreground">
+					Pemasukan untuk menerima uang, Pengeluaran untuk pengeluaran uang
+				</p>
+			</div>
+		{/if}
+
+		<div class="flex gap-3 pt-4">
+			<button
+				type="button"
+				onclick={closeModal}
+				class="flex-1 px-4 py-2 border rounded-md text-sm font-medium hover:bg-secondary transition-colors"
+			>
+				Batal
+			</button>
+			<button
+				type="submit"
+				disabled={loading}
+				class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+			>
+				{loading ? 'Menyimpan...' : editingCategory ? 'Simpan Perubahan' : 'Buat Kategori'}
+			</button>
+		</div>
+	</form>
+</Dialog>
 
 <!-- Delete Confirmation Dialog -->
 <AlertDialog

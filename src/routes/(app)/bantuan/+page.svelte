@@ -25,7 +25,7 @@
 		</div>
 	</header>
 
-	<main class="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
+	<div class="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
 		<section class="rounded-xl border bg-card p-5">
 			<div class="flex items-start gap-3">
 				<BookOpen class="mt-0.5 h-5 w-5 shrink-0 text-primary" />
@@ -110,5 +110,5 @@
 				<li>Buat cadangan sebelum melakukan pemulihan data.</li>
 			</ol>
 		</section>
-	</main>
+	</div>
 </div>

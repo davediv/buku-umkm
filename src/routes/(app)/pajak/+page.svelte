@@ -348,7 +348,52 @@
 				<h2 class="text-lg font-semibold">Riwayat estimasi pajak {data.history.year}</h2>
 			</div>
 
-			<div class="overflow-x-auto">
+			<div class="divide-y md:hidden">
+				{#each data.history.months as record (record.year + '-' + record.month)}
+					{@const statusBadge = getStatusBadge(
+						record.status ?? '',
+						record.taxAmount !== null && record.taxAmount > 0
+					)}
+					<article class="p-4">
+						<div class="flex items-start justify-between gap-3">
+							<a
+								href="/pajak/kode-billing/{record.year}/{record.month}"
+								class="inline-flex min-h-11 items-center font-medium text-primary hover:underline"
+							>
+								{getIndonesianMonthName(record.month)}
+								{record.year}
+							</a>
+							<span
+								class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium {statusBadge.class}"
+							>
+								{statusBadge.label}
+							</span>
+						</div>
+						<dl class="mt-3 grid gap-2 text-sm">
+							<div class="flex items-center justify-between gap-3">
+								<dt class="text-muted-foreground">Pendapatan kotor</dt>
+								<dd class="font-medium">{formatRupiah(record.grossRevenue)}</dd>
+							</div>
+							<div class="flex items-center justify-between gap-3">
+								<dt class="text-muted-foreground">Estimasi pajak</dt>
+								<dd class="font-medium">
+									{record.isBelowThreshold ? '-' : formatRupiah(record.taxAmount ?? 0)}
+								</dd>
+							</div>
+						</dl>
+						{#if (record.taxAmount ?? 0) > 0}
+							<a
+								href="/pajak/kode-billing/{record.year}/{record.month}"
+								class="mt-3 inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium hover:bg-secondary"
+							>
+								Lihat panduan pembayaran
+							</a>
+						{/if}
+					</article>
+				{/each}
+			</div>
+
+			<div class="hidden overflow-x-auto md:block">
 				<Table>
 					<TableHeader>
 						<TableRow>

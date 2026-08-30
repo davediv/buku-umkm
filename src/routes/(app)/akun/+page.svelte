@@ -15,6 +15,7 @@
 	} from '@lucide/svelte';
 	import { formatRupiah } from '$lib/utils';
 	import OperationStatus from '$lib/components/operation-status.svelte';
+	import { Dialog } from '$lib/components/ui/dialog';
 	import {
 		AlertDialog,
 		AlertDialogTitle,
@@ -413,248 +414,231 @@
 </div>
 
 <!-- Transfer Modal -->
-{#if showTransferModal}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="transfer-modal-title"
-	>
-		<div class="bg-white border rounded-lg shadow-xl w-full max-w-md p-6">
-			<div class="flex items-center justify-between mb-6">
-				<h2 id="transfer-modal-title" class="text-lg font-semibold">Transfer Antar Akun</h2>
-				<button
-					onclick={closeTransferModal}
-					class="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
-					aria-label="Tutup"
-				>
-					<X class="w-5 h-5" />
-				</button>
-			</div>
+<Dialog
+	open={showTransferModal}
+	onopenchange={(open) => !open && closeTransferModal()}
+	labelledby="transfer-modal-title"
+>
+	<div class="flex items-center justify-between mb-6">
+		<h2 id="transfer-modal-title" class="text-lg font-semibold">Transfer Antar Akun</h2>
+		<button
+			onclick={closeTransferModal}
+			class="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
+			aria-label="Tutup"
+		>
+			<X class="w-5 h-5" />
+		</button>
+	</div>
 
-			{#if transferError}
-				<div class="mb-4"><OperationStatus kind="error" message={transferError} /></div>
+	{#if transferError}
+		<div class="mb-4"><OperationStatus kind="error" message={transferError} /></div>
+	{/if}
+
+	{#if transferSuccess}
+		<div class="mb-4"><OperationStatus kind="success" message={transferSuccess} /></div>
+	{/if}
+
+	<div class="space-y-4">
+		<!-- Source Account -->
+		<div class="space-y-2">
+			<label for="source_account" class="text-sm font-medium">Akun Sumber</label>
+			<select
+				data-dialog-initial-focus
+				id="source_account"
+				bind:value={sourceAccountId}
+				class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+			>
+				<option value="">Pilih akun sumber...</option>
+				{#each accounts as account (account.id)}
+					<option value={account.id}>{account.name} ({formatRupiah(account.balance || 0)})</option>
+				{/each}
+			</select>
+		</div>
+
+		<!-- Destination Account -->
+		<div class="space-y-2">
+			<label for="destination_account" class="text-sm font-medium">Akun Tujuan</label>
+			<select
+				id="destination_account"
+				bind:value={destinationAccountId}
+				class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+			>
+				<option value="">Pilih akun tujuan...</option>
+				{#each accounts as account (account.id)}
+					<option value={account.id}>{account.name}</option>
+				{/each}
+			</select>
+			{#if sourceAccountId && destinationAccountId && sourceAccountId === destinationAccountId}
+				<p class="text-xs text-destructive">Akun sumber dan tujuan tidak boleh sama</p>
 			{/if}
+		</div>
 
-			{#if transferSuccess}
-				<div class="mb-4"><OperationStatus kind="success" message={transferSuccess} /></div>
-			{/if}
+		<!-- Amount -->
+		<div class="space-y-2">
+			<label for="transfer_amount" class="text-sm font-medium">Jumlah (Rp)</label>
+			<input
+				id="transfer_amount"
+				type="number"
+				bind:value={transferAmount}
+				min="1"
+				step="100"
+				placeholder="0"
+				class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+			/>
+		</div>
 
-			<div class="space-y-4">
-				<!-- Source Account -->
-				<div class="space-y-2">
-					<label for="source_account" class="text-sm font-medium">Akun Sumber</label>
-					<select
-						id="source_account"
-						bind:value={sourceAccountId}
-						class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						<option value="">Pilih akun sumber...</option>
-						{#each accounts as account (account.id)}
-							<option value={account.id}
-								>{account.name} ({formatRupiah(account.balance || 0)})</option
-							>
-						{/each}
-					</select>
-				</div>
+		<!-- Date -->
+		<div class="space-y-2">
+			<label for="transfer_date" class="text-sm font-medium">Tanggal</label>
+			<input
+				id="transfer_date"
+				type="date"
+				bind:value={transferDate}
+				max={new Date().toISOString().split('T')[0]}
+				class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+			/>
+		</div>
 
-				<!-- Destination Account -->
-				<div class="space-y-2">
-					<label for="destination_account" class="text-sm font-medium">Akun Tujuan</label>
-					<select
-						id="destination_account"
-						bind:value={destinationAccountId}
-						class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						<option value="">Pilih akun tujuan...</option>
-						{#each accounts as account (account.id)}
-							<option value={account.id}>{account.name}</option>
-						{/each}
-					</select>
-					{#if sourceAccountId && destinationAccountId && sourceAccountId === destinationAccountId}
-						<p class="text-xs text-destructive">Akun sumber dan tujuan tidak boleh sama</p>
-					{/if}
-				</div>
+		<!-- Description (Optional) -->
+		<div class="space-y-2">
+			<label for="transfer_description" class="text-sm font-medium">Keterangan (Opsional)</label>
+			<input
+				id="transfer_description"
+				type="text"
+				bind:value={transferDescription}
+				placeholder="Contoh: Setoran modal ke bank"
+				class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+			/>
+		</div>
 
-				<!-- Amount -->
-				<div class="space-y-2">
-					<label for="transfer_amount" class="text-sm font-medium">Jumlah (Rp)</label>
-					<input
-						id="transfer_amount"
-						type="number"
-						bind:value={transferAmount}
-						min="1"
-						step="100"
-						placeholder="0"
-						class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-					/>
-				</div>
-
-				<!-- Date -->
-				<div class="space-y-2">
-					<label for="transfer_date" class="text-sm font-medium">Tanggal</label>
-					<input
-						id="transfer_date"
-						type="date"
-						bind:value={transferDate}
-						max={new Date().toISOString().split('T')[0]}
-						class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-					/>
-				</div>
-
-				<!-- Description (Optional) -->
-				<div class="space-y-2">
-					<label for="transfer_description" class="text-sm font-medium">Keterangan (Opsional)</label
-					>
-					<input
-						id="transfer_description"
-						type="text"
-						bind:value={transferDescription}
-						placeholder="Contoh: Setoran modal ke bank"
-						class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-					/>
-				</div>
-
-				<div class="flex gap-3 pt-4">
-					<button
-						type="button"
-						onclick={closeTransferModal}
-						class="flex-1 px-4 py-2 border rounded-md text-sm font-medium hover:bg-secondary transition-colors"
-					>
-						Batal
-					</button>
-					<button
-						type="button"
-						onclick={handleTransferSubmit}
-						disabled={transferLoading ||
-							sourceAccountId === destinationAccountId ||
-							!sourceAccountId ||
-							!destinationAccountId ||
-							transferAmount <= 0}
-						class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-					>
-						{transferLoading ? 'Mengirim...' : 'Transfer'}
-					</button>
-				</div>
-			</div>
+		<div class="flex gap-3 pt-4">
+			<button
+				type="button"
+				onclick={closeTransferModal}
+				class="flex-1 px-4 py-2 border rounded-md text-sm font-medium hover:bg-secondary transition-colors"
+			>
+				Batal
+			</button>
+			<button
+				type="button"
+				onclick={handleTransferSubmit}
+				disabled={transferLoading ||
+					sourceAccountId === destinationAccountId ||
+					!sourceAccountId ||
+					!destinationAccountId ||
+					transferAmount <= 0}
+				class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+			>
+				{transferLoading ? 'Mengirim...' : 'Transfer'}
+			</button>
 		</div>
 	</div>
-{/if}
+</Dialog>
 
 <!-- Modal for Create/Edit Account -->
-{#if showModal}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="modal-title"
-	>
-		<div class="bg-white border rounded-lg shadow-xl w-full max-w-md p-6">
-			<div class="flex items-center justify-between mb-6">
-				<h2 id="modal-title" class="text-lg font-semibold">
-					{editingAccount ? 'Edit Kas/Rekening' : 'Tambah Kas/Rekening'}
-				</h2>
-				<button
-					onclick={closeModal}
-					class="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
-					aria-label="Tutup"
-				>
-					<X class="w-5 h-5" />
-				</button>
-			</div>
-
-			<form
-				method="post"
-				action={editingAccount ? '?/update' : '?/create'}
-				use:enhance={handleSubmit}
-				class="space-y-4"
-			>
-				{#if operationStatus}
-					<OperationStatus kind={operationStatus.kind} message={operationStatus.message} />
-				{/if}
-				{#if editingAccount}
-					<input type="hidden" name="id" value={editingAccount.id} />
-				{/if}
-
-				<div class="space-y-2">
-					<label for="name" class="text-sm font-medium">Nama Akun</label>
-					<input
-						id="name"
-						name="name"
-						type="text"
-						bind:value={name}
-						placeholder="Contoh: Kas Toko, Bank BCA, Dana"
-						class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-						required
-					/>
-				</div>
-
-				<div class="space-y-2">
-					<label for="type" class="text-sm font-medium">Jenis Akun</label>
-					<select
-						id="type"
-						name="type"
-						bind:value={type}
-						class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						<option value="cash">Tunai</option>
-						<option value="bank">Bank</option>
-						<option value="ewallet">E-Wallet</option>
-					</select>
-				</div>
-
-				{#if !editingAccount}
-					<div class="space-y-2">
-						<label for="opening_balance" class="text-sm font-medium">Saldo Awal (Rp)</label>
-						<input
-							id="opening_balance"
-							name="opening_balance"
-							type="number"
-							bind:value={openingBalance}
-							min="0"
-							step="100"
-							placeholder="0"
-							class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-						/>
-						<p class="text-xs text-muted-foreground">Saldo awal opsional. Kosongkan jika 0.</p>
-					</div>
-					<div class="space-y-2">
-						<label for="opening_date" class="text-sm font-medium">Tanggal Saldo Awal</label>
-						<input
-							id="opening_date"
-							name="opening_date"
-							type="date"
-							bind:value={openingDate}
-							max={todayInJakarta()}
-							class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-							required
-						/>
-						<p class="text-xs text-muted-foreground">
-							Digunakan sebagai titik awal laporan historis.
-						</p>
-					</div>
-				{/if}
-
-				<div class="flex gap-3 pt-4">
-					<button
-						type="button"
-						onclick={closeModal}
-						class="flex-1 px-4 py-2 border rounded-md text-sm font-medium hover:bg-secondary transition-colors"
-					>
-						Batal
-					</button>
-					<button
-						type="submit"
-						disabled={loading}
-						class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-					>
-						{loading ? 'Menyimpan...' : editingAccount ? 'Simpan Perubahan' : 'Buat Akun'}
-					</button>
-				</div>
-			</form>
-		</div>
+<Dialog open={showModal} onopenchange={(open) => !open && closeModal()} labelledby="modal-title">
+	<div class="flex items-center justify-between mb-6">
+		<h2 id="modal-title" class="text-lg font-semibold">
+			{editingAccount ? 'Edit Kas/Rekening' : 'Tambah Kas/Rekening'}
+		</h2>
+		<button
+			onclick={closeModal}
+			class="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
+			aria-label="Tutup"
+		>
+			<X class="w-5 h-5" />
+		</button>
 	</div>
-{/if}
+
+	<form
+		method="post"
+		action={editingAccount ? '?/update' : '?/create'}
+		use:enhance={handleSubmit}
+		class="space-y-4"
+	>
+		{#if operationStatus}
+			<OperationStatus kind={operationStatus.kind} message={operationStatus.message} />
+		{/if}
+		{#if editingAccount}
+			<input type="hidden" name="id" value={editingAccount.id} />
+		{/if}
+
+		<div class="space-y-2">
+			<label for="name" class="text-sm font-medium">Nama Akun</label>
+			<input
+				data-dialog-initial-focus
+				id="name"
+				name="name"
+				type="text"
+				bind:value={name}
+				placeholder="Contoh: Kas Toko, Bank BCA, Dana"
+				class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+				required
+			/>
+		</div>
+
+		<div class="space-y-2">
+			<label for="type" class="text-sm font-medium">Jenis Akun</label>
+			<select
+				id="type"
+				name="type"
+				bind:value={type}
+				class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+			>
+				<option value="cash">Tunai</option>
+				<option value="bank">Bank</option>
+				<option value="ewallet">E-Wallet</option>
+			</select>
+		</div>
+
+		{#if !editingAccount}
+			<div class="space-y-2">
+				<label for="opening_balance" class="text-sm font-medium">Saldo Awal (Rp)</label>
+				<input
+					id="opening_balance"
+					name="opening_balance"
+					type="number"
+					bind:value={openingBalance}
+					min="0"
+					step="100"
+					placeholder="0"
+					class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+				/>
+				<p class="text-xs text-muted-foreground">Saldo awal opsional. Kosongkan jika 0.</p>
+			</div>
+			<div class="space-y-2">
+				<label for="opening_date" class="text-sm font-medium">Tanggal Saldo Awal</label>
+				<input
+					id="opening_date"
+					name="opening_date"
+					type="date"
+					bind:value={openingDate}
+					max={todayInJakarta()}
+					class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+					required
+				/>
+				<p class="text-xs text-muted-foreground">Digunakan sebagai titik awal laporan historis.</p>
+			</div>
+		{/if}
+
+		<div class="flex gap-3 pt-4">
+			<button
+				type="button"
+				onclick={closeModal}
+				class="flex-1 px-4 py-2 border rounded-md text-sm font-medium hover:bg-secondary transition-colors"
+			>
+				Batal
+			</button>
+			<button
+				type="submit"
+				disabled={loading}
+				class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+			>
+				{loading ? 'Menyimpan...' : editingAccount ? 'Simpan Perubahan' : 'Buat Akun'}
+			</button>
+		</div>
+	</form>
+</Dialog>
 
 <!-- Delete Confirmation Dialog -->
 <AlertDialog

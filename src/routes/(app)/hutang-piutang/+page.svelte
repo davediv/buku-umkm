@@ -11,6 +11,7 @@
 		X
 	} from '@lucide/svelte';
 	import OperationStatus from '$lib/components/operation-status.svelte';
+	import { Dialog } from '$lib/components/ui/dialog';
 	import { getDebtDueState } from '$lib/debts/list';
 	import { getDebtDetailHref, getDebtHref } from '$lib/debts/query';
 	import { todayInJakarta } from '$lib/shared/dates';
@@ -463,151 +464,144 @@
 	{/if}
 </div>
 
-{#if showModal}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="debt-modal-title"
-		tabindex="-1"
-		onclick={(event) => event.target === event.currentTarget && closeModal()}
-		onkeydown={(event) => event.key === 'Escape' && closeModal()}
-	>
-		<div
-			class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border bg-background p-6 shadow-xl"
-		>
-			<div class="mb-6 flex items-center justify-between gap-3">
-				<div>
-					<h2 id="debt-modal-title" class="text-lg font-semibold">
-						Tambah {typeLabel(createType)}
-					</h2>
-					<p class="text-xs text-muted-foreground">
-						{createType === 'piutang'
-							? 'Uang yang harus diterima usaha Anda.'
-							: 'Uang yang harus dibayar usaha Anda.'}
-					</p>
-				</div>
-				<button
-					type="button"
-					onclick={closeModal}
-					disabled={loading}
-					class="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary"
-					aria-label="Tutup"><X class="h-5 w-5" /></button
-				>
-			</div>
-			<form onsubmit={handleSubmit} class="space-y-4">
-				<div class="space-y-2">
-					<label for="debt-contact" class="text-sm font-medium"
-						>Nama kontak <span class="text-destructive">*</span></label
-					><input
-						id="debt-contact"
-						type="text"
-						bind:value={contactName}
-						maxlength="200"
-						placeholder={createType === 'piutang' ? 'Contoh: Budi Santoso' : 'Contoh: Toko Makmur'}
-						class="min-h-11 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-						required
-					/>
-				</div>
-				<div class="grid gap-4 sm:grid-cols-2">
-					<div class="space-y-2">
-						<label for="debt-phone" class="text-sm font-medium"
-							>Nomor telepon <span class="font-normal text-muted-foreground">(opsional)</span
-							></label
-						><input
-							id="debt-phone"
-							type="tel"
-							bind:value={contactPhone}
-							maxlength="20"
-							placeholder="0812-3456-7890"
-							class="min-h-11 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-						/>
-					</div>
-					<div class="space-y-2">
-						<label for="debt-address" class="text-sm font-medium"
-							>Alamat <span class="font-normal text-muted-foreground">(opsional)</span></label
-						><input
-							id="debt-address"
-							type="text"
-							bind:value={contactAddress}
-							maxlength="500"
-							class="min-h-11 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-						/>
-					</div>
-				</div>
-				<div class="space-y-2">
-					<label for="debt-amount" class="text-sm font-medium"
-						>Jumlah <span class="text-destructive">*</span></label
-					><input
-						id="debt-amount"
-						type="number"
-						bind:value={amount}
-						min="1"
-						step="1"
-						inputmode="numeric"
-						placeholder="1000000"
-						class="min-h-11 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-						required
-					/>
-				</div>
-				<div class="grid gap-4 sm:grid-cols-2">
-					<div class="space-y-2">
-						<label for="debt-date" class="text-sm font-medium"
-							>Tanggal pencatatan <span class="text-destructive">*</span></label
-						><input
-							id="debt-date"
-							type="date"
-							bind:value={date}
-							max={todayInJakarta()}
-							class="min-h-11 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							required
-						/>
-					</div>
-					<div class="space-y-2">
-						<label for="debt-due-date" class="text-sm font-medium"
-							>Jatuh tempo <span class="font-normal text-muted-foreground">(opsional)</span></label
-						><input
-							id="debt-due-date"
-							type="date"
-							bind:value={dueDate}
-							min={date}
-							class="min-h-11 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-						/>
-					</div>
-				</div>
-				<div class="space-y-2">
-					<label for="debt-description" class="text-sm font-medium"
-						>Keterangan <span class="font-normal text-muted-foreground">(opsional)</span></label
-					><textarea
-						id="debt-description"
-						bind:value={description}
-						maxlength="500"
-						rows="3"
-						placeholder="Konteks tagihan atau kesepakatan pembayaran"
-						class="w-full resize-none rounded-md border bg-background p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					></textarea>
-				</div>
-				{#if formError}<div
-						class="flex items-start gap-2 rounded-md border border-destructive bg-destructive/10 p-3 text-sm text-destructive"
-						role="alert"
-					>
-						<AlertCircle class="mt-0.5 h-4 w-4 shrink-0" />{formError}
-					</div>{/if}
-				<div class="grid grid-cols-2 gap-3 pt-2">
-					<button
-						type="button"
-						onclick={closeModal}
-						disabled={loading}
-						class="min-h-12 rounded-md border px-4 text-sm font-medium hover:bg-secondary disabled:opacity-50"
-						>Batal</button
-					><button
-						type="submit"
-						disabled={loading}
-						class="min-h-12 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-						>{loading ? 'Menyimpan…' : `Simpan ${typeLabel(createType)}`}</button
-					>
-				</div>
-			</form>
+<Dialog
+	open={showModal}
+	onopenchange={(open) => !open && !loading && closeModal()}
+	closeOnEscape={!loading}
+	closeOnOutsideClick={!loading}
+	labelledby="debt-modal-title"
+	class="max-h-[90vh] max-w-lg overflow-y-auto rounded-xl bg-background"
+>
+	<div class="mb-6 flex items-center justify-between gap-3">
+		<div>
+			<h2 id="debt-modal-title" class="text-lg font-semibold">
+				Tambah {typeLabel(createType)}
+			</h2>
+			<p class="text-xs text-muted-foreground">
+				{createType === 'piutang'
+					? 'Uang yang harus diterima usaha Anda.'
+					: 'Uang yang harus dibayar usaha Anda.'}
+			</p>
 		</div>
+		<button
+			type="button"
+			onclick={closeModal}
+			disabled={loading}
+			class="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary"
+			aria-label="Tutup"><X class="h-5 w-5" /></button
+		>
 	</div>
-{/if}
+	<form onsubmit={handleSubmit} class="space-y-4">
+		<div class="space-y-2">
+			<label for="debt-contact" class="text-sm font-medium"
+				>Nama kontak <span class="text-destructive">*</span></label
+			><input
+				data-dialog-initial-focus
+				id="debt-contact"
+				type="text"
+				bind:value={contactName}
+				maxlength="200"
+				placeholder={createType === 'piutang' ? 'Contoh: Budi Santoso' : 'Contoh: Toko Makmur'}
+				class="min-h-11 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				required
+			/>
+		</div>
+		<div class="grid gap-4 sm:grid-cols-2">
+			<div class="space-y-2">
+				<label for="debt-phone" class="text-sm font-medium"
+					>Nomor telepon <span class="font-normal text-muted-foreground">(opsional)</span></label
+				><input
+					id="debt-phone"
+					type="tel"
+					bind:value={contactPhone}
+					maxlength="20"
+					placeholder="0812-3456-7890"
+					class="min-h-11 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				/>
+			</div>
+			<div class="space-y-2">
+				<label for="debt-address" class="text-sm font-medium"
+					>Alamat <span class="font-normal text-muted-foreground">(opsional)</span></label
+				><input
+					id="debt-address"
+					type="text"
+					bind:value={contactAddress}
+					maxlength="500"
+					class="min-h-11 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				/>
+			</div>
+		</div>
+		<div class="space-y-2">
+			<label for="debt-amount" class="text-sm font-medium"
+				>Jumlah <span class="text-destructive">*</span></label
+			><input
+				id="debt-amount"
+				type="number"
+				bind:value={amount}
+				min="1"
+				step="1"
+				inputmode="numeric"
+				placeholder="1000000"
+				class="min-h-11 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				required
+			/>
+		</div>
+		<div class="grid gap-4 sm:grid-cols-2">
+			<div class="space-y-2">
+				<label for="debt-date" class="text-sm font-medium"
+					>Tanggal pencatatan <span class="text-destructive">*</span></label
+				><input
+					id="debt-date"
+					type="date"
+					bind:value={date}
+					max={todayInJakarta()}
+					class="min-h-11 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					required
+				/>
+			</div>
+			<div class="space-y-2">
+				<label for="debt-due-date" class="text-sm font-medium"
+					>Jatuh tempo <span class="font-normal text-muted-foreground">(opsional)</span></label
+				><input
+					id="debt-due-date"
+					type="date"
+					bind:value={dueDate}
+					min={date}
+					class="min-h-11 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				/>
+			</div>
+		</div>
+		<div class="space-y-2">
+			<label for="debt-description" class="text-sm font-medium"
+				>Keterangan <span class="font-normal text-muted-foreground">(opsional)</span></label
+			><textarea
+				id="debt-description"
+				bind:value={description}
+				maxlength="500"
+				rows="3"
+				placeholder="Konteks tagihan atau kesepakatan pembayaran"
+				class="w-full resize-none rounded-md border bg-background p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			></textarea>
+		</div>
+		{#if formError}<div
+				class="flex items-start gap-2 rounded-md border border-destructive bg-destructive/10 p-3 text-sm text-destructive"
+				role="alert"
+			>
+				<AlertCircle class="mt-0.5 h-4 w-4 shrink-0" />{formError}
+			</div>{/if}
+		<div class="grid grid-cols-2 gap-3 pt-2">
+			<button
+				type="button"
+				onclick={closeModal}
+				disabled={loading}
+				class="min-h-12 rounded-md border px-4 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+				>Batal</button
+			><button
+				type="submit"
+				disabled={loading}
+				class="min-h-12 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+				>{loading ? 'Menyimpan…' : `Simpan ${typeLabel(createType)}`}</button
+			>
+		</div>
+	</form>
+</Dialog>
