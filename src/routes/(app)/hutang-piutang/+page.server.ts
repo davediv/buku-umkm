@@ -2,6 +2,9 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { debtQueries } from '$lib/server/db/queries';
+import { getDebtList } from '$lib/debts/list';
+import { parseDebtQuery } from '$lib/debts/query';
+import { todayInJakarta } from '$lib/shared/dates';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user || !locals.session) {
@@ -11,42 +14,30 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const userId = locals.user.id;
 	const db = getDb();
 
-	// Get type from query param
-	const typeParam = url.searchParams.get('type');
-	const type = typeParam === 'piutang' || typeParam === 'hutang' ? typeParam : null;
-
-	// Fetch all debts (we'll filter client-side for search, but fetch all for now)
-	const debts = await debtQueries.findAll(db, userId, {
-		type: type ?? undefined,
-		includeInactive: false
-	});
-
-	// Calculate summary
-	const piutang = debts
-		.filter((d) => d.type === 'piutang')
-		.reduce((sum, d) => sum + d.remainingAmount, 0);
-	const hutang = debts
-		.filter((d) => d.type === 'hutang')
-		.reduce((sum, d) => sum + d.remainingAmount, 0);
+	const query = parseDebtQuery(url.searchParams);
+	// Totals and urgency must come from the complete collection, never the selected tab subset.
+	const allDebts = await debtQueries.findAll(db, userId, { includeInactive: false });
+	const normalizedDebts = allDebts.map((item) => ({
+		id: item.id,
+		type: item.type,
+		contactName: item.contactName,
+		contactPhone: item.contactPhone,
+		contactAddress: item.contactAddress,
+		originalAmount: item.originalAmount,
+		paidAmount: item.paidAmount,
+		remainingAmount: item.remainingAmount,
+		date: item.date,
+		dueDate: item.dueDate,
+		description: item.description,
+		status: item.status
+	}));
+	const today = todayInJakarta();
+	const result = getDebtList(normalizedDebts, query, today);
 
 	return {
-		debts: debts.map((d) => ({
-			id: d.id,
-			type: d.type,
-			contactName: d.contactName,
-			contactPhone: d.contactPhone,
-			contactAddress: d.contactAddress,
-			originalAmount: d.originalAmount,
-			paidAmount: d.paidAmount,
-			remainingAmount: d.remainingAmount,
-			date: d.date,
-			dueDate: d.dueDate,
-			description: d.description,
-			status: d.status
-		})),
-		summary: {
-			piutang,
-			hutang
-		}
+		debts: result.items,
+		summary: result.summary,
+		query,
+		today
 	};
 };
