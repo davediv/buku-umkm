@@ -7,9 +7,13 @@
 		ArrowUpRight,
 		ArrowDownRight,
 		ChevronLeft,
+		Download,
 		Receipt
 	} from '@lucide/svelte';
+	import ReportNavigation from '$lib/components/reports/report-navigation.svelte';
+	import { toast } from '$lib/components/ui/toast';
 	import { formatRupiah, getComparisonText, getMaxCategoryValue } from '$lib/utils';
+	import { exportLabaRugiPDF, generatePDFFilename } from '$lib/utils/pdf-export';
 	import type { PageData } from './$types';
 
 	type Period = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
@@ -18,6 +22,7 @@
 
 	// State - initialize from URL param via data
 	let loading = $state(false);
+	let exportLoading = $state(false);
 	let selectedPeriod = $state<Period>('monthly');
 
 	// Keep selectedPeriod in sync with data after navigation
@@ -58,6 +63,20 @@
 			loading = false;
 		}
 	}
+
+	async function exportPDF() {
+		if (!profitLoss || exportLoading) return;
+		exportLoading = true;
+		try {
+			await exportLabaRugiPDF(profitLoss, null, generatePDFFilename('Laba_Rugi'));
+			toast.success('Berhasil mengekspor', 'Laporan Laba/Rugi telah diunduh');
+		} catch (error) {
+			console.error('Error exporting profit and loss report:', error);
+			toast.error('Gagal mengekspor PDF', 'Coba ulangi setelah laporan termuat');
+		} finally {
+			exportLoading = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -68,9 +87,9 @@
 	<!-- Header -->
 	<div class="flex items-center gap-4">
 		<a
-			href="/beranda"
+			href="/laporan"
 			class="p-2 hover:bg-accent rounded-lg transition-colors"
-			aria-label="Kembali ke beranda"
+			aria-label="Kembali ke daftar laporan"
 		>
 			<ChevronLeft class="w-5 h-5" />
 		</a>
@@ -79,6 +98,8 @@
 			<p class="text-sm text-muted-foreground">Ringkasan pendapatan dan pengeluaran</p>
 		</div>
 	</div>
+
+	<ReportNavigation />
 
 	{#if hasError}
 		<!-- Error State -->
@@ -144,6 +165,18 @@
 			</div>
 		</div>
 	{:else}
+		<div class="flex justify-end print:hidden">
+			<button
+				type="button"
+				onclick={exportPDF}
+				disabled={exportLoading}
+				class="inline-flex min-h-11 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+			>
+				<Download class="h-4 w-4" />
+				{exportLoading ? 'Mengekspor…' : 'Ekspor PDF'}
+			</button>
+		</div>
+
 		<!-- Period Toggle -->
 		<div class="flex justify-center">
 			<div class="inline-flex bg-muted rounded-lg p-1">

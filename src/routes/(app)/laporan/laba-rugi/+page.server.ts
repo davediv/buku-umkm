@@ -13,9 +13,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const db = getDb();
 
 	// Parse period parameter (default: monthly)
+	type Period = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 	const periodParam = url.searchParams.get('period');
-	const period = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'].includes(periodParam ?? '')
-		? periodParam
+	const period: Period = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'].includes(
+		periodParam ?? ''
+	)
+		? (periodParam as Period)
 		: 'monthly';
 
 	try {
@@ -23,16 +26,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		// Note: getPreviousPeriodStats returns both current and previous period data,
 		// so we use current from it instead of making a separate getPeriodStats call
 		const [categoryBreakdown, previousPeriod, accounts] = await Promise.all([
-			dashboardQueries.getProfitLossByCategory(
-				db,
-				userId,
-				period as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'
-			),
-			dashboardQueries.getPreviousPeriodStats(
-				db,
-				userId,
-				period as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'
-			),
+			dashboardQueries.getProfitLossByCategory(db, userId, period),
+			dashboardQueries.getPreviousPeriodStats(db, userId, period),
 			chartOfAccountQueries.findAll(db, userId)
 		]);
 
@@ -125,7 +120,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		return {
 			profitLoss: {
 				period,
-				periodLabel: getPeriodLabel(period!),
+				periodLabel: getPeriodLabel(period),
 				startDate,
 				endDate,
 				income: currentPeriod.income,
