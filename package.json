@@ -56,7 +56,6 @@
 	"dependencies": {
 		"@lucide/svelte": "^0.577.0",
 		"clsx": "^2.1.1",
-		"dexie": "^4.3.0",
 		"jspdf": "^4.2.0",
 		"jspdf-autotable": "^5.0.7",
 		"tailwind-merge": "^3.5.0",

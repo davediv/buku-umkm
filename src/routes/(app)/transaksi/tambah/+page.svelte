@@ -1,8 +1,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import { ArrowLeft, Camera, Check, X, Image, Trash2, Link } from '@lucide/svelte';
 	import { formatIdr, compressImage } from '$lib/utils';
 	import { toast } from '$lib/components/ui/toast';
+	import {
+		clearTransactionDraft,
+		loadTransactionDraft,
+		saveTransactionDraft
+	} from '$lib/client/transaction-draft';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -17,6 +23,8 @@
 	let loading = $state(false);
 	let showCategoryPicker = $state(false);
 	let showAccountPicker = $state(false);
+	let draftReady = $state(false);
+	let draftRestored = $state(false);
 
 	// Photo state
 	let photos = $state<{ id: string; file: File; preview: string }[]>([]);
@@ -32,6 +40,28 @@
 	let selectedAccount = $derived(data.accounts.find((a) => a.id === accountId));
 	let photoCount = $derived(photos.length);
 	let canAddPhoto = $derived(photos.length < MAX_PHOTOS);
+
+	onMount(() => {
+		const draft = loadTransactionDraft();
+		if (draft) {
+			type = draft.type;
+			amount = draft.amount;
+			categoryId = categories.some((item) => item.id === draft.categoryId) ? draft.categoryId : '';
+			accountId = data.accounts.some((item) => item.id === draft.accountId) ? draft.accountId : '';
+			date = /^\d{4}-\d{2}-\d{2}$/.test(draft.date) ? draft.date : date;
+			description = draft.description;
+			draftRestored = true;
+		}
+		draftReady = true;
+	});
+
+	$effect(() => {
+		const draft = { type, amount, categoryId, accountId, date, description };
+		if (!draftReady) return;
+
+		const timeout = window.setTimeout(() => saveTransactionDraft(draft), 250);
+		return () => window.clearTimeout(timeout);
+	});
 
 	// Handle file selection
 	async function handleFileSelect(e: Event) {
@@ -213,6 +243,10 @@
 					URL.revokeObjectURL(photo.preview);
 				}
 
+				// Stop draft persistence before clearing fields and navigating.
+				draftReady = false;
+				clearTransactionDraft();
+
 				// Reset form for quick next entry
 				amount = '';
 				categoryId = '';
@@ -282,6 +316,14 @@
 
 	<!-- Main Form -->
 	<form id="transaction-form" onsubmit={handleSubmit} class="flex-1 flex flex-col p-4 space-y-6">
+		<div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+			<p>
+				{draftRestored ? 'Draft sebelumnya dipulihkan. ' : ''}Isian teks disimpan sementara di
+				perangkat ini dan belum menjadi transaksi sampai Anda menekan Simpan.
+			</p>
+			<p class="mt-1 text-blue-700">Foto nota tidak termasuk dalam draft.</p>
+		</div>
+
 		<!-- Type Toggle -->
 		<div class="flex gap-2" role="radiogroup" aria-label="Jenis transaksi">
 			<button

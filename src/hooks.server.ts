@@ -20,7 +20,7 @@ const RATE_LIMITS = {
 const CLOUDFLARE_STORAGE_DOMAINS =
 	'https://*.cloudflarestorage.com https://*.r2.cloudflarestorage.com';
 
-const HEAVY_ENDPOINTS = ['/api/sync', '/api/restore', '/api/backup'];
+const HEAVY_ENDPOINTS = ['/api/restore', '/api/backup'];
 
 // ============================================
 // Helper Functions

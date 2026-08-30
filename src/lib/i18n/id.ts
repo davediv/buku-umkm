@@ -262,16 +262,6 @@ export const id = {
 			'Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan.',
 		logoutTitle: 'Konfirmasi Keluar',
 		logoutMessage: 'Apakah Anda yakin ingin keluar?'
-	},
-
-	// Sync
-	sync: {
-		syncing: 'Menyinkronkan...',
-		synced: 'Tersinkron',
-		syncFailed: 'Sinkronisasi gagal',
-		offline: 'Offline',
-		online: 'Online',
-		lastSync: 'Sinkronisasi terakhir: {time}'
 	}
 };
 

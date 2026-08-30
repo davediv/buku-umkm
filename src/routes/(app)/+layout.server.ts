@@ -17,6 +17,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 			name: locals.user.name,
 			email: locals.user.email
 		},
-		onboardingStatus
+		onboardingStatus,
+		loadedAt: new Date().toISOString()
 	};
 };
