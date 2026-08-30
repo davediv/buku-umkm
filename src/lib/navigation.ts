@@ -44,7 +44,17 @@ export const mobileNavigation: NavigationItem[] = [
 		href: '/lainnya',
 		label: 'Menu',
 		icon: Menu,
-		activePrefixes: ['/lainnya', '/akun', '/hutang-piutang', '/pajak', '/kategori', '/pengaturan']
+		activePrefixes: [
+			'/lainnya',
+			'/akun',
+			'/hutang-piutang',
+			'/pajak',
+			'/kategori',
+			'/pengaturan',
+			'/bantuan',
+			'/privasi',
+			'/tentang'
+		]
 	}
 ];
 
