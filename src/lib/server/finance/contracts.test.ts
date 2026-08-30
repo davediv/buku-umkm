@@ -9,7 +9,9 @@ describe('financial command contracts', () => {
 				amount: 100_000,
 				account_id: ' account-1 ',
 				date: '2026-08-30',
-				description: ' Penjualan '
+				description: ' Penjualan ',
+				reference_number: ' INV/001 ',
+				notes: ' Dibayar tunai '
 			})
 		).toEqual({
 			type: 'income',
@@ -17,7 +19,9 @@ describe('financial command contracts', () => {
 			accountId: 'account-1',
 			categoryId: null,
 			date: '2026-08-30',
-			description: 'Penjualan'
+			description: 'Penjualan',
+			referenceNumber: 'INV/001',
+			notes: 'Dibayar tunai'
 		});
 	});
 

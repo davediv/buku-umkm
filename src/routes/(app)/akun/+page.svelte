@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import {
+		ArrowLeft,
 		Wallet,
 		Building2,
 		Smartphone,
@@ -20,6 +22,7 @@
 		AlertDialogAction,
 		AlertDialogCancel
 	} from '$lib/components/ui/alert-dialog';
+	import { getSafeTransactionReturn } from '$lib/client/transaction-return';
 	import type { PageData, ActionData } from './$types';
 	import { todayInJakarta } from '$lib/shared/dates';
 
@@ -32,6 +35,9 @@
 	let deletingId = $state<string | null>(null);
 	let showDeleteConfirm = $state(false);
 	let deleteTargetId = $state<string | null>(null);
+	let transactionReturnTo = $derived(
+		getSafeTransactionReturn(page.url.searchParams.get('return_to'))
+	);
 
 	// Transfer modal state
 	let showTransferModal = $state(false);
@@ -261,6 +267,16 @@
 </svelte:head>
 
 <div class="p-4 md:p-6 space-y-6">
+	{#if transactionReturnTo}
+		<a
+			href={transactionReturnTo}
+			class="inline-flex min-h-11 items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 text-sm font-medium text-blue-900 hover:bg-blue-100"
+		>
+			<ArrowLeft class="h-4 w-4" />
+			Kembali ke transaksi yang sedang dicatat
+		</a>
+	{/if}
+
 	<!-- Header -->
 	<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 		<div>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
 	import {
 		FileText,
 		Plus,
@@ -19,6 +20,7 @@
 		AlertDialogAction,
 		AlertDialogCancel
 	} from '$lib/components/ui/alert-dialog';
+	import { getSafeTransactionReturn } from '$lib/client/transaction-return';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -38,6 +40,9 @@
 	let showDeleteConfirm = $state(false);
 	let deleteTargetId = $state<string | null>(null);
 	let activeTab = $state<'income' | 'expense'>('income');
+	let transactionReturnTo = $derived(
+		getSafeTransactionReturn(page.url.searchParams.get('return_to'))
+	);
 
 	// Form data
 	let name = $state('');
@@ -191,14 +196,21 @@
 	<!-- Header -->
 	<header class="sticky top-0 z-10 bg-background border-b px-4 py-3 flex items-center gap-3">
 		<a
-			href="/transaksi"
+			href={transactionReturnTo ?? '/transaksi'}
 			class="p-2 -ml-2 hover:bg-secondary rounded-full transition-colors"
-			aria-label="Kembali"
+			aria-label={transactionReturnTo
+				? 'Kembali ke transaksi yang sedang dicatat'
+				: 'Kembali ke daftar transaksi'}
 		>
 			<ArrowLeft class="w-5 h-5" />
 		</a>
 		<h1 class="text-lg font-semibold">Kelola Template</h1>
 	</header>
+	{#if transactionReturnTo}
+		<div class="border-b bg-blue-50 px-4 py-2 text-sm text-blue-900">
+			Perubahan template tersimpan di sini. Gunakan tombol kembali untuk melanjutkan transaksi.
+		</div>
+	{/if}
 
 	<!-- Tab Navigation -->
 	<div class="border-b px-4 pt-4">

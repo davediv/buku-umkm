@@ -22,6 +22,8 @@ export type CreateTransactionCommand = {
 	categoryId: string | null;
 	date: string;
 	description: string | null;
+	referenceNumber?: string | null;
+	notes?: string | null;
 };
 
 export type UpdateTransactionCommand = {
@@ -146,7 +148,9 @@ export function parseCreateTransaction(value: unknown): CreateTransactionCommand
 		accountId: requiredString(body.account_id, 'Akun', 100),
 		categoryId: optionalString(body.category_id, 'Kategori', 100),
 		date: date(body.date, 'Tanggal'),
-		description: optionalString(body.description, 'Keterangan', 500)
+		description: optionalString(body.description, 'Keterangan', 500),
+		referenceNumber: optionalString(body.reference_number, 'Nomor referensi', 100),
+		notes: optionalString(body.notes, 'Catatan', 1000)
 	};
 }
 

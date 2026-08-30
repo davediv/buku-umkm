@@ -1,7 +1,7 @@
 export const TRANSACTION_DRAFT_KEY = 'buku-umkm:transaction-draft:v1';
 
 export type TransactionDraft = {
-	version: 1;
+	version: 2;
 	commandId: string;
 	type: 'income' | 'expense';
 	amount: string;
@@ -9,16 +9,18 @@ export type TransactionDraft = {
 	accountId: string;
 	date: string;
 	description: string;
+	referenceNumber: string;
+	notes: string;
 	updatedAt: string;
 };
 
 type DraftStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
-function isTransactionDraft(value: unknown): value is TransactionDraft {
-	if (!value || typeof value !== 'object') return false;
+function parseTransactionDraft(value: unknown): TransactionDraft | null {
+	if (!value || typeof value !== 'object') return null;
 	const draft = value as Record<string, unknown>;
-	return (
-		draft.version === 1 &&
+	const valid =
+		(draft.version === 1 || draft.version === 2) &&
 		typeof draft.commandId === 'string' &&
 		(draft.type === 'income' || draft.type === 'expense') &&
 		typeof draft.amount === 'string' &&
@@ -26,8 +28,22 @@ function isTransactionDraft(value: unknown): value is TransactionDraft {
 		typeof draft.accountId === 'string' &&
 		typeof draft.date === 'string' &&
 		typeof draft.description === 'string' &&
-		typeof draft.updatedAt === 'string'
-	);
+		typeof draft.updatedAt === 'string';
+	if (!valid) return null;
+
+	return {
+		version: 2,
+		commandId: draft.commandId as string,
+		type: draft.type as 'income' | 'expense',
+		amount: draft.amount as string,
+		categoryId: draft.categoryId as string,
+		accountId: draft.accountId as string,
+		date: draft.date as string,
+		description: draft.description as string,
+		referenceNumber: typeof draft.referenceNumber === 'string' ? draft.referenceNumber : '',
+		notes: typeof draft.notes === 'string' ? draft.notes : '',
+		updatedAt: draft.updatedAt as string
+	};
 }
 
 export function loadTransactionDraft(
@@ -37,7 +53,7 @@ export function loadTransactionDraft(
 		const serialized = storage.getItem(TRANSACTION_DRAFT_KEY);
 		if (!serialized) return null;
 		const parsed: unknown = JSON.parse(serialized);
-		return isTransactionDraft(parsed) ? parsed : null;
+		return parseTransactionDraft(parsed);
 	} catch {
 		return null;
 	}
@@ -50,7 +66,7 @@ export function saveTransactionDraft(
 	try {
 		storage.setItem(
 			TRANSACTION_DRAFT_KEY,
-			JSON.stringify({ ...draft, version: 1, updatedAt: new Date().toISOString() })
+			JSON.stringify({ ...draft, version: 2, updatedAt: new Date().toISOString() })
 		);
 	} catch {
 		// Draft persistence is best-effort; canonical financial records remain server-owned.

@@ -136,7 +136,7 @@ function ids(...values: string[]) {
 
 describe('financial mutation commands', () => {
 	it('creates one canonical transaction and replays the same command without another balance effect', async () => {
-		const { repository, accounts } = createRepository();
+		const { repository, accounts, transactions } = createRepository();
 		const service = createFinancialMutationService(repository, ids('txn-1', 'command-1'));
 		const input = {
 			type: 'income' as const,
@@ -144,7 +144,9 @@ describe('financial mutation commands', () => {
 			accountId: 'account-1',
 			categoryId: null,
 			date: '2026-08-30',
-			description: 'Penjualan'
+			description: 'Penjualan',
+			referenceNumber: 'INV/001',
+			notes: 'Dibayar tunai'
 		};
 
 		const created = await service.createTransaction('user-1', 'request-123', input);
@@ -155,6 +157,10 @@ describe('financial mutation commands', () => {
 		expect(replayed).toMatchObject({ entity: { id: 'txn-1' }, replayed: true });
 		expect(repository.createTransactionAtomic).toHaveBeenCalledTimes(1);
 		expect(accounts.get('account-1')?.balance).toBe(1_250_000);
+		expect(transactions.get('txn-1')).toMatchObject({
+			referenceNumber: 'INV/001',
+			notes: 'Dibayar tunai'
+		});
 	});
 
 	it('rejects an account owned by another user before writing anything', async () => {
