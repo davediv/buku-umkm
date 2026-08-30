@@ -544,7 +544,7 @@
 <!-- Category Picker Modal -->
 {#if showCategoryPicker}
 	<div
-		class="fixed inset-0 z-[55] flex flex-col bg-white md:left-20"
+		class="fixed inset-0 z-[55] flex flex-col bg-white md:left-64"
 		role="dialog"
 		aria-modal="true"
 	>
@@ -599,7 +599,7 @@
 <!-- Account Picker Modal -->
 {#if showAccountPicker}
 	<div
-		class="fixed inset-0 z-[55] flex flex-col bg-white md:left-20"
+		class="fixed inset-0 z-[55] flex flex-col bg-white md:left-64"
 		role="dialog"
 		aria-modal="true"
 	>

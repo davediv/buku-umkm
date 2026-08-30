@@ -10,7 +10,7 @@
 	};
 </script>
 
-<div class="fixed bottom-4 right-4 z-50 space-y-2">
+<div class="fixed bottom-20 right-4 z-[60] space-y-2 md:bottom-4">
 	{#each toast.items as t (t.id)}
 		<div
 			class="px-4 py-3 rounded-lg shadow-lg border {variantStyles[

@@ -257,15 +257,17 @@
 </script>
 
 <svelte:head>
-	<title>Kelola Akun - Buku UMKM</title>
+	<title>Kas & Rekening - Buku UMKM</title>
 </svelte:head>
 
 <div class="p-4 md:p-6 space-y-6">
 	<!-- Header -->
 	<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 		<div>
-			<h1 class="text-2xl font-bold tracking-tight">Kelola Akun</h1>
-			<p class="text-sm text-muted-foreground">Kelola akun kas, bank, dan e-wallet Anda</p>
+			<h1 class="text-2xl font-bold tracking-tight">Kas & Rekening</h1>
+			<p class="text-sm text-muted-foreground">
+				Kelola tempat penyimpanan uang tunai, bank, dan e-wallet
+			</p>
 		</div>
 		<div class="flex gap-2">
 			<button
@@ -281,7 +283,7 @@
 				class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
 			>
 				<Plus class="w-4 h-4" />
-				Tambah Akun
+				Tambah Kas/Rekening
 			</button>
 		</div>
 	</div>
@@ -353,16 +355,16 @@
 			<div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
 				<Wallet class="w-8 h-8 text-muted-foreground" />
 			</div>
-			<h3 class="text-lg font-medium mb-2">Belum ada akun</h3>
+			<h3 class="text-lg font-medium mb-2">Belum ada kas atau rekening</h3>
 			<p class="text-sm text-muted-foreground mb-6 max-w-sm">
-				Yuk, buat akun pertama Anda untuk mulai mencatat keuangan bisnis!
+				Buat kas atau rekening pertama untuk mulai mencatat keuangan bisnis.
 			</p>
 			<button
 				onclick={openCreateModal}
 				class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium transition-colors"
 			>
 				<Plus class="w-4 h-4" />
-				Tambah Akun
+				Tambah Kas/Rekening
 			</button>
 		</div>
 	{/if}
@@ -518,7 +520,7 @@
 		<div class="bg-white border rounded-lg shadow-xl w-full max-w-md p-6">
 			<div class="flex items-center justify-between mb-6">
 				<h2 id="modal-title" class="text-lg font-semibold">
-					{editingAccount ? 'Edit Akun' : 'Tambah Akun'}
+					{editingAccount ? 'Edit Kas/Rekening' : 'Tambah Kas/Rekening'}
 				</h2>
 				<button
 					onclick={closeModal}
