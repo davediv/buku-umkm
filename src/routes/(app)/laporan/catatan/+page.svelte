@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { FileText, ChevronLeft, Printer } from '@lucide/svelte';
+	import { Download, FileText, ChevronLeft, Printer } from '@lucide/svelte';
+	import ReportNavigation from '$lib/components/reports/report-navigation.svelte';
+	import { toast } from '$lib/components/ui/toast';
 	import { formatDateLong } from '$lib/utils';
+	import { exportCatatanPDF, generatePDFFilename } from '$lib/utils/pdf-export';
 	import type { PageData } from './$types';
 
 	type Period = 'monthly' | 'quarterly' | 'yearly';
@@ -10,6 +13,7 @@
 
 	// State
 	let loading = $state(false);
+	let exportLoading = $state(false);
 	let selectedPeriod = $state<Period>('monthly');
 
 	// Keep selectedPeriod in sync with data after navigation
@@ -46,6 +50,20 @@
 	function printReport() {
 		window.print();
 	}
+
+	async function exportPDF() {
+		if (!catatan || exportLoading) return;
+		exportLoading = true;
+		try {
+			await exportCatatanPDF(catatan, null, generatePDFFilename('Catatan_Laporan_Keuangan'));
+			toast.success('Berhasil mengekspor', 'Catatan laporan keuangan telah diunduh');
+		} catch (error) {
+			console.error('Error exporting financial statement notes:', error);
+			toast.error('Gagal mengekspor PDF', 'Coba ulangi setelah laporan termuat');
+		} finally {
+			exportLoading = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -75,13 +93,27 @@
 				</div>
 				<div class="flex items-center gap-2">
 					<button
+						type="button"
+						onclick={exportPDF}
+						disabled={!catatan || exportLoading}
+						class="flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+					>
+						<Download class="w-4 h-4" />
+						<span class="hidden sm:inline">{exportLoading ? 'Mengekspor…' : 'Ekspor PDF'}</span>
+					</button>
+					<button
+						type="button"
 						onclick={printReport}
-						class="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+						class="flex min-h-11 items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
 					>
 						<Printer class="w-4 h-4" />
 						<span class="hidden sm:inline">Cetak</span>
 					</button>
 				</div>
+			</div>
+
+			<div class="mt-4">
+				<ReportNavigation />
 			</div>
 
 			<!-- Period Selector -->
@@ -240,7 +272,7 @@
 				<!-- Footer -->
 				<div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 print:mt-6 print:pt-4">
 					<p class="text-xs text-gray-500 dark:text-gray-500 text-center">
-						Dokumen ini generada secara otomatis oleh Buku UMKM
+						Dokumen ini dihasilkan secara otomatis oleh Buku UMKM
 					</p>
 					<p class="text-xs text-gray-400 dark:text-gray-600 text-center mt-1">
 						Tanggal cetak: {formatDateLong(new Date().toISOString().split('T')[0])}
@@ -263,7 +295,7 @@
 					keuangan.
 				</p>
 				<a
-					href="/pengaturan"
+					href="/pengaturan?bagian=profil"
 					class="inline-block mt-4 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
 				>
 					Pengaturan Usaha

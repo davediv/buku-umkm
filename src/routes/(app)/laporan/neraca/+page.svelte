@@ -7,9 +7,13 @@
 		Wallet,
 		CreditCard,
 		TrendingUp,
-		AlertCircle
+		AlertCircle,
+		Download
 	} from '@lucide/svelte';
+	import ReportNavigation from '$lib/components/reports/report-navigation.svelte';
+	import { toast } from '$lib/components/ui/toast';
 	import { formatRupiah } from '$lib/utils';
+	import { exportNeracaPDF, generatePDFFilename } from '$lib/utils/pdf-export';
 	import { todayInJakarta } from '$lib/shared/dates';
 	import type { PageData } from './$types';
 
@@ -17,6 +21,7 @@
 
 	// State
 	let loading = $state(false);
+	let exportLoading = $state(false);
 	const today = todayInJakarta();
 	let selectedDate = $state(today);
 
@@ -55,6 +60,20 @@
 		// Automatically submit on date change
 		changeDate();
 	}
+
+	async function exportPDF() {
+		if (!data.balanceSheet || exportLoading) return;
+		exportLoading = true;
+		try {
+			await exportNeracaPDF(data.balanceSheet, null, generatePDFFilename('Posisi_Keuangan'));
+			toast.success('Berhasil mengekspor', 'Laporan Posisi Keuangan telah diunduh');
+		} catch (error) {
+			console.error('Error exporting balance sheet:', error);
+			toast.error('Gagal mengekspor PDF', 'Coba ulangi setelah laporan termuat');
+		} finally {
+			exportLoading = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -65,9 +84,9 @@
 	<!-- Header -->
 	<div class="flex items-center gap-4">
 		<a
-			href="/beranda"
+			href="/laporan"
 			class="p-2 hover:bg-accent rounded-lg transition-colors"
-			aria-label="Kembali ke beranda"
+			aria-label="Kembali ke daftar laporan"
 		>
 			<ChevronLeft class="w-5 h-5" />
 		</a>
@@ -76,6 +95,8 @@
 			<p class="text-sm text-muted-foreground">Neraca akuntansi per tanggal</p>
 		</div>
 	</div>
+
+	<ReportNavigation />
 
 	{#if hasError}
 		<!-- Error State -->
@@ -122,6 +143,18 @@
 			</div>
 		</div>
 	{:else}
+		<div class="flex justify-end print:hidden">
+			<button
+				type="button"
+				onclick={exportPDF}
+				disabled={exportLoading}
+				class="inline-flex min-h-11 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+			>
+				<Download class="h-4 w-4" />
+				{exportLoading ? 'Mengekspor…' : 'Ekspor PDF'}
+			</button>
+		</div>
+
 		<!-- Date Picker -->
 		<div class="flex justify-center">
 			<div class="flex items-center gap-2 bg-muted rounded-lg p-2">
