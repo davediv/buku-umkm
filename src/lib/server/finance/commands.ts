@@ -161,6 +161,8 @@ export function createFinancialMutationService(
 					type: input.type,
 					amount: input.amount,
 					description: input.description,
+					referenceNumber: input.referenceNumber ?? null,
+					notes: input.notes ?? null,
 					accountId: input.accountId,
 					categoryId: input.categoryId,
 					toAccountId: null

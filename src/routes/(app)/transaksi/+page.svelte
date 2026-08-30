@@ -42,7 +42,7 @@
 
 	let query = $derived(data.query);
 	let pagination = $derived(data.pagination);
-	let showSuccess = $derived(page.url.searchParams.get('success') === 'true');
+	let successMessage = $derived(getSuccessMessage(page.url.searchParams.get('success')));
 	let deletingId = $state<string | null>(null);
 	let showDeleteConfirm = $state<string | null>(null);
 	let isExporting = $state(false);
@@ -52,6 +52,22 @@
 	let rangeInput = $state<TransactionDateRange>('month');
 	let customStartDate = $state('');
 	let customEndDate = $state('');
+
+	function getSuccessMessage(status: string | null): string | null {
+		switch (status) {
+			case 'true':
+			case 'created':
+				return 'Transaksi berhasil disimpan.';
+			case 'created-without-receipts':
+				return 'Transaksi berhasil disimpan tanpa foto nota.';
+			case 'updated':
+				return 'Perubahan transaksi berhasil disimpan.';
+			case 'deleted':
+				return 'Transaksi berhasil dihapus dan saldo telah disesuaikan.';
+			default:
+				return null;
+		}
+	}
 
 	$effect(() => {
 		searchInput = query.q;
@@ -213,12 +229,12 @@
 		</div>
 	</header>
 
-	{#if showSuccess}
+	{#if successMessage}
 		<div
 			class="rounded-md border border-green-500 bg-green-500/10 p-3 text-sm text-green-700"
 			role="status"
 		>
-			Transaksi berhasil disimpan.
+			{successMessage}
 		</div>
 	{/if}
 

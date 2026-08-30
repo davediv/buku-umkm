@@ -1,57 +1,85 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { ArrowLeft, Camera, Check, X, Image, Trash2, Link } from '@lucide/svelte';
-	import { formatIdr, compressImage } from '$lib/utils';
-	import { toast } from '$lib/components/ui/toast';
+	import { AlertTriangle, ArrowLeft, Camera, CheckCircle2, Image, Trash2 } from '@lucide/svelte';
+	import { uploadAttachments } from '$lib/client/transaction-attachments';
 	import {
 		clearTransactionDraft,
 		loadTransactionDraft,
 		saveTransactionDraft
 	} from '$lib/client/transaction-draft';
+	import { validateTransactionForm } from '$lib/client/transaction-form';
+	import TransactionForm from '$lib/components/transactions/transaction-form.svelte';
+	import { toast } from '$lib/components/ui/toast';
+	import { todayInJakarta } from '$lib/shared/dates';
+	import { compressImage } from '$lib/utils';
 	import type { PageData } from './$types';
+
+	type PendingPhoto = {
+		id: string;
+		file: File;
+		preview: string;
+		error?: string;
+	};
 
 	let { data }: { data: PageData } = $props();
 
-	// Form state
 	let type = $state<'income' | 'expense'>('income');
 	let amount = $state('');
 	let categoryId = $state('');
 	let accountId = $state('');
-	let date = $state(new Date().toISOString().split('T')[0]);
+	let date = $state(todayInJakarta());
 	let description = $state('');
+	let referenceNumber = $state('');
+	let notes = $state('');
+	let commandId = $state('');
 	let loading = $state(false);
-	let showCategoryPicker = $state(false);
-	let showAccountPicker = $state(false);
+	let uploading = $state(false);
 	let draftReady = $state(false);
 	let draftRestored = $state(false);
-	let commandId = $state('');
+	let savedTransactionId = $state<string | null>(null);
 
-	// Photo state
-	let photos = $state<{ id: string; file: File; preview: string }[]>([]);
-	let uploading = $state(false);
+	let photos = $state<PendingPhoto[]>([]);
 	let fileInputRef = $state<HTMLInputElement | null>(null);
 	let showPhotoSourceMenu = $state(false);
 
 	const MAX_PHOTOS = 3;
-
-	// Derived
-	let categories = $derived(type === 'income' ? data.categories.income : data.categories.expense);
-	let selectedCategory = $derived(categories.find((c) => c.id === categoryId));
-	let selectedAccount = $derived(data.accounts.find((a) => a.id === accountId));
-	let photoCount = $derived(photos.length);
 	let canAddPhoto = $derived(photos.length < MAX_PHOTOS);
+
+	function currentDraft() {
+		return {
+			commandId,
+			type,
+			amount,
+			categoryId,
+			accountId,
+			date,
+			description,
+			referenceNumber,
+			notes
+		};
+	}
+
+	beforeNavigate(() => {
+		if (draftReady && !savedTransactionId) saveTransactionDraft(currentDraft());
+	});
 
 	onMount(() => {
 		const draft = loadTransactionDraft();
 		if (draft) {
+			const availableCategories =
+				draft.type === 'income' ? data.categories.income : data.categories.expense;
 			commandId = draft.commandId;
 			type = draft.type;
 			amount = draft.amount;
-			categoryId = categories.some((item) => item.id === draft.categoryId) ? draft.categoryId : '';
+			categoryId = availableCategories.some((item) => item.id === draft.categoryId)
+				? draft.categoryId
+				: '';
 			accountId = data.accounts.some((item) => item.id === draft.accountId) ? draft.accountId : '';
 			date = /^\d{4}-\d{2}-\d{2}$/.test(draft.date) ? draft.date : date;
 			description = draft.description;
+			referenceNumber = draft.referenceNumber;
+			notes = draft.notes;
 			draftRestored = true;
 		}
 		if (!commandId) commandId = crypto.randomUUID();
@@ -59,243 +87,156 @@
 	});
 
 	$effect(() => {
-		const draft = { commandId, type, amount, categoryId, accountId, date, description };
-		if (!draftReady) return;
+		const draft = currentDraft();
+		if (!draftReady || savedTransactionId) return;
 
 		const timeout = window.setTimeout(() => saveTransactionDraft(draft), 250);
 		return () => window.clearTimeout(timeout);
 	});
 
-	// Handle file selection
-	async function handleFileSelect(e: Event) {
-		const input = e.target as HTMLInputElement;
-		if (!input.files || input.files.length === 0) return;
+	async function handleFileSelect(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
 
-		const file = input.files[0];
-
-		// Validate type
 		if (!['image/jpeg', 'image/png'].includes(file.type)) {
 			toast.error('Format file harus JPEG atau PNG');
+			input.value = '';
 			return;
 		}
-
-		// Validate size (before compression)
 		if (file.size > 5 * 1024 * 1024) {
-			toast.error('Ukuran file maksimal adalah 5MB');
+			toast.error('Ukuran file maksimal adalah 5 MB');
+			input.value = '';
 			return;
 		}
 
 		try {
-			// Compress the image
 			const compressed = await compressImage(file);
-
-			// Create preview
-			const preview = URL.createObjectURL(compressed);
-
 			photos = [
 				...photos,
 				{
 					id: crypto.randomUUID(),
 					file: compressed,
-					preview
+					preview: URL.createObjectURL(compressed)
 				}
 			];
 		} catch (error) {
-			console.error('Error compressing image:', error);
+			console.error('Error compressing receipt:', error);
 			toast.error('Gagal memproses gambar');
-		}
-
-		// Reset input
-		input.value = '';
-		showPhotoSourceMenu = false;
-	}
-
-	// Open camera
-	function openCamera() {
-		if (fileInputRef) {
-			fileInputRef.setAttribute('capture', 'environment');
-			fileInputRef.click();
-		}
-	}
-
-	// Open gallery
-	function openGallery() {
-		if (fileInputRef) {
-			fileInputRef.removeAttribute('capture');
-			fileInputRef.click();
-		}
-	}
-
-	// Remove photo
-	function removePhoto(id: string) {
-		const photo = photos.find((p) => p.id === id);
-		if (photo) {
-			URL.revokeObjectURL(photo.preview);
-		}
-		photos = photos.filter((p) => p.id !== id);
-	}
-
-	// Upload photos to transaction (in parallel)
-	async function uploadPhotos(transactionId: string) {
-		await Promise.all(
-			photos.map(async (photo) => {
-				const formData = new FormData();
-				formData.append('file', photo.file);
-
-				const response = await fetch(`/api/transactions/${transactionId}/photos`, {
-					method: 'POST',
-					body: formData
-				});
-
-				if (!response.ok) {
-					console.error('Failed to upload photo:', photo.id);
-				}
-			})
-		);
-	}
-
-	function handleAmountInput(e: Event) {
-		const input = e.target as HTMLInputElement;
-		const cursorPos = input.selectionStart || 0;
-		const oldLength = amount.length;
-
-		// Get just digits
-		const digits = input.value.replace(/\D/g, '');
-		amount = digits;
-
-		// Adjust cursor position
-		requestAnimationFrame(() => {
-			const newLength = amount.length;
-			const newPos = cursorPos + (newLength - oldLength);
-			input.setSelectionRange(newPos, newPos);
-		});
-	}
-
-	function handleAmountBlur() {
-		if (amount) {
-			amount = formatIdr(amount);
-		}
-	}
-
-	function handleAmountFocus() {
-		// Remove formatting on focus for easier editing
-		amount = amount.replace(/\./g, '');
-	}
-
-	// Select category
-	function selectCategory(cat: {
-		id: string;
-		name: string;
-		icon?: string | null;
-		color?: string | null;
-	}) {
-		categoryId = cat.id;
-		showCategoryPicker = false;
-	}
-
-	// Select account
-	function selectAccount(acc: { id: string; name: string; code: string }) {
-		accountId = acc.id;
-		showAccountPicker = false;
-	}
-
-	// Submit form
-	async function handleSubmit(e: Event) {
-		e.preventDefault();
-
-		// Validation
-		if (!amount || parseInt(amount.replace(/\D/g, ''), 10) <= 0) {
-			toast.warning('Jumlah harus lebih dari 0');
-			return;
-		}
-
-		if (!accountId) {
-			toast.warning('Pilih akun terlebih dahulu');
-			return;
-		}
-
-		loading = true;
-
-		try {
-			const payload = {
-				type,
-				amount: parseInt(amount.replace(/\D/g, ''), 10),
-				category_id: categoryId || undefined,
-				account_id: accountId,
-				date,
-				description: description || undefined
-			};
-
-			const response = await fetch('/api/transactions', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json', 'Idempotency-Key': commandId },
-				body: JSON.stringify(payload)
-			});
-
-			const result = (await response.json()) as { error?: string; transaction?: { id: string } };
-
-			if (response.ok) {
-				// Upload photos if any
-				if (photos.length > 0 && result.transaction?.id) {
-					uploading = true;
-					await uploadPhotos(result.transaction.id);
-				}
-
-				// Revoke object URLs before clearing photos
-				for (const photo of photos) {
-					URL.revokeObjectURL(photo.preview);
-				}
-
-				// Stop draft persistence before clearing fields and navigating.
-				draftReady = false;
-				clearTransactionDraft();
-
-				// Reset form for quick next entry
-				amount = '';
-				categoryId = '';
-				date = new Date().toISOString().split('T')[0];
-				description = '';
-				photos = [];
-
-				// Show success feedback - navigate to transactions list
-				goto('/transaksi?success=true');
-			} else {
-				toast.error(result.error || 'Gagal menyimpan transaksi');
-			}
-		} catch (error) {
-			console.error('Error saving transaction:', error);
-			toast.error('Terjadi kesalahan server');
 		} finally {
-			loading = false;
+			input.value = '';
+			showPhotoSourceMenu = false;
+		}
+	}
+
+	function openCamera() {
+		fileInputRef?.setAttribute('capture', 'environment');
+		fileInputRef?.click();
+	}
+
+	function openGallery() {
+		fileInputRef?.removeAttribute('capture');
+		fileInputRef?.click();
+	}
+
+	function removePhoto(id: string) {
+		const photo = photos.find((item) => item.id === id);
+		if (photo) URL.revokeObjectURL(photo.preview);
+		photos = photos.filter((item) => item.id !== id);
+	}
+
+	async function uploadPhoto(transactionId: string, photo: PendingPhoto): Promise<void> {
+		const formData = new FormData();
+		formData.append('file', photo.file);
+		const response = await fetch(`/api/transactions/${transactionId}/photos`, {
+			method: 'POST',
+			body: formData
+		});
+		if (response.ok) return;
+
+		let message = 'Foto gagal diunggah';
+		try {
+			const result = (await response.json()) as { error?: string };
+			if (result.error) message = result.error;
+		} catch {
+			// Keep a useful fallback when an intermediary returns a non-JSON error.
+		}
+		throw new Error(message);
+	}
+
+	async function uploadPendingPhotos(transactionId: string) {
+		uploading = true;
+		try {
+			const outcome = await uploadAttachments(photos, (photo) => uploadPhoto(transactionId, photo));
+			for (const photo of outcome.succeeded) URL.revokeObjectURL(photo.preview);
+			photos = outcome.failed.map(({ attachment, error }) => ({ ...attachment, error }));
+
+			if (photos.length === 0) {
+				await goto('/transaksi?success=created');
+			}
+		} finally {
 			uploading = false;
 		}
 	}
 
-	// Quick amount buttons
-	const quickAmounts = [10000, 25000, 50000, 100000, 200000, 500000];
+	async function retryPhotos() {
+		if (!savedTransactionId) return;
+		if (photos.length === 0) {
+			await goto('/transaksi?success=created');
+			return;
+		}
+		await uploadPendingPhotos(savedTransactionId);
+	}
 
-	// Derived templates by type
-	let filteredTemplates = $derived(data.templates.filter((t: { type: string }) => t.type === type));
+	async function finishWithoutPhotos() {
+		for (const photo of photos) URL.revokeObjectURL(photo.preview);
+		photos = [];
+		await goto('/transaksi?success=created-without-receipts');
+	}
 
-	// Apply template to form
-	function applyTemplate(tmpl: {
-		id: string;
-		name: string;
-		type: string;
-		categoryId: string | null;
-		description: string | null;
-	}) {
-		// Set type (should match current, but ensure consistency)
-		type = tmpl.type as 'income' | 'expense';
-
-		// Set category if available
-		if (tmpl.categoryId) {
-			categoryId = tmpl.categoryId;
+	async function handleSubmit(event: SubmitEvent) {
+		event.preventDefault();
+		const validation = validateTransactionForm({ amount, accountId, date });
+		if (!validation.valid) {
+			toast.warning(validation.message);
+			return;
 		}
 
-		// Set description if available
-		if (tmpl.description) {
-			description = tmpl.description;
+		loading = true;
+		try {
+			const response = await fetch('/api/transactions', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'Idempotency-Key': commandId },
+				body: JSON.stringify({
+					type,
+					amount: validation.amount,
+					category_id: categoryId || undefined,
+					account_id: accountId,
+					date,
+					description: description || undefined,
+					reference_number: referenceNumber || undefined,
+					notes: notes || undefined
+				})
+			});
+			const result = (await response.json()) as { error?: string; transaction?: { id: string } };
+			if (!response.ok || !result.transaction?.id) {
+				throw new Error(result.error || 'Gagal menyimpan transaksi');
+			}
+
+			savedTransactionId = result.transaction.id;
+			draftReady = false;
+			clearTransactionDraft();
+
+			if (photos.length === 0) {
+				await goto('/transaksi?success=created');
+				return;
+			}
+			await uploadPendingPhotos(result.transaction.id);
+		} catch (error) {
+			console.error('Error saving transaction:', error);
+			toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan server');
+		} finally {
+			loading = false;
 		}
 	}
 </script>
@@ -304,478 +245,242 @@
 	<title>Tambah Transaksi - Buku UMKM</title>
 </svelte:head>
 
-<div class="min-h-screen bg-background flex flex-col">
-	<!-- Header -->
-	<header class="sticky top-0 z-10 bg-background border-b px-4 py-3 flex items-center gap-3">
+<div class="flex min-h-screen flex-col bg-background">
+	<header class="sticky top-0 z-10 flex items-center gap-3 border-b bg-background px-4 py-3">
 		<a
 			href="/transaksi"
-			class="p-2 -ml-2 hover:bg-secondary rounded-full transition-colors"
-			aria-label="Kembali"
+			class="-ml-2 flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-secondary"
+			aria-label="Kembali ke daftar transaksi"
 		>
-			<ArrowLeft class="w-5 h-5" />
+			<ArrowLeft class="h-5 w-5" />
 		</a>
 		<h1 class="text-lg font-semibold">Tambah Transaksi</h1>
 	</header>
 
-	<!-- Main Form -->
-	<form id="transaction-form" onsubmit={handleSubmit} class="flex-1 flex flex-col p-4 space-y-6">
-		<div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
-			<p>
-				{draftRestored ? 'Draft sebelumnya dipulihkan. ' : ''}Isian teks disimpan sementara di
-				perangkat ini dan belum menjadi transaksi sampai Anda menekan Simpan.
-			</p>
-			<p class="mt-1 text-blue-700">Foto nota tidak termasuk dalam draft.</p>
-		</div>
-
-		<!-- Type Toggle -->
-		<div class="flex gap-2" role="radiogroup" aria-label="Jenis transaksi">
-			<button
-				type="button"
-				role="radio"
-				aria-checked={type === 'income'}
-				onclick={() => {
-					type = 'income';
-					categoryId = '';
-				}}
-				class="flex-1 py-3 rounded-lg font-medium transition-all {type === 'income'
-					? 'bg-green-500 text-white'
-					: 'bg-muted text-muted-foreground hover:bg-secondary'}"
-			>
-				Pemasukan
-			</button>
-			<button
-				type="button"
-				role="radio"
-				aria-checked={type === 'expense'}
-				onclick={() => {
-					type = 'expense';
-					categoryId = '';
-				}}
-				class="flex-1 py-3 rounded-lg font-medium transition-all {type === 'expense'
-					? 'bg-red-500 text-white'
-					: 'bg-muted text-muted-foreground hover:bg-secondary'}"
-			>
-				Pengeluaran
-			</button>
-		</div>
-
-		<!-- Amount Input -->
-		<div class="space-y-2">
-			<label for="amount" class="text-sm font-medium text-muted-foreground"
-				>Jumlah <span class="text-destructive">*</span></label
-			>
-			<div class="relative">
-				<span
-					class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-medium text-muted-foreground"
+	{#if savedTransactionId}
+		<main class="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 p-4 md:p-6">
+			{#if photos.length > 0}
+				<section
+					class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950"
+					role="status"
 				>
-					Rp
-				</span>
-				<input
-					id="amount"
-					type="text"
-					inputmode="numeric"
-					bind:value={amount}
-					oninput={handleAmountInput}
-					onblur={handleAmountBlur}
-					onfocus={handleAmountFocus}
-					placeholder="0"
-					class="w-full text-4xl font-bold py-4 pl-16 pr-4 bg-muted rounded-xl text-center focus:outline-none focus:ring-2 focus:ring-primary"
-					required
-				/>
-			</div>
-
-			<!-- Quick Amount Buttons -->
-			<div class="flex flex-wrap gap-2 pt-2">
-				{#each quickAmounts as quickAmt (quickAmt)}
-					<button
-						type="button"
-						onclick={() => {
-							amount = quickAmt.toString();
-						}}
-						class="px-4 py-2 min-h-[48px] text-base bg-muted hover:bg-secondary rounded-full transition-colors"
-					>
-						{quickAmt.toLocaleString('id-ID')}
-					</button>
-				{/each}
-			</div>
-
-			<!-- Template Quick Select -->
-			{#if filteredTemplates.length > 0}
-				<div class="pt-4 space-y-2">
-					<div class="flex items-center justify-between">
-						<span class="text-sm font-medium text-muted-foreground">Template Cepat</span>
-						<a
-							href="/pengaturan/template"
-							class="text-sm text-primary hover:underline flex items-center gap-1"
-						>
-							<Link class="w-3 h-3" />
-							Kelola Template
-						</a>
+					<div class="flex items-start gap-3">
+						<AlertTriangle class="mt-0.5 h-5 w-5 shrink-0" />
+						<div>
+							<h2 class="font-semibold">Transaksi tersimpan, tetapi foto belum lengkap</h2>
+							<p class="mt-1 text-sm">
+								Catatan keuangan dan saldo sudah aman tersimpan. Coba unggah ulang foto di bawah;
+								menekan Simpan lagi tidak diperlukan.
+							</p>
+						</div>
 					</div>
-					<div class="flex flex-wrap gap-2">
-						{#each filteredTemplates as tmpl (tmpl.id)}
-							<button
-								type="button"
-								onclick={() => applyTemplate(tmpl)}
-								class="px-4 py-2 min-h-[48px] text-base bg-secondary hover:bg-secondary/80 rounded-full transition-colors {type ===
-								'income'
-									? 'text-green-700'
-									: 'text-red-700'}"
-							>
-								{tmpl.name}
-							</button>
+				</section>
+
+				<section class="space-y-3" aria-labelledby="failed-receipts-title">
+					<h2 id="failed-receipts-title" class="font-semibold">Foto yang belum terunggah</h2>
+					<div class="grid gap-3 sm:grid-cols-2">
+						{#each photos as photo (photo.id)}
+							<div class="flex gap-3 rounded-lg border p-3">
+								<img
+									src={photo.preview}
+									alt="Pratinjau foto nota yang gagal diunggah"
+									class="h-20 w-20 rounded-md object-cover"
+								/>
+								<div class="min-w-0 flex-1">
+									<p class="truncate text-sm font-medium">{photo.file.name}</p>
+									<p class="mt-1 text-xs text-destructive">{photo.error || 'Unggahan gagal'}</p>
+									<button
+										type="button"
+										onclick={() => removePhoto(photo.id)}
+										class="mt-2 min-h-11 text-sm text-destructive hover:underline"
+										>Buang foto</button
+									>
+								</div>
+							</div>
 						{/each}
 					</div>
+				</section>
+
+				<div class="mt-auto grid gap-3 border-t pt-4 sm:grid-cols-2">
+					<button
+						type="button"
+						onclick={retryPhotos}
+						disabled={uploading}
+						class="min-h-12 rounded-lg bg-primary px-4 font-medium text-primary-foreground disabled:opacity-50"
+					>
+						{uploading ? 'Mengunggah ulang…' : 'Coba unggah ulang'}
+					</button>
+					<button
+						type="button"
+						onclick={finishWithoutPhotos}
+						disabled={uploading}
+						class="min-h-12 rounded-lg border px-4 font-medium hover:bg-secondary disabled:opacity-50"
+						>Selesai tanpa foto</button
+					>
 				</div>
+			{:else}
+				<section
+					class="rounded-xl border border-green-300 bg-green-50 p-4 text-green-950"
+					role="status"
+				>
+					<div class="flex items-start gap-3">
+						<CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0" />
+						<div>
+							<h2 class="font-semibold">Transaksi berhasil disimpan</h2>
+							<p class="mt-1 text-sm">Tidak ada foto nota yang menunggu untuk diunggah.</p>
+						</div>
+					</div>
+				</section>
+				<button
+					type="button"
+					onclick={finishWithoutPhotos}
+					class="mt-auto min-h-12 rounded-lg bg-primary px-4 font-medium text-primary-foreground"
+					>Kembali ke daftar transaksi</button
+				>
 			{/if}
-		</div>
+			<a
+				href={`/transaksi/${savedTransactionId}`}
+				class="min-h-11 text-center text-sm text-primary hover:underline"
+				>Lihat transaksi yang tersimpan</a
+			>
+		</main>
+	{:else}
+		{#snippet draftNotice()}
+			<div
+				class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-950"
+				role="status"
+			>
+				<p>
+					{draftRestored ? 'Draft sebelumnya dipulihkan. ' : ''}Isian formulir disimpan sementara di
+					perangkat ini sampai transaksi berhasil disimpan.
+				</p>
+				<p class="mt-1 text-blue-800">Foto nota tidak termasuk dalam draft perangkat.</p>
+			</div>
+		{/snippet}
 
-		<!-- Category Picker -->
-		<div class="space-y-2">
-			<label for="category-picker" class="text-sm font-medium text-muted-foreground">Kategori</label
-			>
-			<button
-				id="category-picker"
-				type="button"
-				onclick={() => (showCategoryPicker = true)}
-				aria-haspopup="dialog"
-				class="w-full flex items-center gap-3 p-3 bg-muted rounded-lg hover:bg-secondary transition-colors text-left"
-			>
-				{#if selectedCategory}
-					<div
-						class="w-8 h-8 rounded-full flex items-center justify-center text-white text-lg"
-						style="background-color: {selectedCategory.color || '#6b7280'}"
-					>
-						{selectedCategory.icon || '📁'}
+		{#snippet receiptFields()}
+			<section class="space-y-2" aria-labelledby="receipt-title">
+				<div class="flex items-center justify-between gap-3">
+					<div>
+						<h2 id="receipt-title" class="text-sm font-medium text-muted-foreground">
+							Foto nota <span class="font-normal">(opsional)</span>
+						</h2>
+						{#if photos.length > 0}<p class="text-xs text-muted-foreground">
+								{photos.length}/{MAX_PHOTOS} foto
+							</p>{/if}
 					</div>
-					<span class="flex-1 font-medium">{selectedCategory.name}</span>
+					{#if canAddPhoto}
+						<button
+							type="button"
+							onclick={() => (showPhotoSourceMenu = true)}
+							class="inline-flex min-h-11 items-center gap-1 text-sm text-primary hover:underline"
+							><Camera class="h-4 w-4" />Tambah</button
+						>
+					{/if}
+				</div>
+
+				{#if photos.length > 0}
+					<div class="flex flex-wrap gap-3">
+						{#each photos as photo (photo.id)}
+							<div class="group relative">
+								<img
+									src={photo.preview}
+									alt="Pratinjau foto nota"
+									class="h-20 w-20 rounded-lg border object-cover"
+								/>
+								<button
+									type="button"
+									onclick={() => removePhoto(photo.id)}
+									class="absolute -right-2 -top-2 flex min-h-8 min-w-8 items-center justify-center rounded-full bg-destructive text-white sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+									aria-label={`Hapus ${photo.file.name}`}><Trash2 class="h-4 w-4" /></button
+								>
+							</div>
+						{/each}
+					</div>
 				{:else}
-					<div
-						class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500"
-					>
-						?
-					</div>
-					<span class="flex-1 text-muted-foreground">Pilih kategori</span>
-				{/if}
-			</button>
-		</div>
-
-		<!-- Account Picker -->
-		<div class="space-y-2">
-			<label for="account-picker" class="text-sm font-medium text-muted-foreground"
-				>Akun <span class="text-destructive">*</span></label
-			>
-			<button
-				id="account-picker"
-				type="button"
-				onclick={() => (showAccountPicker = true)}
-				aria-haspopup="dialog"
-				class="w-full flex items-center gap-3 p-3 bg-muted rounded-lg hover:bg-secondary transition-colors text-left"
-			>
-				{#if selectedAccount}
-					<div
-						class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"
-					>
-						💳
-					</div>
-					<div class="flex-1">
-						<div class="font-medium">{selectedAccount.name}</div>
-						<div class="text-xs text-muted-foreground">Kode: {selectedAccount.code}</div>
-					</div>
-				{:else}
-					<div
-						class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500"
-					>
-						?
-					</div>
-					<span class="flex-1 text-muted-foreground">Pilih akun</span>
-				{/if}
-			</button>
-		</div>
-
-		<!-- Date Picker -->
-		<div class="space-y-2">
-			<label for="date" class="text-sm font-medium text-muted-foreground">Tanggal</label>
-			<input
-				id="date"
-				type="date"
-				bind:value={date}
-				max={new Date().toISOString().split('T')[0]}
-				class="w-full p-3 bg-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-				required
-			/>
-		</div>
-
-		<!-- Description -->
-		<div class="space-y-2">
-			<label for="description" class="text-sm font-medium text-muted-foreground">
-				Keterangan <span class="text-muted-foreground font-normal">(opsional)</span>
-			</label>
-			<input
-				id="description"
-				type="text"
-				bind:value={description}
-				placeholder="Contoh: Makan siang diwarung"
-				class="w-full p-3 bg-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-			/>
-		</div>
-
-		<!-- Receipt Photos -->
-		<div class="space-y-2">
-			<div class="flex items-center justify-between">
-				<span class="text-sm font-medium text-muted-foreground">Foto Nota</span>
-				{#if canAddPhoto}
 					<button
 						type="button"
 						onclick={() => (showPhotoSourceMenu = true)}
-						class="text-sm text-primary hover:underline flex items-center gap-1"
+						class="flex min-h-16 w-full items-center justify-center gap-2 rounded-lg border border-dashed text-muted-foreground hover:bg-muted/50"
+						><Image class="h-5 w-5" />Tambah foto nota</button
 					>
-						<Camera class="w-4 h-4" />
-						Tambah
-					</button>
 				{/if}
-			</div>
 
-			<!-- Photo counter -->
-			{#if photos.length > 0}
-				<div class="text-xs text-muted-foreground">
-					{photoCount}/{MAX_PHOTOS} foto
-				</div>
-			{/if}
+				<input
+					bind:this={fileInputRef}
+					type="file"
+					accept="image/jpeg,image/png"
+					onchange={handleFileSelect}
+					class="hidden"
+					aria-label="Pilih file foto nota"
+				/>
+			</section>
+		{/snippet}
 
-			<!-- Photo previews -->
-			{#if photos.length > 0}
-				<div class="flex gap-2 flex-wrap">
-					{#each photos as photo (photo.id)}
-						<div class="relative group">
-							<img
-								src={photo.preview}
-								alt="Foto nota"
-								class="w-20 h-20 object-cover rounded-lg border"
-							/>
-							<button
-								type="button"
-								onclick={() => removePhoto(photo.id)}
-								class="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity min-w-[28px] min-h-[28px] flex items-center justify-center"
-								aria-label="Hapus foto"
-							>
-								<Trash2 class="w-3.5 h-3.5" />
-							</button>
-						</div>
-					{/each}
-				</div>
-			{:else}
-				<button
-					type="button"
-					onclick={() => (showPhotoSourceMenu = true)}
-					class="w-full flex items-center justify-center gap-2 p-4 border border-dashed rounded-lg text-muted-foreground hover:bg-muted/50 transition-colors"
-				>
-					<Image class="w-5 h-5" />
-					<span>Tambah foto nota</span>
-				</button>
-			{/if}
-
-			<!-- Hidden file input -->
-			<input
-				bind:this={fileInputRef}
-				type="file"
-				accept="image/jpeg,image/png"
-				onchange={handleFileSelect}
-				class="hidden"
-				aria-label="Pilih file foto nota"
-			/>
-		</div>
-	</form>
-
-	<!-- Sticky Submit Button -->
-	<div class="sticky bottom-0 z-10 bg-background border-t p-4">
-		<button
-			type="submit"
-			form="transaction-form"
-			disabled={loading || uploading}
-			class="w-full py-4 bg-primary text-primary-foreground text-lg font-medium rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 shadow-sm"
-		>
-			{loading || uploading ? 'Menyimpan...' : 'Simpan'}
-		</button>
-	</div>
+		<TransactionForm
+			formId="create-transaction"
+			mode="create"
+			bind:type
+			bind:amount
+			bind:categoryId
+			bind:accountId
+			bind:date
+			bind:description
+			bind:referenceNumber
+			bind:notes
+			categoriesByType={data.categories}
+			accounts={data.accounts}
+			templates={data.templates}
+			returnTo="/transaksi/tambah"
+			busy={loading || uploading}
+			submitLabel="Simpan transaksi"
+			onsubmit={handleSubmit}
+			notice={draftNotice}
+			attachments={receiptFields}
+		/>
+	{/if}
 </div>
 
-<!-- Category Picker Modal -->
-{#if showCategoryPicker}
-	<div
-		class="fixed inset-0 z-[55] flex flex-col bg-white md:left-64"
-		role="dialog"
-		aria-modal="true"
-		aria-label="Pilih Kategori"
-		onkeydown={(e) => {
-			if (e.key === 'Escape') showCategoryPicker = false;
-		}}
-	>
-		<header class="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
-			<h2 class="text-lg font-semibold">Pilih Kategori</h2>
-			<button
-				onclick={() => (showCategoryPicker = false)}
-				class="p-2 hover:bg-secondary rounded-full"
-				aria-label="Tutup"
-			>
-				<X class="w-5 h-5" />
-			</button>
-		</header>
-
-		<div class="flex-1 overflow-y-auto p-4">
-			{#if categories.length > 0}
-				<div class="grid grid-cols-3 gap-3">
-					{#each categories as cat (cat.id)}
-						<button
-							type="button"
-							onclick={() => selectCategory(cat)}
-							class="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-secondary transition-colors {categoryId ===
-							cat.id
-								? 'bg-primary/10 ring-2 ring-primary'
-								: ''}"
-						>
-							<div
-								class="w-12 h-12 rounded-full flex items-center justify-center text-xl"
-								style="background-color: {cat.color || '#6b7280'}"
-							>
-								{cat.icon || '📁'}
-							</div>
-							<span class="text-xs text-center font-medium line-clamp-2">{cat.name}</span>
-						</button>
-					{/each}
-				</div>
-			{:else}
-				<div class="flex flex-col items-center justify-center py-12 text-center">
-					<p class="text-muted-foreground mb-4">
-						Belum ada kategori untuk {type === 'income' ? 'pemasukan' : 'pengeluaran'}
-					</p>
-					<a
-						href="/kategori"
-						class="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-					>
-						+ Tambah Kategori
-					</a>
-				</div>
-			{/if}
-		</div>
-	</div>
-{/if}
-
-<!-- Photo Source Menu -->
 {#if showPhotoSourceMenu}
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+		class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
 		role="dialog"
 		aria-modal="true"
-		aria-label="Pilih sumber foto"
-		onclick={(e) => {
-			if (e.target === e.currentTarget) showPhotoSourceMenu = false;
-		}}
-		onkeydown={(e) => {
-			if (e.key === 'Escape') showPhotoSourceMenu = false;
-		}}
+		aria-labelledby="photo-source-title"
+		tabindex="-1"
+		onclick={(event) => event.target === event.currentTarget && (showPhotoSourceMenu = false)}
+		onkeydown={(event) => event.key === 'Escape' && (showPhotoSourceMenu = false)}
 	>
-		<div class="bg-white border rounded-lg shadow-xl w-full max-w-sm p-6">
-			<h2 class="text-lg font-semibold mb-4">Pilih Sumber Foto</h2>
+		<div class="w-full max-w-sm rounded-xl border bg-background p-6 shadow-xl">
+			<h2 id="photo-source-title" class="mb-4 text-lg font-semibold">Pilih sumber foto</h2>
 			<div class="space-y-3">
 				<button
 					type="button"
 					onclick={openCamera}
-					class="w-full flex items-center gap-3 p-4 border rounded-lg hover:bg-secondary transition-colors"
+					class="flex min-h-16 w-full items-center gap-3 rounded-lg border p-4 text-left hover:bg-secondary"
+					><Camera class="h-5 w-5 text-primary" /><span
+						><span class="block font-medium">Kamera</span><span
+							class="block text-xs text-muted-foreground">Ambil foto langsung</span
+						></span
+					></button
 				>
-					<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-						<Camera class="w-5 h-5 text-primary" />
-					</div>
-					<div class="text-left">
-						<div class="font-medium">Kamera</div>
-						<div class="text-xs text-muted-foreground">Ambil foto langsung</div>
-					</div>
-				</button>
 				<button
 					type="button"
 					onclick={openGallery}
-					class="w-full flex items-center gap-3 p-4 border rounded-lg hover:bg-secondary transition-colors"
+					class="flex min-h-16 w-full items-center gap-3 rounded-lg border p-4 text-left hover:bg-secondary"
+					><Image class="h-5 w-5 text-primary" /><span
+						><span class="block font-medium">Galeri</span><span
+							class="block text-xs text-muted-foreground">Pilih dari galeri</span
+						></span
+					></button
 				>
-					<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-						<Image class="w-5 h-5 text-primary" />
-					</div>
-					<div class="text-left">
-						<div class="font-medium">Galeri</div>
-						<div class="text-xs text-muted-foreground">Pilih dari galeri</div>
-					</div>
-				</button>
 			</div>
 			<button
 				type="button"
 				onclick={() => (showPhotoSourceMenu = false)}
-				class="w-full mt-4 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+				class="mt-4 min-h-11 w-full text-sm text-muted-foreground hover:text-foreground"
+				>Batal</button
 			>
-				Batal
-			</button>
-		</div>
-	</div>
-{/if}
-
-<!-- Account Picker Modal -->
-{#if showAccountPicker}
-	<div
-		class="fixed inset-0 z-[55] flex flex-col bg-white md:left-64"
-		role="dialog"
-		aria-modal="true"
-		aria-label="Pilih Akun"
-		onkeydown={(e) => {
-			if (e.key === 'Escape') showAccountPicker = false;
-		}}
-	>
-		<header class="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
-			<h2 class="text-lg font-semibold">Pilih Akun</h2>
-			<button
-				onclick={() => (showAccountPicker = false)}
-				class="p-2 hover:bg-secondary rounded-full"
-				aria-label="Tutup"
-			>
-				<X class="w-5 h-5" />
-			</button>
-		</header>
-
-		<div class="flex-1 overflow-y-auto p-4">
-			{#if data.accounts.length > 0}
-				<div class="space-y-2">
-					{#each data.accounts as acc (acc.id)}
-						<button
-							type="button"
-							onclick={() => selectAccount(acc)}
-							class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors text-left {accountId ===
-							acc.id
-								? 'bg-primary/10 ring-2 ring-primary'
-								: ''}"
-						>
-							<div
-								class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"
-							>
-								💳
-							</div>
-							<div class="flex-1">
-								<div class="font-medium">{acc.name}</div>
-								<div class="text-xs text-muted-foreground">Kode: {acc.code}</div>
-							</div>
-							{#if accountId === acc.id}
-								<Check class="w-5 h-5 text-primary" />
-							{/if}
-						</button>
-					{/each}
-				</div>
-			{:else}
-				<div class="flex flex-col items-center justify-center py-12 text-center">
-					<p class="text-muted-foreground mb-4">Belum ada akun</p>
-					<a
-						href="/akun"
-						class="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-					>
-						+ Tambah Akun
-					</a>
-				</div>
-			{/if}
 		</div>
 	</div>
 {/if}
