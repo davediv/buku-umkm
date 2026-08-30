@@ -31,6 +31,7 @@
 	let date = $state(new Date().toISOString().split('T')[0]);
 	let dueDate = $state('');
 	let description = $state('');
+	let createCommandId = $state('');
 
 	// Parse initial type from URL
 	$effect(() => {
@@ -69,6 +70,7 @@
 		date = new Date().toISOString().split('T')[0];
 		dueDate = '';
 		description = '';
+		createCommandId = crypto.randomUUID();
 		showModal = true;
 	}
 
@@ -87,7 +89,10 @@
 		try {
 			const response = await fetch('/api/debts', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: {
+					'Content-Type': 'application/json',
+					'Idempotency-Key': createCommandId
+				},
 				body: JSON.stringify({
 					type: activeTab,
 					contact_name: contactName,

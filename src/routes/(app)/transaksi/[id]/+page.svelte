@@ -312,23 +312,27 @@
 			<div class="flex gap-2">
 				<button
 					type="button"
-					onclick={() => (type = 'income')}
-					class="flex-1 py-3 rounded-lg font-medium transition-all {type === 'income'
+					disabled
+					class="flex-1 cursor-not-allowed py-3 rounded-lg font-medium opacity-80 {type === 'income'
 						? 'bg-green-500 text-white'
-						: 'bg-muted text-muted-foreground hover:bg-secondary'}"
+						: 'bg-muted text-muted-foreground'}"
 				>
 					Pemasukan
 				</button>
 				<button
 					type="button"
-					onclick={() => (type = 'expense')}
-					class="flex-1 py-3 rounded-lg font-medium transition-all {type === 'expense'
+					disabled
+					class="flex-1 cursor-not-allowed py-3 rounded-lg font-medium opacity-80 {type ===
+					'expense'
 						? 'bg-red-500 text-white'
-						: 'bg-muted text-muted-foreground hover:bg-secondary'}"
+						: 'bg-muted text-muted-foreground'}"
 				>
 					Pengeluaran
 				</button>
 			</div>
+			<p class="-mt-2 text-xs text-muted-foreground">
+				Jenis tidak dapat diubah karena memengaruhi saldo yang sudah tercatat.
+			</p>
 
 			<!-- Amount Input -->
 			<div class="space-y-2">
@@ -380,8 +384,8 @@
 				<label class="text-sm font-medium text-muted-foreground">Akun</label>
 				<button
 					type="button"
-					onclick={() => (showAccountPicker = true)}
-					class="w-full flex items-center gap-3 p-3 bg-muted rounded-lg hover:bg-secondary transition-colors text-left"
+					disabled
+					class="w-full cursor-not-allowed flex items-center gap-3 p-3 bg-muted rounded-lg text-left opacity-80"
 				>
 					{#if selectedAccount}
 						<div
@@ -397,6 +401,9 @@
 						<span class="flex-1 text-muted-foreground">Pilih akun</span>
 					{/if}
 				</button>
+				<p class="text-xs text-muted-foreground">
+					Akun tidak dapat dipindahkan setelah transaksi disimpan.
+				</p>
 			</div>
 
 			<!-- Date -->

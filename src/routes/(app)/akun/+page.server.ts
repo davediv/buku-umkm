@@ -96,30 +96,26 @@ export const actions: Actions = {
 			// Generate ID and create account
 			const accountId = crypto.randomUUID();
 
-			await db.insert(chartOfAccount).values({
-				id: accountId,
-				userId,
-				code: newCode,
-				name: name.trim(),
-				type: schemaType,
-				subType,
-				isSystem: false,
-				isActive: true,
-				balance: openingBalance
-			});
-
-			const now = new Date().toISOString();
+			const [createdAccount] = await db
+				.insert(chartOfAccount)
+				.values({
+					id: accountId,
+					userId,
+					code: newCode,
+					name: name.trim(),
+					type: schemaType,
+					subType,
+					isSystem: false,
+					isActive: true,
+					balance: openingBalance
+				})
+				.returning();
 			return {
 				success: true,
 				message: 'Akun berhasil dibuat',
 				account: {
-					id: accountId,
-					name: name.trim(),
-					type: mapSchemaToApiType(subType),
-					balance: openingBalance,
-					code: newCode,
-					createdAt: now,
-					updatedAt: now
+					...createdAccount,
+					type: mapSchemaToApiType(createdAccount.subType)
 				}
 			};
 		} catch {
@@ -175,10 +171,14 @@ export const actions: Actions = {
 				type: schemaType,
 				subType
 			});
+			const updatedAccount = await chartOfAccountQueries.findById(db, userId, id);
 
 			return {
 				success: true,
-				message: 'Akun berhasil diperbarui'
+				message: 'Akun berhasil diperbarui',
+				account: updatedAccount
+					? { ...updatedAccount, type: mapSchemaToApiType(updatedAccount.subType) }
+					: null
 			};
 		} catch {
 			console.error('Error updating account:');

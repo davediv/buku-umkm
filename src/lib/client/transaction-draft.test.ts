@@ -25,6 +25,7 @@ describe('transaction draft storage', () => {
 
 		saveTransactionDraft(
 			{
+				commandId: 'command-1',
 				type: 'expense',
 				amount: '25000',
 				categoryId: 'category-1',
@@ -37,6 +38,7 @@ describe('transaction draft storage', () => {
 
 		expect(loadTransactionDraft(storage)).toEqual({
 			version: 1,
+			commandId: 'command-1',
 			type: 'expense',
 			amount: '25000',
 			categoryId: 'category-1',

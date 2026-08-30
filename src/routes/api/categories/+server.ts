@@ -82,8 +82,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Create the category
-		const categoryId = crypto.randomUUID();
-		await categoryQueries.create(db, {
+		const createdCategory = await categoryQueries.create(db, {
 			userId,
 			code,
 			name: body.name.trim(),
@@ -92,22 +91,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			color: body.color
 		});
 
-		const now = new Date().toISOString();
 		return json(
 			{
 				message: 'Kategori berhasil dibuat',
-				category: {
-					id: categoryId,
-					name: body.name.trim(),
-					type: body.type,
-					code,
-					isSystem: false,
-					isActive: true,
-					icon: body.icon ?? null,
-					color: body.color ?? null,
-					createdAt: now,
-					updatedAt: now
-				}
+				category: createdCategory
 			},
 			{ status: 201 }
 		);

@@ -102,31 +102,27 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const accountId = crypto.randomUUID();
 
 		// Create the account
-		await db.insert(chartOfAccount).values({
-			id: accountId,
-			userId,
-			code: newCode,
-			name: body.name.trim(),
-			type: schemaType,
-			subType,
-			isSystem: false,
-			isActive: true,
-			balance: openingBalance
-		});
+		const [createdAccount] = await db
+			.insert(chartOfAccount)
+			.values({
+				id: accountId,
+				userId,
+				code: newCode,
+				name: body.name.trim(),
+				type: schemaType,
+				subType,
+				isSystem: false,
+				isActive: true,
+				balance: openingBalance
+			})
+			.returning();
 
-		// Return response using the data we already have
-		const now = new Date().toISOString();
 		return json(
 			{
 				message: 'Akun berhasil dibuat',
 				account: {
-					id: accountId,
-					name: body.name.trim(),
-					type: body.type,
-					balance: openingBalance,
-					code: newCode,
-					createdAt: now,
-					updatedAt: now
+					...createdAccount,
+					type: mapSchemaToApiType(createdAccount.subType)
 				}
 			},
 			{ status: 201 }

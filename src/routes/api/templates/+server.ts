@@ -67,8 +67,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const db = getDb();
 
 		// Create the template
-		const templateId = crypto.randomUUID();
-		await transactionTemplateQueries.create(db, {
+		const createdTemplate = await transactionTemplateQueries.create(db, {
 			userId,
 			name: body.name.trim(),
 			type: body.type,
@@ -77,21 +76,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			isSystem: false
 		});
 
-		const now = new Date().toISOString();
 		return json(
 			{
 				message: 'Template berhasil dibuat',
-				template: {
-					id: templateId,
-					name: body.name.trim(),
-					type: body.type,
-					categoryId: body.categoryId ?? null,
-					description: body.description ?? null,
-					isSystem: false,
-					isActive: true,
-					createdAt: now,
-					updatedAt: now
-				}
+				template: createdTemplate
 			},
 			{ status: 201 }
 		);

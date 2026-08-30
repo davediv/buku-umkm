@@ -44,6 +44,7 @@
 	let transferAmount = $state(0);
 	let transferDate = $state(new Date().toISOString().split('T')[0]);
 	let transferDescription = $state('');
+	let transferCommandId = $state('');
 
 	// Form data
 	let name = $state('');
@@ -115,6 +116,7 @@
 		transferAmount = 0;
 		transferDate = new Date().toISOString().split('T')[0];
 		transferDescription = '';
+		transferCommandId = crypto.randomUUID();
 		showTransferModal = true;
 	}
 
@@ -166,7 +168,8 @@
 			const response = await fetch('/api/transfers', {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					'Idempotency-Key': transferCommandId
 				},
 				body: JSON.stringify({
 					amount: transferAmount,
