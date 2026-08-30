@@ -230,7 +230,37 @@
 
 		<section class="rounded-xl border bg-card p-4 md:p-6">
 			<h2 class="mb-4 font-semibold">Rekapitulasi Bulanan</h2>
-			<div class="overflow-x-auto">
+			<div class="space-y-3 md:hidden">
+				{#each sptData.months as month (month.month)}
+					<article class="rounded-lg border p-4">
+						<div class="flex items-center justify-between gap-3">
+							<h3 class="font-medium">{month.monthName}</h3>
+							<span
+								class="rounded-full px-2 py-1 text-xs font-medium {month.taxStatus === 'PAID'
+									? 'bg-green-100 text-green-700'
+									: 'bg-amber-100 text-amber-800'}"
+							>
+								{month.taxStatus === 'PAID' ? 'Lunas' : 'Belum lunas'}
+							</span>
+						</div>
+						<dl class="mt-3 grid gap-2 text-sm">
+							<div class="flex justify-between gap-3">
+								<dt class="text-muted-foreground">Omzet bruto</dt>
+								<dd class="font-medium">{formatRupiah(month.grossRevenue)}</dd>
+							</div>
+							<div class="flex justify-between gap-3">
+								<dt class="text-muted-foreground">Omzet kena pajak</dt>
+								<dd>{formatRupiah(month.taxableRevenue)}</dd>
+							</div>
+							<div class="flex justify-between gap-3">
+								<dt class="text-muted-foreground">PPh Final</dt>
+								<dd>{formatRupiah(month.taxAmount)}</dd>
+							</div>
+						</dl>
+					</article>
+				{/each}
+			</div>
+			<div class="hidden overflow-x-auto md:block">
 				<table class="w-full min-w-[720px] text-sm">
 					<thead>
 						<tr class="border-b">

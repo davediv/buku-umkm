@@ -141,7 +141,7 @@
 		/>
 	{:else if catatan}
 		<!-- Report Content: dims while loading to avoid layout shift -->
-		<main
+		<div
 			class="max-w-4xl mx-auto px-4 py-8 transition-opacity duration-150 {loading
 				? 'opacity-50 pointer-events-none'
 				: ''}"
@@ -271,7 +271,7 @@
 					</p>
 				</div>
 			</div>
-		</main>
+		</div>
 	{:else}
 		<!-- Empty State -->
 		<div class="max-w-4xl mx-auto px-4 py-12">

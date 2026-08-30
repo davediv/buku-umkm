@@ -26,7 +26,7 @@
 
 	<ReportNavigation />
 
-	<main>
+	<div>
 		<ul class="grid gap-4 md:grid-cols-2">
 			{#each REPORT_DEFINITIONS as report (report.id)}
 				<li>
@@ -55,5 +55,5 @@
 				</li>
 			{/each}
 		</ul>
-	</main>
+	</div>
 </div>

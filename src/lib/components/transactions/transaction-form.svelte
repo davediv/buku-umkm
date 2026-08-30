@@ -3,6 +3,7 @@
 	import { Check, Link, X } from '@lucide/svelte';
 	import { todayInJakarta } from '$lib/shared/dates';
 	import { formatIdr } from '$lib/utils';
+	import { Dialog } from '$lib/components/ui/dialog';
 
 	interface TransactionFormCategory {
 		id: string;
@@ -345,133 +346,128 @@
 	</div>
 </form>
 
-{#if showCategoryPicker}
-	<div
-		class="fixed inset-0 z-[55] flex flex-col bg-background md:left-64"
-		role="dialog"
-		aria-modal="true"
-		aria-label="Pilih kategori"
-		tabindex="-1"
-		onkeydown={(event) => event.key === 'Escape' && (showCategoryPicker = false)}
-	>
-		<header class="flex items-center justify-between border-b bg-background px-4 py-3">
-			<h2 class="text-lg font-semibold">Pilih Kategori</h2>
-			<div class="flex items-center gap-2">
+<Dialog
+	open={showCategoryPicker}
+	onopenchange={(open) => (showCategoryPicker = open)}
+	ariaLabel="Pilih kategori"
+	overlayClass="z-[55] p-0 md:pl-64"
+	class="flex h-full w-full max-w-none flex-col rounded-none border-0 bg-background p-0 shadow-none"
+>
+	<header class="flex items-center justify-between border-b bg-background px-4 py-3">
+		<h2 class="text-lg font-semibold">Pilih Kategori</h2>
+		<div class="flex items-center gap-2">
+			<a
+				href={dependencyHref('/kategori')}
+				class="inline-flex min-h-11 items-center px-3 text-sm font-medium text-primary">Kelola</a
+			>
+			<button
+				data-dialog-initial-focus
+				type="button"
+				onclick={() => (showCategoryPicker = false)}
+				class="flex h-11 w-11 items-center justify-center rounded-full hover:bg-secondary"
+				aria-label="Tutup"><X class="h-5 w-5" /></button
+			>
+		</div>
+	</header>
+	<div class="flex-1 overflow-y-auto p-4">
+		{#if categories.length > 0}
+			<div class="grid grid-cols-3 gap-3 sm:grid-cols-4">
+				{#each categories as category (category.id)}
+					<button
+						type="button"
+						onclick={() => {
+							categoryId = category.id;
+							showCategoryPicker = false;
+						}}
+						class="flex min-h-24 flex-col items-center gap-2 rounded-lg p-3 text-center hover:bg-secondary {categoryId ===
+						category.id
+							? 'bg-primary/10 ring-2 ring-primary'
+							: ''}"
+					>
+						<span
+							class="flex h-12 w-12 items-center justify-center rounded-full text-xl"
+							style="background-color: {category.color || '#6b7280'}">{category.icon || '📁'}</span
+						>
+						<span class="line-clamp-2 text-xs font-medium">{category.name}</span>
+						{#if categoryId === category.id}<Check class="h-4 w-4 text-primary" />{/if}
+					</button>
+				{/each}
+			</div>
+		{:else}
+			<div class="flex min-h-64 flex-col items-center justify-center text-center">
+				<p class="mb-4 text-muted-foreground">
+					Belum ada kategori {type === 'income' ? 'pemasukan' : 'pengeluaran'}.
+				</p>
 				<a
 					href={dependencyHref('/kategori')}
-					class="inline-flex min-h-11 items-center px-3 text-sm font-medium text-primary">Kelola</a
-				>
-				<button
-					type="button"
-					onclick={() => (showCategoryPicker = false)}
-					class="flex h-11 w-11 items-center justify-center rounded-full hover:bg-secondary"
-					aria-label="Tutup"><X class="h-5 w-5" /></button
+					class="inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+					>Tambah kategori</a
 				>
 			</div>
-		</header>
-		<div class="flex-1 overflow-y-auto p-4">
-			{#if categories.length > 0}
-				<div class="grid grid-cols-3 gap-3 sm:grid-cols-4">
-					{#each categories as category (category.id)}
-						<button
-							type="button"
-							onclick={() => {
-								categoryId = category.id;
-								showCategoryPicker = false;
-							}}
-							class="flex min-h-24 flex-col items-center gap-2 rounded-lg p-3 text-center hover:bg-secondary {categoryId ===
-							category.id
-								? 'bg-primary/10 ring-2 ring-primary'
-								: ''}"
-						>
-							<span
-								class="flex h-12 w-12 items-center justify-center rounded-full text-xl"
-								style="background-color: {category.color || '#6b7280'}"
-								>{category.icon || '📁'}</span
-							>
-							<span class="line-clamp-2 text-xs font-medium">{category.name}</span>
-							{#if categoryId === category.id}<Check class="h-4 w-4 text-primary" />{/if}
-						</button>
-					{/each}
-				</div>
-			{:else}
-				<div class="flex min-h-64 flex-col items-center justify-center text-center">
-					<p class="mb-4 text-muted-foreground">
-						Belum ada kategori {type === 'income' ? 'pemasukan' : 'pengeluaran'}.
-					</p>
-					<a
-						href={dependencyHref('/kategori')}
-						class="inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
-						>Tambah kategori</a
-					>
-				</div>
-			{/if}
-		</div>
+		{/if}
 	</div>
-{/if}
+</Dialog>
 
-{#if showAccountPicker}
-	<div
-		class="fixed inset-0 z-[55] flex flex-col bg-background md:left-64"
-		role="dialog"
-		aria-modal="true"
-		aria-label="Pilih kas atau rekening"
-		tabindex="-1"
-		onkeydown={(event) => event.key === 'Escape' && (showAccountPicker = false)}
-	>
-		<header class="flex items-center justify-between border-b bg-background px-4 py-3">
-			<h2 class="text-lg font-semibold">Pilih Kas atau Rekening</h2>
-			<div class="flex items-center gap-2">
+<Dialog
+	open={showAccountPicker}
+	onopenchange={(open) => (showAccountPicker = open)}
+	ariaLabel="Pilih kas atau rekening"
+	overlayClass="z-[55] p-0 md:pl-64"
+	class="flex h-full w-full max-w-none flex-col rounded-none border-0 bg-background p-0 shadow-none"
+>
+	<header class="flex items-center justify-between border-b bg-background px-4 py-3">
+		<h2 class="text-lg font-semibold">Pilih Kas atau Rekening</h2>
+		<div class="flex items-center gap-2">
+			<a
+				href={dependencyHref('/akun')}
+				class="inline-flex min-h-11 items-center px-3 text-sm font-medium text-primary">Kelola</a
+			>
+			<button
+				data-dialog-initial-focus
+				type="button"
+				onclick={() => (showAccountPicker = false)}
+				class="flex h-11 w-11 items-center justify-center rounded-full hover:bg-secondary"
+				aria-label="Tutup"><X class="h-5 w-5" /></button
+			>
+		</div>
+	</header>
+	<div class="flex-1 overflow-y-auto p-4">
+		{#if accounts.length > 0}
+			<div class="space-y-2">
+				{#each accounts as account (account.id)}
+					<button
+						type="button"
+						onclick={() => {
+							accountId = account.id;
+							showAccountPicker = false;
+						}}
+						class="flex min-h-14 w-full items-center gap-3 rounded-lg p-3 text-left hover:bg-secondary {accountId ===
+						account.id
+							? 'bg-primary/10 ring-2 ring-primary'
+							: ''}"
+					>
+						<span
+							class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700"
+							>💳</span
+						>
+						<span class="flex-1"
+							><span class="block font-medium">{account.name}</span><span
+								class="block text-xs text-muted-foreground">Kode: {account.code}</span
+							></span
+						>
+						{#if accountId === account.id}<Check class="h-5 w-5 text-primary" />{/if}
+					</button>
+				{/each}
+			</div>
+		{:else}
+			<div class="flex min-h-64 flex-col items-center justify-center text-center">
+				<p class="mb-4 text-muted-foreground">Belum ada kas atau rekening aktif.</p>
 				<a
 					href={dependencyHref('/akun')}
-					class="inline-flex min-h-11 items-center px-3 text-sm font-medium text-primary">Kelola</a
-				>
-				<button
-					type="button"
-					onclick={() => (showAccountPicker = false)}
-					class="flex h-11 w-11 items-center justify-center rounded-full hover:bg-secondary"
-					aria-label="Tutup"><X class="h-5 w-5" /></button
+					class="inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+					>Tambah rekening</a
 				>
 			</div>
-		</header>
-		<div class="flex-1 overflow-y-auto p-4">
-			{#if accounts.length > 0}
-				<div class="space-y-2">
-					{#each accounts as account (account.id)}
-						<button
-							type="button"
-							onclick={() => {
-								accountId = account.id;
-								showAccountPicker = false;
-							}}
-							class="flex min-h-14 w-full items-center gap-3 rounded-lg p-3 text-left hover:bg-secondary {accountId ===
-							account.id
-								? 'bg-primary/10 ring-2 ring-primary'
-								: ''}"
-						>
-							<span
-								class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700"
-								>💳</span
-							>
-							<span class="flex-1"
-								><span class="block font-medium">{account.name}</span><span
-									class="block text-xs text-muted-foreground">Kode: {account.code}</span
-								></span
-							>
-							{#if accountId === account.id}<Check class="h-5 w-5 text-primary" />{/if}
-						</button>
-					{/each}
-				</div>
-			{:else}
-				<div class="flex min-h-64 flex-col items-center justify-center text-center">
-					<p class="mb-4 text-muted-foreground">Belum ada kas atau rekening aktif.</p>
-					<a
-						href={dependencyHref('/akun')}
-						class="inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
-						>Tambah rekening</a
-					>
-				</div>
-			{/if}
-		</div>
+		{/if}
 	</div>
-{/if}
+</Dialog>

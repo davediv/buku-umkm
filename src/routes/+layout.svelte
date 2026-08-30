@@ -41,4 +41,10 @@
 	});
 </script>
 
+<a
+	href="#main-content"
+	class="fixed left-4 top-4 z-[100] -translate-y-24 rounded-md bg-background px-4 py-3 font-medium text-foreground shadow-lg ring-2 ring-ring transition-transform focus:translate-y-0 focus:outline-none"
+>
+	Lewati navigasi
+</a>
 {@render children()}

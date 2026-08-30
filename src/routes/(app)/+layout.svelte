@@ -40,7 +40,7 @@
 	<ConnectionStatus loadedAt={data.loadedAt} />
 	<TaxReminder />
 
-	<main id="main-content" class="flex-1 overflow-y-auto pb-20 md:pb-0 md:pl-64">
+	<main id="main-content" tabindex="-1" class="flex-1 overflow-y-auto pb-20 md:pb-0 md:pl-64">
 		{@render children()}
 	</main>
 

@@ -1,7 +1,9 @@
 <script lang="ts">
-	import { cn } from '$lib/utils';
+	import { Dialog } from '$lib/components/ui/dialog';
+	import { setContext } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
 	import type { Snippet } from 'svelte';
+	import { ALERT_DIALOG_CONTEXT, type AlertDialogContext } from './context';
 
 	type Props = HTMLAttributes<HTMLDivElement> & {
 		open?: boolean;
@@ -18,39 +20,20 @@
 		closeOnExternalClick = true
 	}: Props = $props();
 
-	function handleBackdropClick(e: MouseEvent) {
-		if (closeOnExternalClick && e.target === e.currentTarget) {
-			onopenchange?.(false);
-		}
-	}
-
-	function handleKeydown(e: KeyboardEvent) {
-		if (closeOnExternalClick && e.key === 'Escape') {
-			onopenchange?.(false);
-		}
-	}
-
-	// Fix memory leak - only add listener when dialog is open
-	$effect(() => {
-		if (open) {
-			window.addEventListener('keydown', handleKeydown);
-			return () => window.removeEventListener('keydown', handleKeydown);
-		}
+	setContext<AlertDialogContext>(ALERT_DIALOG_CONTEXT, {
+		close: () => onopenchange?.(false)
 	});
 </script>
 
-{#if open}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="alert-dialog-title"
-		aria-describedby="alert-dialog-description"
-		onclick={handleBackdropClick}
-		onkeydown={handleKeydown}
-	>
-		<div class={cn('bg-white border rounded-lg shadow-xl w-full max-w-md p-6', className)}>
-			{@render children()}
-		</div>
-	</div>
-{/if}
+<Dialog
+	{open}
+	{onopenchange}
+	closeOnEscape={closeOnExternalClick}
+	closeOnOutsideClick={closeOnExternalClick}
+	role="alertdialog"
+	labelledby="alert-dialog-title"
+	describedby="alert-dialog-description"
+	class={className}
+>
+	{@render children()}
+</Dialog>

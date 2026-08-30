@@ -4,6 +4,7 @@
 	import { ArrowLeft, Camera, Image, Trash2, X } from '@lucide/svelte';
 	import ContextBackLink from '$lib/components/context-back-link.svelte';
 	import TransactionForm from '$lib/components/transactions/transaction-form.svelte';
+	import { Dialog } from '$lib/components/ui/dialog';
 	import { validateTransactionForm } from '$lib/client/transaction-form';
 	import {
 		AlertDialog,
@@ -18,22 +19,28 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	function getInitialTransactionData() {
+		return { transaction: data.transaction, photos: data.photos ?? [] };
+	}
+	const initialData = getInitialTransactionData();
+	const initialTransaction = initialData.transaction;
+	const initialPhotos = initialData.photos;
 
 	let type = $state<'income' | 'expense'>(
-		(data.transaction?.type as 'income' | 'expense') || 'expense'
+		(initialTransaction?.type as 'income' | 'expense') || 'expense'
 	);
-	let amount = $state(data.transaction?.amount?.toString() || '');
-	let categoryId = $state(data.transaction?.categoryId || '');
-	let accountId = $state(data.transaction?.accountId || '');
-	let date = $state(data.transaction?.date || '');
-	let description = $state(data.transaction?.description || '');
-	let referenceNumber = $state(data.transaction?.referenceNumber || '');
-	let notes = $state(data.transaction?.notes || '');
+	let amount = $state(initialTransaction?.amount?.toString() || '');
+	let categoryId = $state(initialTransaction?.categoryId || '');
+	let accountId = $state(initialTransaction?.accountId || '');
+	let date = $state(initialTransaction?.date || '');
+	let description = $state(initialTransaction?.description || '');
+	let referenceNumber = $state(initialTransaction?.referenceNumber || '');
+	let notes = $state(initialTransaction?.notes || '');
 	let loading = $state(false);
 	let deleting = $state(false);
 	let showDeleteConfirm = $state(false);
 
-	let photos = $state(data.photos || []);
+	let photos = $state(initialPhotos);
 	let showPhotoSourceMenu = $state(false);
 	let fileInputRef = $state<HTMLInputElement | null>(null);
 	let showPhotoViewer = $state(false);
@@ -300,60 +307,54 @@
 	/>
 </div>
 
-{#if showPhotoSourceMenu}
-	<div
-		class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="photo-source-title"
-		tabindex="-1"
-		onclick={(event) => event.target === event.currentTarget && (showPhotoSourceMenu = false)}
-		onkeydown={(event) => event.key === 'Escape' && (showPhotoSourceMenu = false)}
-	>
-		<div class="w-full max-w-sm rounded-xl border bg-background p-6 shadow-xl">
-			<h2 id="photo-source-title" class="mb-4 text-lg font-semibold">Pilih sumber foto</h2>
-			<div class="space-y-3">
-				<button
-					type="button"
-					onclick={openCamera}
-					class="flex min-h-16 w-full items-center gap-3 rounded-lg border p-4 text-left hover:bg-secondary"
-					><Camera class="h-5 w-5 text-primary" /><span
-						><span class="block font-medium">Kamera</span><span
-							class="block text-xs text-muted-foreground">Ambil foto langsung</span
-						></span
-					></button
-				>
-				<button
-					type="button"
-					onclick={openGallery}
-					class="flex min-h-16 w-full items-center gap-3 rounded-lg border p-4 text-left hover:bg-secondary"
-					><Image class="h-5 w-5 text-primary" /><span
-						><span class="block font-medium">Galeri</span><span
-							class="block text-xs text-muted-foreground">Pilih dari galeri</span
-						></span
-					></button
-				>
-			</div>
-			<button
-				type="button"
-				onclick={() => (showPhotoSourceMenu = false)}
-				class="mt-4 min-h-11 w-full text-sm text-muted-foreground hover:text-foreground"
-				>Batal</button
-			>
-		</div>
+<Dialog
+	open={showPhotoSourceMenu}
+	onopenchange={(open) => (showPhotoSourceMenu = open)}
+	labelledby="photo-source-title"
+	overlayClass="z-[60]"
+	class="max-w-sm rounded-xl bg-background"
+>
+	<h2 id="photo-source-title" class="mb-4 text-lg font-semibold">Pilih sumber foto</h2>
+	<div class="space-y-3">
+		<button
+			type="button"
+			onclick={openCamera}
+			class="flex min-h-16 w-full items-center gap-3 rounded-lg border p-4 text-left hover:bg-secondary"
+			><Camera class="h-5 w-5 text-primary" /><span
+				><span class="block font-medium">Kamera</span><span
+					class="block text-xs text-muted-foreground">Ambil foto langsung</span
+				></span
+			></button
+		>
+		<button
+			type="button"
+			onclick={openGallery}
+			class="flex min-h-16 w-full items-center gap-3 rounded-lg border p-4 text-left hover:bg-secondary"
+			><Image class="h-5 w-5 text-primary" /><span
+				><span class="block font-medium">Galeri</span><span
+					class="block text-xs text-muted-foreground">Pilih dari galeri</span
+				></span
+			></button
+		>
 	</div>
-{/if}
+	<button
+		type="button"
+		onclick={() => (showPhotoSourceMenu = false)}
+		class="mt-4 min-h-11 w-full text-sm text-muted-foreground hover:text-foreground">Batal</button
+	>
+</Dialog>
 
 {#if showPhotoViewer && photos[selectedPhotoIndex]}
-	<div
-		class="fixed inset-0 z-[60] flex items-center justify-center bg-black"
-		role="dialog"
-		aria-modal="true"
-		aria-label="Lihat foto nota"
-		tabindex="-1"
-		onkeydown={(event) => event.key === 'Escape' && (showPhotoViewer = false)}
+	<Dialog
+		open={showPhotoViewer}
+		onopenchange={(open) => (showPhotoViewer = open)}
+		ariaLabel="Lihat foto nota"
+		closeOnOutsideClick={false}
+		overlayClass="z-[60] bg-black p-0"
+		class="relative flex h-full w-full max-w-none items-center justify-center rounded-none border-0 bg-black p-0 shadow-none"
 	>
 		<button
+			data-dialog-initial-focus
 			type="button"
 			onclick={() => (showPhotoViewer = false)}
 			class="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/10"
@@ -380,7 +381,7 @@
 			class="max-h-full max-w-full object-contain"
 		/>
 		<p class="absolute bottom-4 text-sm text-white">{selectedPhotoIndex + 1} / {photos.length}</p>
-	</div>
+	</Dialog>
 {/if}
 
 <AlertDialog

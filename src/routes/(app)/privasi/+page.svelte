@@ -22,7 +22,7 @@
 		</div>
 	</header>
 
-	<main class="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
+	<div class="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
 		<section class="space-y-2 rounded-xl border bg-card p-5">
 			<h2 class="font-semibold">Ringkasan</h2>
 			<p class="text-sm leading-6 text-muted-foreground">
@@ -96,5 +96,5 @@
 			Jangan masukkan data pribadi yang tidak diperlukan untuk pembukuan. Gunakan kata sandi yang
 			unik dan keluar dari aplikasi saat memakai perangkat bersama.
 		</p>
-	</main>
+	</div>
 </div>

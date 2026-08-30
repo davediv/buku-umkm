@@ -18,7 +18,7 @@
 - [x] **UX-ARCH-11:** Correct the Utang/Piutang journey.
 - [x] **UX-ARCH-12:** Never conflate error, empty, offline, and success states.
 - [x] **UX-ARCH-13:** Standardize navigation continuity and URL state.
-- [ ] **UX-ARCH-14:** Adopt accessible interaction primitives and responsive data patterns.
+- [x] **UX-ARCH-14:** Adopt accessible interaction primitives and responsive data patterns.
 
 A recommendation is checked only after its implementation, regression coverage, relevant validation commands, and documentation update are committed together.
 

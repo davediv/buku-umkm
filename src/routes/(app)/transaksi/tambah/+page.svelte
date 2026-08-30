@@ -10,6 +10,7 @@
 	} from '$lib/client/transaction-draft';
 	import { validateTransactionForm } from '$lib/client/transaction-form';
 	import TransactionForm from '$lib/components/transactions/transaction-form.svelte';
+	import { Dialog } from '$lib/components/ui/dialog';
 	import { toast } from '$lib/components/ui/toast';
 	import { todayInJakarta } from '$lib/shared/dates';
 	import { compressImage } from '$lib/utils';
@@ -258,7 +259,7 @@
 	</header>
 
 	{#if savedTransactionId}
-		<main class="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 p-4 md:p-6">
+		<div class="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 p-4 md:p-6">
 			{#if photos.length > 0}
 				<section
 					class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950"
@@ -343,7 +344,7 @@
 				class="min-h-11 text-center text-sm text-primary hover:underline"
 				>Lihat transaksi yang tersimpan</a
 			>
-		</main>
+		</div>
 	{:else}
 		{#snippet draftNotice()}
 			<div
@@ -441,46 +442,39 @@
 	{/if}
 </div>
 
-{#if showPhotoSourceMenu}
-	<div
-		class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="photo-source-title"
-		tabindex="-1"
-		onclick={(event) => event.target === event.currentTarget && (showPhotoSourceMenu = false)}
-		onkeydown={(event) => event.key === 'Escape' && (showPhotoSourceMenu = false)}
-	>
-		<div class="w-full max-w-sm rounded-xl border bg-background p-6 shadow-xl">
-			<h2 id="photo-source-title" class="mb-4 text-lg font-semibold">Pilih sumber foto</h2>
-			<div class="space-y-3">
-				<button
-					type="button"
-					onclick={openCamera}
-					class="flex min-h-16 w-full items-center gap-3 rounded-lg border p-4 text-left hover:bg-secondary"
-					><Camera class="h-5 w-5 text-primary" /><span
-						><span class="block font-medium">Kamera</span><span
-							class="block text-xs text-muted-foreground">Ambil foto langsung</span
-						></span
-					></button
-				>
-				<button
-					type="button"
-					onclick={openGallery}
-					class="flex min-h-16 w-full items-center gap-3 rounded-lg border p-4 text-left hover:bg-secondary"
-					><Image class="h-5 w-5 text-primary" /><span
-						><span class="block font-medium">Galeri</span><span
-							class="block text-xs text-muted-foreground">Pilih dari galeri</span
-						></span
-					></button
-				>
-			</div>
-			<button
-				type="button"
-				onclick={() => (showPhotoSourceMenu = false)}
-				class="mt-4 min-h-11 w-full text-sm text-muted-foreground hover:text-foreground"
-				>Batal</button
-			>
-		</div>
+<Dialog
+	open={showPhotoSourceMenu}
+	onopenchange={(open) => (showPhotoSourceMenu = open)}
+	labelledby="photo-source-title"
+	overlayClass="z-[60]"
+	class="max-w-sm rounded-xl bg-background"
+>
+	<h2 id="photo-source-title" class="mb-4 text-lg font-semibold">Pilih sumber foto</h2>
+	<div class="space-y-3">
+		<button
+			type="button"
+			onclick={openCamera}
+			class="flex min-h-16 w-full items-center gap-3 rounded-lg border p-4 text-left hover:bg-secondary"
+			><Camera class="h-5 w-5 text-primary" /><span
+				><span class="block font-medium">Kamera</span><span
+					class="block text-xs text-muted-foreground">Ambil foto langsung</span
+				></span
+			></button
+		>
+		<button
+			type="button"
+			onclick={openGallery}
+			class="flex min-h-16 w-full items-center gap-3 rounded-lg border p-4 text-left hover:bg-secondary"
+			><Image class="h-5 w-5 text-primary" /><span
+				><span class="block font-medium">Galeri</span><span
+					class="block text-xs text-muted-foreground">Pilih dari galeri</span
+				></span
+			></button
+		>
 	</div>
-{/if}
+	<button
+		type="button"
+		onclick={() => (showPhotoSourceMenu = false)}
+		class="mt-4 min-h-11 w-full text-sm text-muted-foreground hover:text-foreground">Batal</button
+	>
+</Dialog>

@@ -14,6 +14,8 @@
 		ArrowLeft
 	} from '@lucide/svelte';
 	import OperationStatus from '$lib/components/operation-status.svelte';
+	import { Dialog } from '$lib/components/ui/dialog';
+	import { TabList } from '$lib/components/ui/tabs';
 	import {
 		AlertDialog,
 		AlertDialogTitle,
@@ -256,9 +258,14 @@
 
 	<!-- Tab Navigation -->
 	<div class="border-b px-4 pt-4">
-		<div class="flex gap-1 bg-muted p-1 rounded-lg">
+		<TabList label="Jenis template" class="flex gap-1 bg-muted p-1 rounded-lg">
 			<a
+				id="template-income-tab"
 				href={incomeHref}
+				role="tab"
+				aria-selected={activeTab === 'income'}
+				aria-controls="template-panel"
+				tabindex={activeTab === 'income' ? 0 : -1}
 				class="flex-1 py-2 px-4 rounded-md font-medium transition-all {activeTab === 'income'
 					? 'bg-green-500 text-white'
 					: 'text-muted-foreground hover:text-foreground'}"
@@ -266,18 +273,29 @@
 				Pemasukan
 			</a>
 			<a
+				id="template-expense-tab"
 				href={expenseHref}
+				role="tab"
+				aria-selected={activeTab === 'expense'}
+				aria-controls="template-panel"
+				tabindex={activeTab === 'expense' ? 0 : -1}
 				class="flex-1 py-2 px-4 rounded-md font-medium transition-all {activeTab === 'expense'
 					? 'bg-red-500 text-white'
 					: 'text-muted-foreground hover:text-foreground'}"
 			>
 				Pengeluaran
 			</a>
-		</div>
+		</TabList>
 	</div>
 
 	<!-- Template List -->
-	<div class="flex-1 overflow-y-auto p-4">
+	<div
+		id="template-panel"
+		role="tabpanel"
+		aria-labelledby={`template-${activeTab}-tab`}
+		tabindex="0"
+		class="flex-1 overflow-y-auto p-4"
+	>
 		{#if operationStatus && !showModal}
 			<div class="mb-4">
 				<OperationStatus
@@ -383,110 +401,112 @@
 </div>
 
 <!-- Modal -->
-{#if showModal}
-	<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-		<div class="bg-white border rounded-lg shadow-xl w-full max-w-md">
-			<div class="flex items-center justify-between p-4 border-b">
-				<h2 class="text-lg font-semibold">
-					{editingTemplate ? 'Edit Template' : 'Tambah Template'}
-				</h2>
-				<button
-					type="button"
-					onclick={closeModal}
-					class="p-2 hover:bg-secondary rounded-full"
-					aria-label="Tutup"
-				>
-					<X class="w-5 h-5" />
-				</button>
-			</div>
-
-			<form
-				method="POST"
-				action={editingTemplate ? '?/update' : '?/create'}
-				use:enhance={handleSubmit}
-				class="p-4 space-y-4"
-			>
-				{#if operationStatus}
-					<OperationStatus kind={operationStatus.kind} message={operationStatus.message} />
-				{/if}
-				{#if editingTemplate}
-					<input type="hidden" name="id" value={editingTemplate.id} />
-				{/if}
-
-				<div class="space-y-2">
-					<label for="name" class="text-sm font-medium">Nama Template</label>
-					<input
-						id="name"
-						name="name"
-						type="text"
-						bind:value={name}
-						placeholder="Contoh: Penjualan Tunai"
-						class="w-full p-3 bg-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-						required
-					/>
-				</div>
-
-				<div class="space-y-2">
-					<label for="type" class="text-sm font-medium">Tipe Transaksi</label>
-					<select
-						id="type"
-						name="type"
-						bind:value={type}
-						class="w-full p-3 bg-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-						required
-					>
-						<option value="income">Pemasukan</option>
-						<option value="expense">Pengeluaran</option>
-					</select>
-				</div>
-
-				<div class="space-y-2">
-					<label for="categoryId" class="text-sm font-medium">Kategori (Opsional)</label>
-					<select
-						id="categoryId"
-						name="categoryId"
-						bind:value={categoryId}
-						class="w-full p-3 bg-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-					>
-						<option value="">Tanpa Kategori</option>
-						{#each formCategories as cat (cat.id)}
-							<option value={cat.id}>{cat.name}</option>
-						{/each}
-					</select>
-				</div>
-
-				<div class="space-y-2">
-					<label for="description" class="text-sm font-medium">Keterangan (Opsional)</label>
-					<input
-						id="description"
-						name="description"
-						type="text"
-						bind:value={description}
-						placeholder="Contoh: Penjualan makanan secara tunai"
-						class="w-full p-3 bg-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-					/>
-				</div>
-
-				<div class="flex gap-3 pt-2">
-					<button
-						type="button"
-						onclick={closeModal}
-						class="flex-1 py-3 border rounded-lg font-medium hover:bg-secondary transition-colors"
-					>
-						Batal
-					</button>
-					<button
-						type="submit"
-						disabled={loading}
-						class="flex-1 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-					>
-						{loading ? 'Menyimpan...' : editingTemplate ? 'Perbarui' : 'Simpan'}
-					</button>
-				</div>
-			</form>
-		</div>
+<Dialog
+	open={showModal}
+	onopenchange={(open) => !open && closeModal()}
+	labelledby="template-modal-title"
+	class="p-0"
+>
+	<div class="flex items-center justify-between p-4 border-b">
+		<h2 id="template-modal-title" class="text-lg font-semibold">
+			{editingTemplate ? 'Edit Template' : 'Tambah Template'}
+		</h2>
+		<button
+			type="button"
+			onclick={closeModal}
+			class="p-2 hover:bg-secondary rounded-full"
+			aria-label="Tutup"
+		>
+			<X class="w-5 h-5" />
+		</button>
 	</div>
-{/if}
+
+	<form
+		method="POST"
+		action={editingTemplate ? '?/update' : '?/create'}
+		use:enhance={handleSubmit}
+		class="p-4 space-y-4"
+	>
+		{#if operationStatus}
+			<OperationStatus kind={operationStatus.kind} message={operationStatus.message} />
+		{/if}
+		{#if editingTemplate}
+			<input type="hidden" name="id" value={editingTemplate.id} />
+		{/if}
+
+		<div class="space-y-2">
+			<label for="name" class="text-sm font-medium">Nama Template</label>
+			<input
+				data-dialog-initial-focus
+				id="name"
+				name="name"
+				type="text"
+				bind:value={name}
+				placeholder="Contoh: Penjualan Tunai"
+				class="w-full p-3 bg-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+				required
+			/>
+		</div>
+
+		<div class="space-y-2">
+			<label for="type" class="text-sm font-medium">Tipe Transaksi</label>
+			<select
+				id="type"
+				name="type"
+				bind:value={type}
+				class="w-full p-3 bg-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+				required
+			>
+				<option value="income">Pemasukan</option>
+				<option value="expense">Pengeluaran</option>
+			</select>
+		</div>
+
+		<div class="space-y-2">
+			<label for="categoryId" class="text-sm font-medium">Kategori (Opsional)</label>
+			<select
+				id="categoryId"
+				name="categoryId"
+				bind:value={categoryId}
+				class="w-full p-3 bg-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+			>
+				<option value="">Tanpa Kategori</option>
+				{#each formCategories as cat (cat.id)}
+					<option value={cat.id}>{cat.name}</option>
+				{/each}
+			</select>
+		</div>
+
+		<div class="space-y-2">
+			<label for="description" class="text-sm font-medium">Keterangan (Opsional)</label>
+			<input
+				id="description"
+				name="description"
+				type="text"
+				bind:value={description}
+				placeholder="Contoh: Penjualan makanan secara tunai"
+				class="w-full p-3 bg-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+			/>
+		</div>
+
+		<div class="flex gap-3 pt-2">
+			<button
+				type="button"
+				onclick={closeModal}
+				class="flex-1 py-3 border rounded-lg font-medium hover:bg-secondary transition-colors"
+			>
+				Batal
+			</button>
+			<button
+				type="submit"
+				disabled={loading}
+				class="flex-1 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+			>
+				{loading ? 'Menyimpan...' : editingTemplate ? 'Perbarui' : 'Simpan'}
+			</button>
+		</div>
+	</form>
+</Dialog>
 
 <!-- Delete Confirmation Dialog -->
 <AlertDialog

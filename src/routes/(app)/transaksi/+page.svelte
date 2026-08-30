@@ -342,7 +342,93 @@
 
 	{#if data.transactions.length > 0}
 		<div class="overflow-hidden rounded-xl border bg-card">
-			<div class="overflow-x-auto">
+			<div class="flex items-center justify-between gap-2 border-b p-3 md:hidden">
+				<span class="text-xs font-medium text-muted-foreground">Urutkan berdasarkan</span>
+				<div class="flex gap-1">
+					<a
+						href={sortHref('date')}
+						class="inline-flex min-h-10 items-center rounded-md px-3 text-xs font-medium {query.sortBy ===
+						'date'
+							? 'bg-primary/10 text-primary'
+							: 'hover:bg-secondary'}"
+					>
+						Tanggal {query.sortBy === 'date' ? (query.sortOrder === 'desc' ? '↓' : '↑') : ''}
+					</a>
+					<a
+						href={sortHref('amount')}
+						class="inline-flex min-h-10 items-center rounded-md px-3 text-xs font-medium {query.sortBy ===
+						'amount'
+							? 'bg-primary/10 text-primary'
+							: 'hover:bg-secondary'}"
+					>
+						Jumlah {query.sortBy === 'amount' ? (query.sortOrder === 'desc' ? '↓' : '↑') : ''}
+					</a>
+				</div>
+			</div>
+
+			<div class="divide-y md:hidden">
+				{#each data.transactions as transaction (transaction.id)}
+					<article class="p-4">
+						<div class="flex items-start justify-between gap-3">
+							<div class="flex min-w-0 items-center gap-2">
+								<span
+									class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm"
+									style="background-color: {transaction.category?.color || '#e5e7eb'}"
+								>
+									{transaction.category?.icon || (transaction.type === 'transfer' ? '↔' : '📁')}
+								</span>
+								<div class="min-w-0">
+									<h2 class="truncate text-sm font-medium">
+										{transaction.category?.name ||
+											(transaction.type === 'transfer' ? 'Transfer' : 'Tanpa kategori')}
+									</h2>
+									<p class="text-xs text-muted-foreground">{formatDate(transaction.date)}</p>
+								</div>
+							</div>
+							<p
+								class="shrink-0 text-sm font-semibold {transaction.type === 'income'
+									? 'text-green-700'
+									: transaction.type === 'expense'
+										? 'text-red-700'
+										: ''}"
+							>
+								{formatAmount(transaction.amount, transaction.type)}
+							</p>
+						</div>
+						<dl class="mt-3 grid gap-1 text-xs">
+							<div class="flex gap-2">
+								<dt class="w-20 shrink-0 text-muted-foreground">Rekening</dt>
+								<dd class="min-w-0 truncate">
+									{transaction.account?.name || '-'}{transaction.toAccount?.name
+										? ` → ${transaction.toAccount.name}`
+										: ''}
+								</dd>
+							</div>
+							<div class="flex gap-2">
+								<dt class="w-20 shrink-0 text-muted-foreground">Keterangan</dt>
+								<dd class="min-w-0 break-words">{transaction.description || '-'}</dd>
+							</div>
+						</dl>
+						<div class="mt-3 flex justify-end gap-2 border-t pt-3">
+							<a
+								href={getTransactionDetailHref(transaction.id, query)}
+								class="inline-flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-secondary"
+							>
+								<Pencil class="h-4 w-4" />Edit
+							</a>
+							<button
+								type="button"
+								onclick={() => (showDeleteConfirm = transaction.id)}
+								class="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-medium text-destructive hover:bg-destructive/10"
+							>
+								<Trash2 class="h-4 w-4" />Hapus
+							</button>
+						</div>
+					</article>
+				{/each}
+			</div>
+
+			<div class="hidden overflow-x-auto md:block">
 				<table class="w-full min-w-[760px]">
 					<thead>
 						<tr class="border-b bg-muted/50">
