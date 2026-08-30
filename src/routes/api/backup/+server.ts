@@ -97,6 +97,8 @@ export const POST: RequestHandler = async ({ locals }) => {
 				isActive: a.isActive,
 				parentId: a.parentId,
 				balance: a.balance,
+				openingBalance: a.openingBalance,
+				openingDate: a.openingDate,
 				createdAt: a.createdAt?.toISOString() ?? null,
 				updatedAt: a.updatedAt?.toISOString() ?? null
 			})),

@@ -34,6 +34,7 @@
 	} from '$lib/utils/spt-export';
 	import type { PageData } from './$types';
 	import { toast } from '$lib/components/ui/toast';
+	import { todayInJakarta } from '$lib/shared/dates';
 
 	type ReportType = 'laba-rugi' | 'neraca' | 'catatan' | 'spt-tahunan';
 	type Period = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
@@ -43,6 +44,7 @@
 
 	// State for UI interactions only
 	let loading = $state(false);
+	const today = todayInJakarta();
 
 	// SPT Tahunan state
 	let sptYear = $state(new Date().getFullYear());
@@ -56,7 +58,7 @@
 	// Use data directly - no need for redundant state
 	let selectedReportType = $derived<ReportType>((data.reportType as ReportType) || 'laba-rugi');
 	let selectedPeriod = $derived<Period>((data.period as Period) || 'monthly');
-	let selectedDate = $derived(data.selectedDate || new Date().toISOString().split('T')[0]);
+	let selectedDate = $derived(data.selectedDate || today);
 	let selectedCatatanPeriod = $derived<CatatanPeriod>(
 		(data.catatanPeriod as CatatanPeriod) || 'monthly'
 	);
@@ -385,6 +387,7 @@
 					<input
 						type="date"
 						bind:value={selectedDate}
+						max={today}
 						onchange={changeDate}
 						class="bg-transparent border-none text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
 					/>
@@ -658,6 +661,7 @@
 				<!-- Date Label -->
 				<div class="text-center">
 					<p class="text-sm text-muted-foreground">Per Tanggal {data.balanceSheet.dateLabel}</p>
+					<p class="mt-1 text-xs text-muted-foreground">{data.balanceSheet.methodology}</p>
 				</div>
 
 				{#if data.balanceSheet.assets.total === 0}

@@ -5,7 +5,7 @@ export const MAX_TRANSACTION_AMOUNT = 999_999_999_999;
 export const APP_VERSION = '0.0.1';
 
 // Backup schema version
-export const BACKUP_SCHEMA_VERSION = '1.0.0';
+export const BACKUP_SCHEMA_VERSION = '1.1.0';
 
 // Business types
 export const BUSINESS_TYPES = [

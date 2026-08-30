@@ -170,6 +170,8 @@ export const chartOfAccount = sqliteTable(
 		isActive: integer('is_active', { mode: 'boolean' }).default(true).notNull(),
 		parentId: text('parent_id'), // For hierarchical accounts
 		balance: integer('balance').default(0).notNull(), // Current balance in Rupiah (integer)
+		openingBalance: integer('opening_balance').default(0).notNull(),
+		openingDate: text('opening_date'), // ISO 8601 date when the opening balance becomes effective
 		...timestampColumns
 	},
 	(table) => [

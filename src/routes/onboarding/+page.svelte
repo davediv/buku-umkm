@@ -17,6 +17,7 @@
 		MoreHorizontal
 	} from '@lucide/svelte';
 	import { getBusinessTypeLabel } from '$lib/utils';
+	import { todayInJakarta } from '$lib/shared/dates';
 
 	// Wizard state
 	let currentStep = $state(1);
@@ -29,6 +30,7 @@
 	let businessType = $state('');
 	let accountName = $state('');
 	let openingBalance = $state(0);
+	let openingDate = $state(todayInJakarta());
 
 	// Validation errors
 	let errors = $state<Record<string, string>>({});
@@ -104,6 +106,9 @@
 		if (openingBalance < 0) {
 			errors.openingBalance = 'Saldo tidak boleh negatif';
 		}
+		if (!openingDate || openingDate > todayInJakarta()) {
+			errors.openingDate = 'Tanggal saldo awal tidak valid';
+		}
 		return Object.keys(errors).length === 0;
 	}
 
@@ -155,6 +160,7 @@
 			formData.set('accountName', accountName);
 			formData.set('accountType', selectedAccountType);
 			formData.set('openingBalance', String(openingBalance));
+			formData.set('openingDate', openingDate);
 			const response = await fetch('?/complete', { method: 'POST', body: formData });
 			const result = deserialize(await response.text());
 
@@ -179,7 +185,7 @@
 	// Computed properties
 	let canProceedStep1 = $derived(businessName.trim() && ownerName.trim());
 	let canProceedStep2 = $derived(!!businessType);
-	let canFinish = $derived(accountName.trim() && openingBalance >= 0);
+	let canFinish = $derived(accountName.trim() && openingBalance >= 0 && !!openingDate);
 </script>
 
 <svelte:head>
@@ -408,6 +414,21 @@
 							</p>
 							{#if errors.openingBalance}
 								<p class="text-sm text-destructive">{errors.openingBalance}</p>
+							{/if}
+						</div>
+
+						<div class="space-y-2">
+							<Label for="openingDate">Tanggal Saldo Awal</Label>
+							<Input
+								id="openingDate"
+								type="date"
+								bind:value={openingDate}
+								max={todayInJakarta()}
+								error={!!errors.openingDate}
+							/>
+							<p class="text-sm text-muted-foreground">Tanggal saat saldo awal tersebut berlaku</p>
+							{#if errors.openingDate}
+								<p class="text-sm text-destructive">{errors.openingDate}</p>
 							{/if}
 						</div>
 					</div>

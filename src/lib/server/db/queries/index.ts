@@ -1,5 +1,6 @@
 import { eq, and, gte, lte, lt, inArray, sql } from 'drizzle-orm';
 import type { SQLiteDb } from '../index';
+import { todayInJakarta } from '$lib/shared/dates';
 import {
 	chartOfAccount,
 	category,
@@ -82,7 +83,9 @@ export const chartOfAccountQueries = {
 			parentId: data.parentId ?? null,
 			isSystem: false,
 			isActive: true,
-			balance: 0
+			balance: 0,
+			openingBalance: 0,
+			openingDate: todayInJakarta()
 		});
 	},
 

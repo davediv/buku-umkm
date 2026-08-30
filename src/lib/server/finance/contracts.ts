@@ -1,4 +1,5 @@
 import { MAX_TRANSACTION_AMOUNT } from '$lib/constants';
+import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
 
 export class FinanceError extends Error {
 	constructor(
@@ -110,25 +111,12 @@ function money(value: unknown, label = 'Jumlah'): number {
 	return parsed;
 }
 
-function jakartaToday(): string {
-	return new Intl.DateTimeFormat('en-CA', {
-		timeZone: 'Asia/Jakarta',
-		year: 'numeric',
-		month: '2-digit',
-		day: '2-digit'
-	}).format(new Date());
-}
-
 function date(value: unknown, label: string, allowFuture = false): string {
 	const normalized = requiredString(value, label, 10);
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
-		throw new FinanceError(`Format ${label.toLowerCase()} harus YYYY-MM-DD`);
-	}
-	const parsed = new Date(`${normalized}T00:00:00.000Z`);
-	if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== normalized) {
+	if (!isIsoCalendarDate(normalized)) {
 		throw new FinanceError(`${label} tidak valid`);
 	}
-	if (!allowFuture && normalized > jakartaToday()) {
+	if (!allowFuture && normalized > todayInJakarta()) {
 		throw new FinanceError(`${label} tidak boleh di masa depan`);
 	}
 	return normalized;

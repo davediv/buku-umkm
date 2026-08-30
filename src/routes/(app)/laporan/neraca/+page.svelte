@@ -10,13 +10,15 @@
 		AlertCircle
 	} from '@lucide/svelte';
 	import { formatRupiah } from '$lib/utils';
+	import { todayInJakarta } from '$lib/shared/dates';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
 	// State
 	let loading = $state(false);
-	let selectedDate = $state(new Date().toISOString().split('T')[0]);
+	const today = todayInJakarta();
+	let selectedDate = $state(today);
 
 	// Keep selectedDate in sync with data after navigation
 	$effect(() => {
@@ -127,6 +129,7 @@
 				<input
 					type="date"
 					bind:value={selectedDate}
+					max={today}
 					onchange={handleDateInput}
 					class="bg-transparent border-none text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
 				/>
@@ -142,6 +145,7 @@
 			<!-- Date Label -->
 			<div class="text-center">
 				<p class="text-sm text-muted-foreground">Per Tanggal {data.balanceSheet.dateLabel}</p>
+				<p class="mt-1 text-xs text-muted-foreground">{data.balanceSheet.methodology}</p>
 			</div>
 
 			<!-- Balance Sheet -->

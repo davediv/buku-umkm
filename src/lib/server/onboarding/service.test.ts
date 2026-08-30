@@ -15,6 +15,7 @@ function validFormData(): FormData {
 	formData.set('accountName', 'Kas Utama');
 	formData.set('accountType', 'kas');
 	formData.set('openingBalance', '1500000');
+	formData.set('openingDate', '2026-01-01');
 	return formData;
 }
 
@@ -59,7 +60,8 @@ describe('parseOnboardingForm', () => {
 				businessType: 'warung_makan',
 				accountName: 'Kas Utama',
 				accountType: 'kas',
-				openingBalance: 1_500_000
+				openingBalance: 1_500_000,
+				openingDate: '2026-01-01'
 			}
 		});
 	});
@@ -68,13 +70,15 @@ describe('parseOnboardingForm', () => {
 		const formData = validFormData();
 		formData.set('businessType', 'invalid');
 		formData.set('openingBalance', '10.5');
+		formData.set('openingDate', '9999-01-01');
 
 		const result = parseOnboardingForm(formData);
 		expect(result.success).toBe(false);
 		if (!result.success) {
 			expect(result.errors).toMatchObject({
 				businessType: expect.any(String),
-				openingBalance: expect.any(String)
+				openingBalance: expect.any(String),
+				openingDate: expect.any(String)
 			});
 		}
 	});
