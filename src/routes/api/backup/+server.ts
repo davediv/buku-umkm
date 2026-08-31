@@ -46,8 +46,8 @@ export const POST: RequestHandler = async ({ locals }) => {
 			categoryQueries.findAll(db, userId),
 			// Transactions
 			transactionQueries.findForExport(db, userId),
-			// Debts
-			debtQueries.findAll(db, userId),
+			// Debts (payments are loaded separately below)
+			debtQueries.findAllSummaries(db, userId),
 			// Debt payments - use direct query as no query helper exists
 			db.query.debtPayment.findMany({
 				where: (table, { eq }) => eq(table.userId, userId)

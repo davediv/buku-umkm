@@ -1,6 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SQLiteDb } from '../index';
-import { dashboardQueries } from './index';
+import { dashboardQueries, debtQueries } from './index';
+
+describe('debtQueries list projections', () => {
+	it('omits payment relations from summary lists while preserving the full-list contract', async () => {
+		const findMany = vi.fn().mockResolvedValue([]);
+		const db = { query: { debt: { findMany } } } as unknown as SQLiteDb;
+
+		await debtQueries.findAllSummaries(db, 'user-1');
+		expect(findMany.mock.calls[0]?.[0]).not.toHaveProperty('with');
+
+		await debtQueries.findAll(db, 'user-1');
+		expect(findMany.mock.calls[1]?.[0]).toMatchObject({ with: { payments: true } });
+	});
+});
 
 describe('dashboardQueries.getCashFlow', () => {
 	beforeEach(() => {
