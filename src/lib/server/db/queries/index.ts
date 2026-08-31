@@ -1025,40 +1025,47 @@ export const dashboardQueries = {
 		}
 
 		const earliestTransactionDate = [startOfYear, today, periodStart].sort()[0];
-		const [accountRows, transactionRows, debtRows, taxRows] = await Promise.all([
-			db
-				.select({
-					assets: sql<number>`COALESCE(SUM(CASE WHEN ${chartOfAccount.type} = 'asset' THEN ${chartOfAccount.balance} ELSE 0 END), 0)`,
-					liabilities: sql<number>`COALESCE(SUM(CASE WHEN ${chartOfAccount.type} = 'liability' THEN ${chartOfAccount.balance} ELSE 0 END), 0)`,
-					equity: sql<number>`COALESCE(SUM(CASE WHEN ${chartOfAccount.type} = 'equity' THEN ${chartOfAccount.balance} ELSE 0 END), 0)`
-				})
-				.from(chartOfAccount)
-				.where(eq(chartOfAccount.userId, userId)),
-			db
-				.select({
-					monthlyIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${startOfMonth} AND ${transaction.date} < ${endOfMonth} THEN ${transaction.amount} ELSE 0 END), 0)`,
-					monthlyExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${startOfMonth} AND ${transaction.date} < ${endOfMonth} THEN ${transaction.amount} ELSE 0 END), 0)`,
-					yearIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${startOfYear} THEN ${transaction.amount} ELSE 0 END), 0)`,
-					yearExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${startOfYear} THEN ${transaction.amount} ELSE 0 END), 0)`,
-					todayIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${today} AND ${transaction.date} < ${tomorrowDate} THEN ${transaction.amount} ELSE 0 END), 0)`,
-					todayExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${today} AND ${transaction.date} < ${tomorrowDate} THEN ${transaction.amount} ELSE 0 END), 0)`,
-					periodIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${periodStart} AND ${transaction.date} < ${periodEnd} THEN ${transaction.amount} ELSE 0 END), 0)`,
-					periodExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${periodStart} AND ${transaction.date} < ${periodEnd} THEN ${transaction.amount} ELSE 0 END), 0)`
-				})
-				.from(transaction)
-				.where(and(eq(transaction.userId, userId), gte(transaction.date, earliestTransactionDate))),
-			db
-				.select({
-					piutang: sql<number>`COALESCE(SUM(CASE WHEN ${debt.type} = 'piutang' AND ${debt.status} = 'active' THEN ${debt.remainingAmount} ELSE 0 END), 0)`,
-					hutang: sql<number>`COALESCE(SUM(CASE WHEN ${debt.type} = 'hutang' AND ${debt.status} = 'active' THEN ${debt.remainingAmount} ELSE 0 END), 0)`,
-					activeCount: sql<number>`COALESCE(SUM(CASE WHEN ${debt.status} = 'active' THEN 1 ELSE 0 END), 0)`
-				})
-				.from(debt)
-				.where(eq(debt.userId, userId)),
-			db
-				.select({ count: sql<number>`COUNT(*)` })
-				.from(taxRecord)
-				.where(and(eq(taxRecord.userId, userId), eq(taxRecord.status, 'unpaid')))
+		const accountQuery = db
+			.select({
+				assets: sql<number>`COALESCE(SUM(CASE WHEN ${chartOfAccount.type} = 'asset' THEN ${chartOfAccount.balance} ELSE 0 END), 0)`,
+				liabilities: sql<number>`COALESCE(SUM(CASE WHEN ${chartOfAccount.type} = 'liability' THEN ${chartOfAccount.balance} ELSE 0 END), 0)`,
+				equity: sql<number>`COALESCE(SUM(CASE WHEN ${chartOfAccount.type} = 'equity' THEN ${chartOfAccount.balance} ELSE 0 END), 0)`
+			})
+			.from(chartOfAccount)
+			.where(eq(chartOfAccount.userId, userId));
+		const transactionQuery = db
+			.select({
+				monthlyIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${startOfMonth} AND ${transaction.date} < ${endOfMonth} THEN ${transaction.amount} ELSE 0 END), 0)`,
+				monthlyExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${startOfMonth} AND ${transaction.date} < ${endOfMonth} THEN ${transaction.amount} ELSE 0 END), 0)`,
+				yearIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${startOfYear} THEN ${transaction.amount} ELSE 0 END), 0)`,
+				yearExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${startOfYear} THEN ${transaction.amount} ELSE 0 END), 0)`,
+				todayIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${today} AND ${transaction.date} < ${tomorrowDate} THEN ${transaction.amount} ELSE 0 END), 0)`,
+				todayExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${today} AND ${transaction.date} < ${tomorrowDate} THEN ${transaction.amount} ELSE 0 END), 0)`,
+				periodIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${periodStart} AND ${transaction.date} < ${periodEnd} THEN ${transaction.amount} ELSE 0 END), 0)`,
+				periodExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${periodStart} AND ${transaction.date} < ${periodEnd} THEN ${transaction.amount} ELSE 0 END), 0)`
+			})
+			.from(transaction)
+			.where(and(eq(transaction.userId, userId), gte(transaction.date, earliestTransactionDate)));
+		const debtQuery = db
+			.select({
+				piutang: sql<number>`COALESCE(SUM(CASE WHEN ${debt.type} = 'piutang' AND ${debt.status} = 'active' THEN ${debt.remainingAmount} ELSE 0 END), 0)`,
+				hutang: sql<number>`COALESCE(SUM(CASE WHEN ${debt.type} = 'hutang' AND ${debt.status} = 'active' THEN ${debt.remainingAmount} ELSE 0 END), 0)`,
+				activeCount: sql<number>`COALESCE(SUM(CASE WHEN ${debt.status} = 'active' THEN 1 ELSE 0 END), 0)`
+			})
+			.from(debt)
+			.where(eq(debt.userId, userId));
+		const taxQuery = db
+			.select({ count: sql<number>`COUNT(*)` })
+			.from(taxRecord)
+			.where(and(eq(taxRecord.userId, userId), eq(taxRecord.status, 'unpaid')));
+
+		// D1 processes a batch through one connection and returns results in order,
+		// keeping the dashboard below the per-invocation connection limit.
+		const [accountRows, transactionRows, debtRows, taxRows] = await db.batch([
+			accountQuery,
+			transactionQuery,
+			debtQuery,
+			taxQuery
 		]);
 
 		const accounts = accountRows[0];
