@@ -3,6 +3,8 @@ import { transactionQueries, type TransactionListOptions } from '$lib/server/db/
 import { presentTransaction } from '$lib/server/finance/presenters';
 import { getTransactionPagination, type TransactionQuery } from '$lib/transactions/query';
 
+const MAX_SPECULATIVE_TRANSACTION_OFFSET = 1_000;
+
 function toDatabaseOptions(query: TransactionQuery): TransactionListOptions {
 	return {
 		type: query.type === 'all' ? undefined : query.type,
@@ -17,19 +19,27 @@ function toDatabaseOptions(query: TransactionQuery): TransactionListOptions {
 export async function getTransactionPage(db: SQLiteDb, userId: string, query: TransactionQuery) {
 	const filters = toDatabaseOptions(query);
 	const requestedOffset = (query.page - 1) * query.pageSize;
-	const [total, requestedTransactions] = await Promise.all([
-		transactionQueries.count(db, userId, filters),
-		transactionQueries.findAll(db, userId, {
-			...filters,
-			limit: query.pageSize,
-			offset: requestedOffset
-		})
-	]);
+	let total: number;
+	let requestedTransactions: Awaited<ReturnType<typeof transactionQueries.findAll>> | undefined;
+
+	if (requestedOffset <= MAX_SPECULATIVE_TRANSACTION_OFFSET) {
+		[total, requestedTransactions] = await Promise.all([
+			transactionQueries.count(db, userId, filters),
+			transactionQueries.findAll(db, userId, {
+				...filters,
+				limit: query.pageSize,
+				offset: requestedOffset
+			})
+		]);
+	} else {
+		// Count first so a manually edited page cannot trigger an unbounded,
+		// user-controlled OFFSET scan before pagination is clamped.
+		total = await transactionQueries.count(db, userId, filters);
+	}
+
 	const pagination = getTransactionPagination(total, query.page, query.pageSize);
-	// Preserve the clamped-page behavior for stale or manually edited URLs. This
-	// extra read only occurs when the requested page no longer exists.
 	const transactions =
-		pagination.offset === requestedOffset
+		requestedTransactions !== undefined && requestedOffset === pagination.offset
 			? requestedTransactions
 			: await transactionQueries.findAll(db, userId, {
 					...filters,

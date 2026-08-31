@@ -42,7 +42,7 @@ function transactionRecord() {
 afterEach(() => vi.restoreAllMocks());
 
 describe('transaction list service', () => {
-	it('counts the filtered dataset and fetches a valid page concurrently', async () => {
+	it('counts the filtered dataset and fetches a bounded page concurrently', async () => {
 		const countResult = deferred<number>();
 		const transactionsResult = deferred<ReturnType<typeof transactionRecord>[]>();
 		const count = vi.spyOn(transactionQueries, 'count').mockReturnValue(countResult.promise);
@@ -85,7 +85,33 @@ describe('transaction list service', () => {
 		expect(result.query.page).toBe(3);
 	});
 
-	it('refetches the clamped page when a requested page no longer exists', async () => {
+	it('clamps an extreme page before issuing its only page query', async () => {
+		const countResult = deferred<number>();
+		vi.spyOn(transactionQueries, 'count').mockReturnValue(countResult.promise);
+		const findAll = vi
+			.spyOn(transactionQueries, 'findAll')
+			.mockResolvedValue([transactionRecord()] as never);
+		const query = parseTransactionQuery(
+			new URLSearchParams('range=all&page=1000000&page_size=25'),
+			'2026-08-30'
+		);
+
+		const resultPromise = getTransactionPage(db, 'user-1', query);
+		expect(findAll).not.toHaveBeenCalled();
+		countResult.resolve(51);
+		const result = await resultPromise;
+
+		expect(findAll).toHaveBeenCalledOnce();
+		expect(findAll).toHaveBeenCalledWith(
+			db,
+			'user-1',
+			expect.objectContaining({ limit: 25, offset: 50 })
+		);
+		expect(result.transactions).toHaveLength(1);
+		expect(result.pagination).toMatchObject({ page: 3, totalPages: 3, total: 51 });
+	});
+
+	it('refetches a bounded stale page at its clamped offset', async () => {
 		vi.spyOn(transactionQueries, 'count').mockResolvedValue(51);
 		const findAll = vi
 			.spyOn(transactionQueries, 'findAll')
