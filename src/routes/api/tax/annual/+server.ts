@@ -2,13 +2,9 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { transaction } from '$lib/server/db/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { eq, and, gte, lt, sql } from 'drizzle-orm';
 import { calculateMonthlyTax } from '$lib/tax/engine';
-import {
-	calculateMonthlyRevenues,
-	getTaxRecordsForYear,
-	getTaxYearContext
-} from '$lib/tax/service';
+import { getTaxRecordsForYear, getTaxYearContext } from '$lib/tax/service';
 import { REVENUE_THRESHOLD_WP_OP, TAX_STATUS, TAXPAYER_TYPE } from '$lib/tax/config';
 import { INDONESIAN_MONTHS } from '$lib/tax/config';
 
@@ -40,28 +36,9 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	}
 
 	try {
-		// Get all income transactions for the specified year
 		const yearStartDate = `${year}-01-01`;
-		const yearEndDate = `${year}-12-31`;
-
-		const incomeTransactions = await db
-			.select({
-				date: transaction.date,
-				amount: transaction.amount
-			})
-			.from(transaction)
-			.where(
-				and(
-					eq(transaction.userId, userId),
-					eq(transaction.type, 'income'),
-					gte(transaction.date, yearStartDate),
-					lte(transaction.date, yearEndDate)
-				)
-			);
-
-		// Calculate monthly revenues
-		const recordedMonthlyRevenue = calculateMonthlyRevenues(incomeTransactions);
-		const context = await getTaxYearContext(db, userId, year, recordedMonthlyRevenue);
+		const yearEndDate = `${year + 1}-01-01`;
+		const context = await getTaxYearContext(db, userId, year);
 		const taxpayerType = context.eligibility.taxpayerType;
 		if (context.eligibility.status !== 'eligible' || !taxpayerType) {
 			return json(
@@ -74,8 +51,22 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		}
 		const monthlyRevenues = context.aggregatedMonthlyRevenue;
 
-		// Get tax records for the year (to get paid amounts)
-		const taxRecords = await getTaxRecordsForYear(db, userId, year);
+		// Payment records and the expense total are independent. Aggregate expenses
+		// in D1 instead of transferring every expense row to the Worker.
+		const [taxRecords, expenseRows] = await Promise.all([
+			getTaxRecordsForYear(db, userId, year),
+			db
+				.select({ total: sql<number>`COALESCE(SUM(${transaction.amount}), 0)` })
+				.from(transaction)
+				.where(
+					and(
+						eq(transaction.userId, userId),
+						eq(transaction.type, 'expense'),
+						gte(transaction.date, yearStartDate),
+						lt(transaction.date, yearEndDate)
+					)
+				)
+		]);
 
 		// Build monthly breakdown
 		const months: {
@@ -128,7 +119,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		const totalTaxableRevenue = months.reduce((sum, m) => sum + m.taxableRevenue, 0);
 		const totalTaxPaid = months.reduce((sum, m) => sum + m.paidAmount, 0);
 		const totalTaxDue = months.reduce((sum, m) => sum + m.taxAmount, 0);
-		const totalRecordedGrossRevenue = recordedMonthlyRevenue.reduce(
+		const totalRecordedGrossRevenue = context.recordedMonthlyRevenue.reduce(
 			(sum, amount) => sum + amount,
 			0
 		);
@@ -137,24 +128,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			0
 		);
 
-		// Get net income (profit/loss) for the year
-		// Query all expense transactions for the year
-		const expenseTransactions = await db
-			.select({
-				date: transaction.date,
-				amount: transaction.amount
-			})
-			.from(transaction)
-			.where(
-				and(
-					eq(transaction.userId, userId),
-					eq(transaction.type, 'expense'),
-					gte(transaction.date, yearStartDate),
-					lte(transaction.date, yearEndDate)
-				)
-			);
-
-		const totalExpenses = expenseTransactions.reduce((sum, t) => sum + t.amount, 0);
+		const totalExpenses = Number(expenseRows[0]?.total ?? 0);
 		const netIncome = totalRecordedGrossRevenue - totalExpenses;
 
 		// Build response

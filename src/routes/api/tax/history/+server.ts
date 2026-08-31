@@ -2,12 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { calculateAnnualTax, getThresholdInfo } from '$lib/tax/engine';
-import {
-	calculateMonthlyRevenues,
-	getTaxRecordsForYear,
-	getTaxYearContext,
-	getYearTransactions
-} from '$lib/tax/service';
+import { getTaxRecordsForYear, getTaxYearContext } from '$lib/tax/service';
 import { TAX_STATUS } from '$lib/tax/config';
 
 /**
@@ -37,10 +32,10 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			return json({ error: 'Invalid year parameter' }, { status: 400 });
 		}
 
-		const recordedMonthlyRevenue = calculateMonthlyRevenues(
-			await getYearTransactions(db, userId, year)
-		);
-		const context = await getTaxYearContext(db, userId, year, recordedMonthlyRevenue);
+		const [context, existingRecords] = await Promise.all([
+			getTaxYearContext(db, userId, year),
+			getTaxRecordsForYear(db, userId, year)
+		]);
 		const taxpayerType = context.eligibility.taxpayerType;
 		const calculationAvailable = context.eligibility.status === 'eligible' && taxpayerType !== null;
 		const monthlyRevenues = context.aggregatedMonthlyRevenue.map((revenue, index) => ({
@@ -54,8 +49,6 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			: null;
 
 		// Get existing tax records for this year
-		const existingRecords = await getTaxRecordsForYear(db, userId, year);
-
 		// Create a map of existing records by month
 		const recordsByMonth = new Map<number, (typeof existingRecords)[0]>();
 		for (const rec of existingRecords) {

@@ -5,11 +5,11 @@
  */
 
 import { businessProfile, taxProfile, taxRecord, transaction } from '$lib/server/db/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { eq, and, gte, lt, sql } from 'drizzle-orm';
 import type { SQLiteDb } from '$lib/server/db';
-import type { TaxEligibilityDecision, TaxProfileData, TaxpayerType } from './types';
+import type { TaxEligibilityDecision, TaxProfileData } from './types';
 import { REVENUE_THRESHOLD_WP_OP, TAX_TYPE, getIndonesianMonthName } from './config';
-import { evaluateTaxEligibility, getTaxpayerTypeForLegalForm } from './eligibility';
+import { evaluateTaxEligibility } from './eligibility';
 import { decryptNPWP } from '$lib/server/crypto';
 import { calculateMonthlyTax } from './engine';
 import { todayInJakarta } from '$lib/shared/dates';
@@ -22,18 +22,17 @@ export { getIndonesianMonthName };
  */
 export async function getUserTaxData(
 	db: SQLiteDb,
-	userId: string,
-	taxYear = new Date().getFullYear()
-): Promise<{ npwp: string; taxpayerType: TaxpayerType | null; businessName: string }> {
-	const [profile, taxData] = await Promise.all([
-		db.select().from(businessProfile).where(eq(businessProfile.userId, userId)).limit(1),
-		getTaxProfile(db, userId, taxYear)
-	]);
+	userId: string
+): Promise<{ npwp: string; businessName: string }> {
+	const profile = await db
+		.select()
+		.from(businessProfile)
+		.where(eq(businessProfile.userId, userId))
+		.limit(1);
 	const encryptedNpwp = profile[0]?.npwp;
 
 	return {
 		npwp: encryptedNpwp ? (await decryptNPWP(encryptedNpwp)) || '' : '',
-		taxpayerType: taxData ? getTaxpayerTypeForLegalForm(taxData.legalForm) : null,
 		businessName: profile[0]?.name || ''
 	};
 }
@@ -115,23 +114,24 @@ export async function upsertTaxProfile(
 }
 
 /**
- * Get income transactions for a specific year
+ * Aggregate recorded income by month in D1. The tax UI only needs 12 totals,
+ * so returning every transaction wastes database transfer and Worker CPU.
  */
-export async function getYearTransactions(
+export async function getRecordedMonthlyRevenue(
 	db: SQLiteDb,
 	userId: string,
 	year: number,
 	endMonth?: number
-): Promise<{ date: string; amount: number }[]> {
+): Promise<number[]> {
 	const yearStartDate = `${year}-01-01`;
-	const yearEndDate = endMonth
-		? `${year}-${endMonth.toString().padStart(2, '0')}-31`
-		: `${year}-12-31`;
-
-	return db
+	const lastMonth = endMonth ? Math.min(Math.max(Math.trunc(endMonth), 1), 12) : 12;
+	const yearEndDate =
+		lastMonth === 12 ? `${year + 1}-01-01` : `${year}-${String(lastMonth + 1).padStart(2, '0')}-01`;
+	const monthExpression = sql<string>`substr(${transaction.date}, 1, 7)`;
+	const rows = await db
 		.select({
-			date: transaction.date,
-			amount: transaction.amount
+			month: monthExpression,
+			total: sql<number>`COALESCE(SUM(${transaction.amount}), 0)`
 		})
 		.from(transaction)
 		.where(
@@ -139,25 +139,19 @@ export async function getYearTransactions(
 				eq(transaction.userId, userId),
 				eq(transaction.type, 'income'),
 				gte(transaction.date, yearStartDate),
-				lte(transaction.date, yearEndDate)
+				lt(transaction.date, yearEndDate)
 			)
-		);
-}
+		)
+		.groupBy(monthExpression);
 
-/**
- * Calculate monthly revenues from transaction list
- */
-export function calculateMonthlyRevenues(
-	transactions: { date: string; amount: number }[]
-): number[] {
-	const monthlyAmounts: number[] = Array(12).fill(0);
-	for (const t of transactions) {
-		const transMonth = parseInt(t.date.substring(5, 7), 10);
-		if (transMonth >= 1 && transMonth <= 12) {
-			monthlyAmounts[transMonth - 1] += t.amount;
+	const monthlyRevenue: number[] = Array(12).fill(0);
+	for (const row of rows) {
+		const month = Number(row.month.slice(5, 7));
+		if (month >= 1 && month <= 12) {
+			monthlyRevenue[month - 1] = Number(row.total);
 		}
 	}
-	return monthlyAmounts;
+	return monthlyRevenue;
 }
 
 export interface TaxYearContext {
@@ -184,9 +178,12 @@ export async function getTaxYearContext(
 	db: SQLiteDb,
 	userId: string,
 	taxYear: number,
-	recordedMonthlyRevenue: number[]
+	endMonth?: number
 ): Promise<TaxYearContext> {
-	const profile = await getTaxProfile(db, userId, taxYear);
+	const [profile, recordedMonthlyRevenue] = await Promise.all([
+		getTaxProfile(db, userId, taxYear),
+		getRecordedMonthlyRevenue(db, userId, taxYear, endMonth)
+	]);
 	const externalMonthlyRevenue =
 		profile?.externalMonthlyRevenue.length === 12
 			? profile.externalMonthlyRevenue
@@ -216,10 +213,7 @@ export async function getTaxDashboardEstimate(
 	const [yearPart, monthPart] = todayInJakarta().split('-');
 	const year = Number(yearPart);
 	const month = Number(monthPart);
-	const recordedMonthlyRevenue = calculateMonthlyRevenues(
-		await getYearTransactions(db, userId, year)
-	);
-	const context = await getTaxYearContext(db, userId, year, recordedMonthlyRevenue);
+	const context = await getTaxYearContext(db, userId, year);
 	const annualRevenue = calculateCumulativeRevenue(context.aggregatedMonthlyRevenue, month);
 	const currentMonthRevenue = context.aggregatedMonthlyRevenue[month - 1] ?? 0;
 	const taxpayerType = context.eligibility.taxpayerType;

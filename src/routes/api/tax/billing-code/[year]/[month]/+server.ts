@@ -3,14 +3,12 @@ import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { calculateMonthlyTax } from '$lib/tax/engine';
 import {
-	calculateMonthlyRevenues,
 	calculateCumulativeRevenue,
 	getTaxRecordForMonth,
 	getUserTaxData,
 	getIndonesianMonthName,
 	formatMasaPajak,
-	getTaxYearContext,
-	getYearTransactions
+	getTaxYearContext
 } from '$lib/tax/service';
 import { TAX_STATUS } from '$lib/tax/config';
 
@@ -53,13 +51,13 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 			return json({ error: 'Invalid month parameter' }, { status: 400 });
 		}
 
-		// Get user data (NPWP, taxpayer type, business name)
-		const userTaxData = await getUserTaxData(db, userId, year);
-		const recordedMonthlyRevenue = calculateMonthlyRevenues(
-			await getYearTransactions(db, userId, year, month)
-		);
-		const context = await getTaxYearContext(db, userId, year, recordedMonthlyRevenue);
-		if (context.eligibility.status !== 'eligible' || !userTaxData.taxpayerType) {
+		// Profile data and monthly totals are independent and can share one D1 round-trip wave.
+		const [userTaxData, context] = await Promise.all([
+			getUserTaxData(db, userId),
+			getTaxYearContext(db, userId, year, month)
+		]);
+		const taxpayerType = context.eligibility.taxpayerType;
+		if (context.eligibility.status !== 'eligible' || !taxpayerType) {
 			return json(
 				{
 					error: context.eligibility.reasons[0] || 'Estimasi pajak tidak tersedia.',
@@ -76,7 +74,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		// Calculate tax for this month
 		const taxCalculation = calculateMonthlyTax({
 			userId,
-			taxpayerType: userTaxData.taxpayerType,
+			taxpayerType,
 			year,
 			month,
 			grossRevenue: monthlyAmounts[month - 1],
@@ -104,7 +102,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 			// Status
 			status: taxRec?.status || TAX_STATUS.UNPAID,
 			isBelowThreshold: taxCalculation.isBelowThreshold,
-			taxpayerType: userTaxData.taxpayerType,
+			taxpayerType,
 			// Additional info
 			thresholdAmount: taxCalculation.thresholdAmount,
 			cumulativeRevenue: taxCalculation.cumulativeRevenue,
