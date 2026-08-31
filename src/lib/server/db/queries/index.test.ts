@@ -90,17 +90,23 @@ describe('dashboardQueries.getOverview', () => {
 			[{ piutang: 4_000_000, hutang: 1_500_000, activeCount: 3 }],
 			[{ count: 2 }]
 		];
+		const queries: unknown[] = [];
 		const select = vi.fn();
-		for (const rows of resultSets) {
-			const query = { from: vi.fn(), where: vi.fn().mockResolvedValue(rows) };
+		for (let index = 0; index < resultSets.length; index += 1) {
+			const query = { from: vi.fn(), where: vi.fn() };
 			query.from.mockReturnValue(query);
+			query.where.mockReturnValue(query);
 			select.mockReturnValueOnce(query);
+			queries.push(query);
 		}
-		const db = { select } as unknown as SQLiteDb;
+		const batch = vi.fn().mockResolvedValue(resultSets);
+		const db = { select, batch } as unknown as SQLiteDb;
 
 		const result = await dashboardQueries.getOverview(db, 'user-1', 'weekly');
 
 		expect(select).toHaveBeenCalledTimes(4);
+		expect(batch).toHaveBeenCalledOnce();
+		expect(batch).toHaveBeenCalledWith(queries);
 		expect(result.summary).toMatchObject({
 			netWorth: 10_000_000,
 			monthlyProfit: 5_000_000,
