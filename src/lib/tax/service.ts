@@ -154,6 +154,25 @@ export async function getRecordedMonthlyRevenue(
 	return monthlyRevenue;
 }
 
+export async function getRecordedAnnualExpenseTotal(
+	db: SQLiteDb,
+	userId: string,
+	year: number
+): Promise<number> {
+	const rows = await db
+		.select({ total: sql<number>`COALESCE(SUM(${transaction.amount}), 0)` })
+		.from(transaction)
+		.where(
+			and(
+				eq(transaction.userId, userId),
+				eq(transaction.type, 'expense'),
+				gte(transaction.date, `${year}-01-01`),
+				lt(transaction.date, `${year + 1}-01-01`)
+			)
+		);
+	return Number(rows[0]?.total ?? 0);
+}
+
 export interface TaxYearContext {
 	profile: TaxProfileData | null;
 	eligibility: TaxEligibilityDecision;

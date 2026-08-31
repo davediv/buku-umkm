@@ -1,10 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
-import { transaction } from '$lib/server/db/schema';
-import { eq, and, gte, lt, sql } from 'drizzle-orm';
 import { calculateMonthlyTax } from '$lib/tax/engine';
-import { getTaxRecordsForYear, getTaxYearContext } from '$lib/tax/service';
+import {
+	getRecordedAnnualExpenseTotal,
+	getTaxRecordsForYear,
+	getTaxYearContext
+} from '$lib/tax/service';
 import { REVENUE_THRESHOLD_WP_OP, TAX_STATUS, TAXPAYER_TYPE } from '$lib/tax/config';
 import { INDONESIAN_MONTHS } from '$lib/tax/config';
 
@@ -36,8 +38,6 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	}
 
 	try {
-		const yearStartDate = `${year}-01-01`;
-		const yearEndDate = `${year + 1}-01-01`;
 		const context = await getTaxYearContext(db, userId, year);
 		const taxpayerType = context.eligibility.taxpayerType;
 		if (context.eligibility.status !== 'eligible' || !taxpayerType) {
@@ -53,19 +53,9 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 		// Payment records and the expense total are independent. Aggregate expenses
 		// in D1 instead of transferring every expense row to the Worker.
-		const [taxRecords, expenseRows] = await Promise.all([
+		const [taxRecords, totalExpenses] = await Promise.all([
 			getTaxRecordsForYear(db, userId, year),
-			db
-				.select({ total: sql<number>`COALESCE(SUM(${transaction.amount}), 0)` })
-				.from(transaction)
-				.where(
-					and(
-						eq(transaction.userId, userId),
-						eq(transaction.type, 'expense'),
-						gte(transaction.date, yearStartDate),
-						lt(transaction.date, yearEndDate)
-					)
-				)
+			getRecordedAnnualExpenseTotal(db, userId, year)
 		]);
 
 		// Build monthly breakdown
@@ -128,7 +118,6 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			0
 		);
 
-		const totalExpenses = Number(expenseRows[0]?.total ?? 0);
 		const netIncome = totalRecordedGrossRevenue - totalExpenses;
 
 		// Build response
