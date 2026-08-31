@@ -16,13 +16,26 @@ function toDatabaseOptions(query: TransactionQuery): TransactionListOptions {
 
 export async function getTransactionPage(db: SQLiteDb, userId: string, query: TransactionQuery) {
 	const filters = toDatabaseOptions(query);
-	const total = await transactionQueries.count(db, userId, filters);
+	const requestedOffset = (query.page - 1) * query.pageSize;
+	const [total, requestedTransactions] = await Promise.all([
+		transactionQueries.count(db, userId, filters),
+		transactionQueries.findAll(db, userId, {
+			...filters,
+			limit: query.pageSize,
+			offset: requestedOffset
+		})
+	]);
 	const pagination = getTransactionPagination(total, query.page, query.pageSize);
-	const transactions = await transactionQueries.findAll(db, userId, {
-		...filters,
-		limit: pagination.pageSize,
-		offset: pagination.offset
-	});
+	// Preserve the clamped-page behavior for stale or manually edited URLs. This
+	// extra read only occurs when the requested page no longer exists.
+	const transactions =
+		pagination.offset === requestedOffset
+			? requestedTransactions
+			: await transactionQueries.findAll(db, userId, {
+					...filters,
+					limit: pagination.pageSize,
+					offset: pagination.offset
+				});
 
 	return {
 		transactions: transactions.map(presentTransaction),

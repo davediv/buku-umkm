@@ -6,6 +6,14 @@ import { getTransactionPage, getTransactionsForExport } from './list';
 
 const db = {} as SQLiteDb;
 
+function deferred<T>() {
+	let resolve!: (value: T) => void;
+	const promise = new Promise<T>((resolver) => {
+		resolve = resolver;
+	});
+	return { promise, resolve };
+}
+
 function transactionRecord() {
 	return {
 		id: 'txn-1',
@@ -34,19 +42,21 @@ function transactionRecord() {
 afterEach(() => vi.restoreAllMocks());
 
 describe('transaction list service', () => {
-	it('counts the full filtered dataset before fetching the requested page', async () => {
-		const count = vi.spyOn(transactionQueries, 'count').mockResolvedValue(51);
+	it('counts the filtered dataset and fetches a valid page concurrently', async () => {
+		const countResult = deferred<number>();
+		const transactionsResult = deferred<ReturnType<typeof transactionRecord>[]>();
+		const count = vi.spyOn(transactionQueries, 'count').mockReturnValue(countResult.promise);
 		const findAll = vi
 			.spyOn(transactionQueries, 'findAll')
-			.mockResolvedValue([transactionRecord()] as never);
+			.mockReturnValue(transactionsResult.promise as never);
 		const query = parseTransactionQuery(
 			new URLSearchParams(
-				'q=kopi&type=expense&range=custom&start=2026-08-01&end=2026-08-30&sort=amount&order=asc&page=9&page_size=25'
+				'q=kopi&type=expense&range=custom&start=2026-08-01&end=2026-08-30&sort=amount&order=asc&page=3&page_size=25'
 			),
 			'2026-08-30'
 		);
 
-		const result = await getTransactionPage(db, 'user-1', query);
+		const resultPromise = getTransactionPage(db, 'user-1', query);
 
 		expect(count).toHaveBeenCalledWith(
 			db,
@@ -65,8 +75,43 @@ describe('transaction list service', () => {
 			'user-1',
 			expect.objectContaining({ limit: 25, offset: 50 })
 		);
+
+		countResult.resolve(51);
+		transactionsResult.resolve([transactionRecord()]);
+		const result = await resultPromise;
+
+		expect(findAll).toHaveBeenCalledOnce();
 		expect(result.pagination).toMatchObject({ page: 3, totalPages: 3, total: 51 });
 		expect(result.query.page).toBe(3);
+	});
+
+	it('refetches the clamped page when a requested page no longer exists', async () => {
+		vi.spyOn(transactionQueries, 'count').mockResolvedValue(51);
+		const findAll = vi
+			.spyOn(transactionQueries, 'findAll')
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([transactionRecord()] as never);
+		const query = parseTransactionQuery(
+			new URLSearchParams('range=all&page=9&page_size=25'),
+			'2026-08-30'
+		);
+
+		const result = await getTransactionPage(db, 'user-1', query);
+
+		expect(findAll).toHaveBeenNthCalledWith(
+			1,
+			db,
+			'user-1',
+			expect.objectContaining({ limit: 25, offset: 200 })
+		);
+		expect(findAll).toHaveBeenNthCalledWith(
+			2,
+			db,
+			'user-1',
+			expect.objectContaining({ limit: 25, offset: 50 })
+		);
+		expect(result.transactions).toHaveLength(1);
+		expect(result.pagination).toMatchObject({ page: 3, totalPages: 3, total: 51 });
 	});
 
 	it('uses the same filters for export without list pagination', async () => {
