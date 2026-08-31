@@ -43,6 +43,19 @@ function convertToExportRows(transactions: TransactionForExport[]): TransactionE
 	}));
 }
 
+export function serializeCsvRows(rows: (string | number)[][]): string {
+	return rows
+		.map((row) =>
+			row
+				.map((value) => {
+					const text = String(value);
+					return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+				})
+				.join(',')
+		)
+		.join('\n');
+}
+
 export async function exportTransactions(
 	transactions: TransactionForExport[],
 	format: ExportFormat,
@@ -79,9 +92,24 @@ export async function exportTransactions(
 		]);
 	});
 
-	// Dynamic import xlsx to reduce initial bundle size
-	const XLSX = await import('xlsx');
+	if (format === 'csv') {
+		// CSV does not need the much larger spreadsheet parser/runtime.
+		const blob = new Blob(['\uFEFF' + serializeCsvRows(wsData)], {
+			type: 'text/csv;charset=utf-8;'
+		});
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = `${filename}.csv`;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(url);
+		return;
+	}
 
+	// Excel exports still load the spreadsheet runtime on demand.
+	const XLSX = await import('xlsx');
 	// Create workbook and worksheet
 	const wb = XLSX.utils.book_new();
 	const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -102,23 +130,7 @@ export async function exportTransactions(
 	// Add worksheet to workbook
 	XLSX.utils.book_append_sheet(wb, ws, 'Transaksi');
 
-	if (format === 'xlsx') {
-		// Export as Excel
-		XLSX.writeFile(wb, `${filename}.xlsx`);
-	} else {
-		// Export as CSV with UTF-8 BOM
-		const csv = XLSX.utils.sheet_to_csv(ws);
-		const bom = '\uFEFF';
-		const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
-		const url = URL.createObjectURL(blob);
-		const link = document.createElement('a');
-		link.href = url;
-		link.download = `${filename}.csv`;
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-		URL.revokeObjectURL(url);
-	}
+	XLSX.writeFile(wb, `${filename}.xlsx`);
 }
 
 export function generateExportFilename(prefix: string): string {
