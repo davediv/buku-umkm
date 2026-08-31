@@ -5,11 +5,9 @@ import { taxRecord } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { calculateMonthlyTax } from '$lib/tax/engine';
 import {
-	calculateMonthlyRevenues,
 	calculateCumulativeRevenue,
 	getTaxRecordForMonth,
-	getTaxYearContext,
-	getYearTransactions
+	getTaxYearContext
 } from '$lib/tax/service';
 import { TAX_TYPE, TAX_STATUS } from '$lib/tax/config';
 
@@ -56,10 +54,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		const paymentDate = body.paymentDate || new Date().toISOString().split('T')[0];
 		const billingCode = body.billingCode || null;
 
-		const recordedMonthlyRevenue = calculateMonthlyRevenues(
-			await getYearTransactions(db, userId, year, month)
-		);
-		const context = await getTaxYearContext(db, userId, year, recordedMonthlyRevenue);
+		const context = await getTaxYearContext(db, userId, year, month);
 		const taxpayerType = context.eligibility.taxpayerType;
 		if (context.eligibility.status !== 'eligible' || !taxpayerType) {
 			return json(

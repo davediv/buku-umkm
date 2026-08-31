@@ -3,11 +3,9 @@ import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { calculateMonthlyTax } from '$lib/tax/engine';
 import {
-	calculateMonthlyRevenues,
 	calculateCumulativeRevenue,
 	getTaxRecordForMonth,
-	getTaxYearContext,
-	getYearTransactions
+	getTaxYearContext
 } from '$lib/tax/service';
 import { TAX_STATUS } from '$lib/tax/config';
 
@@ -65,10 +63,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 			});
 		}
 
-		const recordedMonthlyRevenue = calculateMonthlyRevenues(
-			await getYearTransactions(db, userId, previousMonthYear, previousMonth)
-		);
-		const context = await getTaxYearContext(db, userId, previousMonthYear, recordedMonthlyRevenue);
+		const context = await getTaxYearContext(db, userId, previousMonthYear, previousMonth);
 		const taxpayerType = context.eligibility.taxpayerType;
 		if (context.eligibility.status !== 'eligible' || !taxpayerType) {
 			return json({

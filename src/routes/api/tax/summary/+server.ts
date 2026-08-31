@@ -3,11 +3,9 @@ import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { calculateMonthlyTax, getThresholdInfo } from '$lib/tax/engine';
 import {
-	calculateMonthlyRevenues,
 	calculateCumulativeRevenue,
 	getTaxRecordForMonth,
-	getTaxYearContext,
-	getYearTransactions
+	getTaxYearContext
 } from '$lib/tax/service';
 import { TAX_STATUS } from '$lib/tax/config';
 
@@ -35,10 +33,10 @@ export const GET: RequestHandler = async ({ locals }) => {
 		const now = new Date();
 		const currentYear = now.getFullYear();
 		const currentMonth = now.getMonth() + 1; // 1-12
-		const recordedMonthlyRevenue = calculateMonthlyRevenues(
-			await getYearTransactions(db, userId, currentYear)
-		);
-		const context = await getTaxYearContext(db, userId, currentYear, recordedMonthlyRevenue);
+		const [context, taxRec] = await Promise.all([
+			getTaxYearContext(db, userId, currentYear),
+			getTaxRecordForMonth(db, userId, currentYear, currentMonth)
+		]);
 		const taxpayerType = context.eligibility.taxpayerType;
 		const calculationAvailable = context.eligibility.status === 'eligible' && taxpayerType !== null;
 
@@ -66,7 +64,6 @@ export const GET: RequestHandler = async ({ locals }) => {
 			: null;
 
 		// Get tax record status for current month
-		const taxRec = await getTaxRecordForMonth(db, userId, currentYear, currentMonth);
 		const paymentStatus = calculationAvailable ? taxRec?.status || TAX_STATUS.UNPAID : null;
 
 		// Get threshold info
