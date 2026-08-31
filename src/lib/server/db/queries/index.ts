@@ -536,39 +536,51 @@ export const transactionQueries = {
 // Debt Queries (Piutang/Hutang)
 // ============================================================================
 
+interface DebtListOptions {
+	type?: 'piutang' | 'hutang';
+	status?: 'active' | 'paid' | 'overdue';
+	includeInactive?: boolean;
+}
+
+function getDebtListConditions(userId: string, options?: DebtListOptions) {
+	const conditions = [eq(debt.userId, userId)];
+
+	if (!options?.includeInactive) {
+		conditions.push(eq(debt.isActive, true));
+	}
+	if (options?.type) {
+		conditions.push(eq(debt.type, options.type));
+	}
+	if (options?.status) {
+		conditions.push(eq(debt.status, options.status));
+	}
+
+	return conditions;
+}
+
 export const debtQueries = {
 	/**
 	 * Get all debts for a user
 	 */
-	findAll(
-		db: SQLiteDb,
-		userId: string,
-		options?: {
-			type?: 'piutang' | 'hutang';
-			status?: 'active' | 'paid' | 'overdue';
-			includeInactive?: boolean;
-		}
-	) {
-		const conditions = [eq(debt.userId, userId)];
-
-		// By default, only return active debts
-		if (!options?.includeInactive) {
-			conditions.push(eq(debt.isActive, true));
-		}
-
-		if (options?.type) {
-			conditions.push(eq(debt.type, options.type));
-		}
-		if (options?.status) {
-			conditions.push(eq(debt.status, options.status));
-		}
-
+	findAll(db: SQLiteDb, userId: string, options?: DebtListOptions) {
+		const conditions = getDebtListConditions(userId, options);
 		return db.query.debt.findMany({
-			where: conditions.length > 0 ? and(...conditions) : undefined,
+			where: and(...conditions),
 			orderBy: (debts, { desc }) => [desc(debts.createdAt)],
 			with: {
 				payments: true
 			}
+		});
+	},
+
+	/**
+	 * Get debt rows without payment history for summaries and backups.
+	 */
+	findAllSummaries(db: SQLiteDb, userId: string, options?: DebtListOptions) {
+		const conditions = getDebtListConditions(userId, options);
+		return db.query.debt.findMany({
+			where: and(...conditions),
+			orderBy: (debts, { desc }) => [desc(debts.createdAt)]
 		});
 	},
 

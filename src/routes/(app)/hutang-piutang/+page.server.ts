@@ -16,7 +16,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const query = parseDebtQuery(url.searchParams);
 	// Totals and urgency must come from the complete collection, never the selected tab subset.
-	const allDebts = await debtQueries.findAll(db, userId, { includeInactive: false });
+	const allDebts = await debtQueries.findAllSummaries(db, userId, { includeInactive: false });
 	const normalizedDebts = allDebts.map((item) => ({
 		id: item.id,
 		type: item.type,
