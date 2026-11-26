@@ -1,5 +1,6 @@
 import { MAX_TRANSACTION_AMOUNT, type BusinessType } from '$lib/constants';
 import type { SQLiteDb } from '$lib/server/db';
+import { chunkedInserts, runBatch } from '$lib/server/db/batch';
 import {
 	businessProfile,
 	category,
@@ -176,7 +177,7 @@ export async function completeOnboarding(
 	}));
 
 	try {
-		await db.batch([
+		await runBatch(db, [
 			db.insert(onboardingState).values({
 				userId,
 				status: 'completed',
@@ -204,8 +205,10 @@ export async function completeOnboarding(
 				openingBalance: input.openingBalance,
 				openingDate: input.openingDate
 			}),
-			db.insert(category).values(categoryValues),
-			db.insert(transactionTemplate).values(templateValues)
+			// Each business type seeds 13-17 categories; one statement would exceed D1's
+			// 100 bound-parameter limit, so the rows are split across batch statements.
+			...chunkedInserts(db, category, categoryValues),
+			...chunkedInserts(db, transactionTemplate, templateValues)
 		]);
 	} catch (error) {
 		// A concurrent retry loses on onboarding_state.user_id. If another request

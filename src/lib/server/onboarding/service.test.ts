@@ -100,7 +100,8 @@ describe('onboarding provisioning', () => {
 		expect(first).toEqual({ status: 'completed', created: true });
 		expect(second).toEqual({ status: 'completed', created: false });
 		expect(mock.batch).toHaveBeenCalledTimes(1);
-		expect(mock.batch.mock.calls[0][0]).toHaveLength(5);
+		// Every insert of the first request, including chunked seed rows, is in that one batch.
+		expect(mock.batch.mock.calls[0][0]).toHaveLength(insertCountAfterFirstRequest);
 		expect(mock.insert).toHaveBeenCalledTimes(insertCountAfterFirstRequest);
 	});
 
