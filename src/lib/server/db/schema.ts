@@ -118,6 +118,15 @@ export const financialCommandRelations = relations(financialCommand, ({ one }) =
 	})
 }));
 
+/**
+ * Never holds rows. Its BEFORE INSERT trigger (drizzle/0006) silently drops a row
+ * with ok = 1 and aborts the statement, and with it the whole D1 batch, when ok = 0.
+ * See batchGuard() in $lib/server/db/batch.
+ */
+export const financeGuard = sqliteTable('finance_guard', {
+	ok: integer('ok').notNull()
+});
+
 // ============================================================================
 // Business Profile
 // ============================================================================

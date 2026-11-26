@@ -1,5 +1,6 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, gte, ne, sql } from 'drizzle-orm';
 import type { SQLiteDb } from '$lib/server/db';
+import { batchGuard, isGuardFailure, runBatch } from '$lib/server/db/batch';
 import {
 	category,
 	chartOfAccount,
@@ -74,6 +75,30 @@ export interface FinanceRepository {
 	}): Promise<void>;
 }
 
+function adjustBalance(db: SQLiteDb, userId: string, accountId: string, delta: number) {
+	return db
+		.update(chartOfAccount)
+		.set({ balance: sql`${chartOfAccount.balance} + ${delta}` })
+		.where(and(eq(chartOfAccount.userId, userId), eq(chartOfAccount.id, accountId)));
+}
+
+/** Explains why a payment batch guard failed, from the debt's state after the abort. */
+async function paymentRejection(db: SQLiteDb, userId: string, debtId: string) {
+	const [current] = await db
+		.select({ remainingAmount: debt.remainingAmount, status: debt.status })
+		.from(debt)
+		.where(and(eq(debt.userId, userId), eq(debt.id, debtId), eq(debt.isActive, true)));
+	if (!current) return new FinanceError('Hutang/piutang tidak ditemukan', 404, 'NOT_FOUND');
+	if (current.status === 'paid') {
+		return new FinanceError('Hutang/piutang sudah lunas', 400, 'ALREADY_PAID');
+	}
+	return new FinanceError(
+		`Jumlah pembayaran tidak boleh melebihi sisa tagihan (Rp${current.remainingAmount.toLocaleString('id-ID')})`,
+		400,
+		'OVERPAYMENT'
+	);
+}
+
 export function createD1FinanceRepository(db: SQLiteDb): FinanceRepository {
 	return {
 		findCommand(userId, idempotencyKey) {
@@ -109,89 +134,60 @@ export function createD1FinanceRepository(db: SQLiteDb): FinanceRepository {
 			});
 		},
 		async createTransactionAtomic(commandRecord, entry, balanceDelta) {
-			await db.transaction(async (tx) => {
-				await tx.insert(financialCommand).values(commandRecord);
-				await tx.insert(transaction).values(entry);
-				await tx
-					.update(chartOfAccount)
-					.set({ balance: sql`${chartOfAccount.balance} + ${balanceDelta}` })
-					.where(
-						and(
-							eq(chartOfAccount.userId, commandRecord.userId),
-							eq(chartOfAccount.id, entry.accountId)
-						)
-					);
-			});
+			await runBatch(db, [
+				db.insert(financialCommand).values(commandRecord),
+				db.insert(transaction).values(entry),
+				adjustBalance(db, commandRecord.userId, entry.accountId, balanceDelta)
+			]);
 		},
 		async updateTransactionAtomic(userId, transactionId, accountId, updates, balanceDelta) {
-			await db.transaction(async (tx) => {
-				await tx
+			await runBatch(db, [
+				db
 					.update(transaction)
 					.set(updates)
-					.where(and(eq(transaction.userId, userId), eq(transaction.id, transactionId)));
-				if (balanceDelta !== 0) {
-					await tx
-						.update(chartOfAccount)
-						.set({ balance: sql`${chartOfAccount.balance} + ${balanceDelta}` })
-						.where(and(eq(chartOfAccount.userId, userId), eq(chartOfAccount.id, accountId)));
-				}
-			});
+					.where(and(eq(transaction.userId, userId), eq(transaction.id, transactionId))),
+				...(balanceDelta !== 0 ? [adjustBalance(db, userId, accountId, balanceDelta)] : [])
+			]);
 		},
 		async deleteTransactionAtomic(userId, transactionId, accountId, balanceDelta) {
-			await db.transaction(async (tx) => {
-				await tx
+			await runBatch(db, [
+				db
 					.update(transaction)
 					.set({ isActive: false })
-					.where(and(eq(transaction.userId, userId), eq(transaction.id, transactionId)));
-				await tx
-					.update(chartOfAccount)
-					.set({ balance: sql`${chartOfAccount.balance} + ${balanceDelta}` })
-					.where(and(eq(chartOfAccount.userId, userId), eq(chartOfAccount.id, accountId)));
-			});
+					.where(and(eq(transaction.userId, userId), eq(transaction.id, transactionId))),
+				adjustBalance(db, userId, accountId, balanceDelta)
+			]);
 		},
 		async createTransferAtomic({ command: commandRecord, source, destination, amount }) {
-			await db.transaction(async (tx) => {
-				const [currentSource] = await tx
-					.select({ balance: chartOfAccount.balance })
-					.from(chartOfAccount)
-					.where(
-						and(
-							eq(chartOfAccount.userId, commandRecord.userId),
+			const userId = commandRecord.userId;
+			try {
+				await runBatch(db, [
+					batchGuard(
+						db,
+						sql`exists (select 1 from ${chartOfAccount} where ${and(
+							eq(chartOfAccount.userId, userId),
 							eq(chartOfAccount.id, source.accountId),
-							eq(chartOfAccount.isActive, true)
-						)
-					);
-				if (!currentSource || currentSource.balance < amount) {
+							eq(chartOfAccount.isActive, true),
+							gte(chartOfAccount.balance, amount)
+						)})`
+					),
+					db.insert(financialCommand).values(commandRecord),
+					db.insert(transaction).values([source, destination]),
+					adjustBalance(db, userId, source.accountId, -amount),
+					adjustBalance(db, userId, destination.accountId, amount)
+				]);
+			} catch (error) {
+				if (isGuardFailure(error)) {
 					throw new FinanceError('Saldo tidak mencukupi', 400, 'INSUFFICIENT_BALANCE');
 				}
-
-				await tx.insert(financialCommand).values(commandRecord);
-				await tx.insert(transaction).values([source, destination]);
-				await tx
-					.update(chartOfAccount)
-					.set({ balance: sql`${chartOfAccount.balance} - ${amount}` })
-					.where(
-						and(
-							eq(chartOfAccount.userId, commandRecord.userId),
-							eq(chartOfAccount.id, source.accountId)
-						)
-					);
-				await tx
-					.update(chartOfAccount)
-					.set({ balance: sql`${chartOfAccount.balance} + ${amount}` })
-					.where(
-						and(
-							eq(chartOfAccount.userId, commandRecord.userId),
-							eq(chartOfAccount.id, destination.accountId)
-						)
-					);
-			});
+				throw error;
+			}
 		},
 		async createDebtAtomic(commandRecord, entry) {
-			await db.transaction(async (tx) => {
-				await tx.insert(financialCommand).values(commandRecord);
-				await tx.insert(debt).values(entry);
-			});
+			await runBatch(db, [
+				db.insert(financialCommand).values(commandRecord),
+				db.insert(debt).values(entry)
+			]);
 		},
 		async updateDebt(userId, debtId, updates) {
 			await db
@@ -206,51 +202,36 @@ export function createD1FinanceRepository(db: SQLiteDb): FinanceRepository {
 				.where(and(eq(debt.userId, userId), eq(debt.id, debtId), eq(debt.isActive, true)));
 		},
 		async recordDebtPaymentAtomic({ command: commandRecord, payment, entry, balanceDelta }) {
-			await db.transaction(async (tx) => {
-				const [currentDebt] = await tx
-					.select({ remainingAmount: debt.remainingAmount, status: debt.status })
-					.from(debt)
-					.where(
-						and(
-							eq(debt.userId, commandRecord.userId),
+			const userId = commandRecord.userId;
+			try {
+				await runBatch(db, [
+					batchGuard(
+						db,
+						sql`exists (select 1 from ${debt} where ${and(
+							eq(debt.userId, userId),
 							eq(debt.id, payment.debtId),
-							eq(debt.isActive, true)
-						)
-					);
-				if (!currentDebt)
-					throw new FinanceError('Hutang/piutang tidak ditemukan', 404, 'NOT_FOUND');
-				if (currentDebt.status === 'paid') {
-					throw new FinanceError('Hutang/piutang sudah lunas', 400, 'ALREADY_PAID');
-				}
-				if (payment.amount > currentDebt.remainingAmount) {
-					throw new FinanceError(
-						`Jumlah pembayaran tidak boleh melebihi sisa tagihan (Rp${currentDebt.remainingAmount.toLocaleString('id-ID')})`,
-						400,
-						'OVERPAYMENT'
-					);
-				}
-
-				await tx.insert(financialCommand).values(commandRecord);
-				await tx.insert(transaction).values(entry);
-				await tx
-					.update(chartOfAccount)
-					.set({ balance: sql`${chartOfAccount.balance} + ${balanceDelta}` })
-					.where(
-						and(
-							eq(chartOfAccount.userId, commandRecord.userId),
-							eq(chartOfAccount.id, payment.accountId)
-						)
-					);
-				await tx.insert(debtPayment).values(payment);
-				await tx
-					.update(debt)
-					.set({
-						paidAmount: sql`${debt.paidAmount} + ${payment.amount}`,
-						remainingAmount: sql`${debt.remainingAmount} - ${payment.amount}`,
-						status: sql`CASE WHEN ${debt.remainingAmount} - ${payment.amount} <= 0 THEN 'paid' ELSE ${debt.status} END`
-					})
-					.where(and(eq(debt.userId, commandRecord.userId), eq(debt.id, payment.debtId)));
-			});
+							eq(debt.isActive, true),
+							ne(debt.status, 'paid'),
+							gte(debt.remainingAmount, payment.amount)
+						)})`
+					),
+					db.insert(financialCommand).values(commandRecord),
+					db.insert(transaction).values(entry),
+					adjustBalance(db, userId, payment.accountId, balanceDelta),
+					db.insert(debtPayment).values(payment),
+					db
+						.update(debt)
+						.set({
+							paidAmount: sql`${debt.paidAmount} + ${payment.amount}`,
+							remainingAmount: sql`${debt.remainingAmount} - ${payment.amount}`,
+							status: sql`CASE WHEN ${debt.remainingAmount} - ${payment.amount} <= 0 THEN 'paid' ELSE ${debt.status} END`
+						})
+						.where(and(eq(debt.userId, userId), eq(debt.id, payment.debtId)))
+				]);
+			} catch (error) {
+				if (isGuardFailure(error)) throw await paymentRejection(db, userId, payment.debtId);
+				throw error;
+			}
 		}
 	};
 }
