@@ -6,7 +6,6 @@ import {
 	category,
 	transaction,
 	debt,
-	debtPayment,
 	taxRecord,
 	businessProfile,
 	transactionPhoto,
@@ -487,12 +486,22 @@ export const transactionQueries = {
 	},
 
 	/**
-	 * Check if category has transactions
+	 * True when the category's owner has any transaction, active or deleted, in it. Rows are
+	 * matched on userId as well as categoryId, so another user's row pointing at this
+	 * category never counts. Callers check that the category belongs to the signed-in
+	 * user before asking.
 	 */
-	hasTransactionsByCategory(db: SQLiteDb, categoryId: string) {
-		return db.query.transaction.findFirst({
-			where: (transactions, { eq }) => eq(transactions.categoryId, categoryId)
-		});
+	async hasTransactionsByCategory(db: SQLiteDb, categoryId: string): Promise<boolean> {
+		const rows = await db
+			.select({ id: transaction.id })
+			.from(transaction)
+			.innerJoin(
+				category,
+				and(eq(category.id, transaction.categoryId), eq(category.userId, transaction.userId))
+			)
+			.where(eq(transaction.categoryId, categoryId))
+			.limit(1);
+		return rows.length > 0;
 	}
 };
 
@@ -638,46 +647,6 @@ export const debtQueries = {
 			.update(debt)
 			.set(updateData)
 			.where(and(eq(debt.userId, userId), eq(debt.id, debtId)));
-	},
-
-	/**
-	 * Record payment
-	 */
-	recordPayment(
-		db: SQLiteDb,
-		data: {
-			debtId: string;
-			userId: string;
-			amount: number;
-			date: string;
-			accountId: string;
-			transactionId?: string;
-			notes?: string;
-		}
-	) {
-		return (async () => {
-			// Insert payment
-			await db.insert(debtPayment).values({
-				id: crypto.randomUUID(),
-				debtId: data.debtId,
-				userId: data.userId,
-				amount: data.amount,
-				date: data.date,
-				accountId: data.accountId,
-				transactionId: data.transactionId ?? null,
-				notes: data.notes ?? null
-			});
-
-			// Update debt remaining amount
-			await db
-				.update(debt)
-				.set({
-					paidAmount: sql`${debt.paidAmount} + ${data.amount}`,
-					remainingAmount: sql`${debt.remainingAmount} - ${data.amount}`,
-					status: sql`CASE WHEN ${debt.remainingAmount} - ${data.amount} <= 0 THEN 'paid' ELSE ${debt.status} END`
-				})
-				.where(eq(debt.id, data.debtId));
-		})();
 	},
 
 	/**
@@ -1101,7 +1070,10 @@ export const dashboardQueries = {
 					total: sql<number>`COALESCE(SUM(${transaction.amount}), 0)`
 				})
 				.from(transaction)
-				.leftJoin(category, eq(transaction.categoryId, category.id))
+				.leftJoin(
+					category,
+					and(eq(transaction.categoryId, category.id), eq(category.userId, transaction.userId))
+				)
 				.where(
 					and(
 						eq(transaction.userId, userId),

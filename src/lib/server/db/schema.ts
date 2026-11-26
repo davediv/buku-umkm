@@ -14,6 +14,13 @@ import { user, session, account } from './auth.schema';
 // Re-export auth schema
 export * from './auth.schema';
 
+/*
+ * Tenant scoping: every relation between business tables joins on its foreign key AND
+ * userId, so a relational `with:` load can never pull another user's row, even if a
+ * foreign key were to point across tenants. `many` relations reuse the reverse `one`
+ * relation's columns, so they are scoped the same way.
+ */
+
 // Add relations to auth user table for business tables
 export const userRelations = relations(user, ({ many, one }) => ({
 	sessions: many(session),
@@ -204,8 +211,8 @@ export const chartOfAccountRelations = relations(chartOfAccount, ({ one, many })
 		references: [user.id]
 	}),
 	parent: one(chartOfAccount, {
-		fields: [chartOfAccount.parentId],
-		references: [chartOfAccount.id],
+		fields: [chartOfAccount.parentId, chartOfAccount.userId],
+		references: [chartOfAccount.id, chartOfAccount.userId],
 		relationName: 'parent_account'
 	}),
 	children: many(chartOfAccount, {
@@ -303,22 +310,22 @@ export const transactionRelations = relations(transaction, ({ one }) => ({
 		references: [user.id]
 	}),
 	account: one(chartOfAccount, {
-		fields: [transaction.accountId],
-		references: [chartOfAccount.id],
+		fields: [transaction.accountId, transaction.userId],
+		references: [chartOfAccount.id, chartOfAccount.userId],
 		relationName: 'transaction_account'
 	}),
 	toAccount: one(chartOfAccount, {
-		fields: [transaction.toAccountId],
-		references: [chartOfAccount.id],
+		fields: [transaction.toAccountId, transaction.userId],
+		references: [chartOfAccount.id, chartOfAccount.userId],
 		relationName: 'transaction_to_account'
 	}),
 	category: one(category, {
-		fields: [transaction.categoryId],
-		references: [category.id]
+		fields: [transaction.categoryId, transaction.userId],
+		references: [category.id, category.userId]
 	}),
 	debt: one(debt, {
-		fields: [transaction.debtId],
-		references: [debt.id]
+		fields: [transaction.debtId, transaction.userId],
+		references: [debt.id, debt.userId]
 	})
 }));
 
@@ -356,8 +363,8 @@ export const transactionPhoto = sqliteTable(
 
 export const transactionPhotoRelations = relations(transactionPhoto, ({ one }) => ({
 	transaction: one(transaction, {
-		fields: [transactionPhoto.transactionId],
-		references: [transaction.id]
+		fields: [transactionPhoto.transactionId, transactionPhoto.userId],
+		references: [transaction.id, transaction.userId]
 	}),
 	user: one(user, {
 		fields: [transactionPhoto.userId],
@@ -463,20 +470,20 @@ export const debtPayment = sqliteTable(
 
 export const debtPaymentRelations = relations(debtPayment, ({ one }) => ({
 	debt: one(debt, {
-		fields: [debtPayment.debtId],
-		references: [debt.id]
+		fields: [debtPayment.debtId, debtPayment.userId],
+		references: [debt.id, debt.userId]
 	}),
 	user: one(user, {
 		fields: [debtPayment.userId],
 		references: [user.id]
 	}),
 	account: one(chartOfAccount, {
-		fields: [debtPayment.accountId],
-		references: [chartOfAccount.id]
+		fields: [debtPayment.accountId, debtPayment.userId],
+		references: [chartOfAccount.id, chartOfAccount.userId]
 	}),
 	transaction: one(transaction, {
-		fields: [debtPayment.transactionId],
-		references: [transaction.id]
+		fields: [debtPayment.transactionId, debtPayment.userId],
+		references: [transaction.id, transaction.userId]
 	})
 }));
 
@@ -652,7 +659,7 @@ export const transactionTemplateRelations = relations(transactionTemplate, ({ on
 		references: [user.id]
 	}),
 	category: one(category, {
-		fields: [transactionTemplate.categoryId],
-		references: [category.id]
+		fields: [transactionTemplate.categoryId, transactionTemplate.userId],
+		references: [category.id, category.userId]
 	})
 }));
