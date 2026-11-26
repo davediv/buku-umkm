@@ -1,4 +1,18 @@
-import { asc, desc, eq, and, gte, lte, lt, inArray, like, or, sql } from 'drizzle-orm';
+import {
+	asc,
+	desc,
+	eq,
+	and,
+	gte,
+	lte,
+	lt,
+	inArray,
+	isNotNull,
+	isNull,
+	like,
+	or,
+	sql
+} from 'drizzle-orm';
 import type { SQLiteDb } from '../index';
 import { todayInJakarta } from '$lib/shared/dates';
 import {
@@ -300,7 +314,13 @@ function getTransactionListConditions(
 	if (!options?.includeInactive) conditions.push(eq(transaction.isActive, true));
 	if (options?.accountId) conditions.push(eq(transaction.accountId, options.accountId));
 	if (options?.categoryId) conditions.push(eq(transaction.categoryId, options.categoryId));
-	if (options?.type) conditions.push(eq(transaction.type, options.type));
+	// Transfers are stored as an expense leg and an income leg linked by toAccountId,
+	// never as type 'transfer', so the filter matches the link and keeps the legs out
+	// of the income and expense filters.
+	if (options?.type === 'transfer') conditions.push(isNotNull(transaction.toAccountId));
+	else if (options?.type) {
+		conditions.push(eq(transaction.type, options.type), isNull(transaction.toAccountId));
+	}
 	if (options?.startDate) conditions.push(gte(transaction.date, options.startDate));
 	if (options?.endDate) conditions.push(lte(transaction.date, options.endDate));
 
