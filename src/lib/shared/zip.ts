@@ -1,7 +1,8 @@
 /*
- * A streaming ZIP writer and reader for backup archives. Both handle only the part of the
- * format (PKWARE APPNOTE) that backups use, and the reader refuses everything else with a
- * ZipError rather than guess:
+ * A streaming ZIP writer and reader for backup archives, built on web APIs only so the
+ * Worker and the browser share it. Both handle only the part of the format (PKWARE
+ * APPNOTE) that backups use, and the reader refuses everything else with a ZipError rather
+ * than guess:
  *
  * - STORE (method 0) and DEFLATE (method 8, raw deflate through CompressionStream).
  * - CRC-32 and sizes in the local file header, so no data descriptors: the writer holds one
@@ -10,8 +11,8 @@
  *   ZIP_MAX_ENTRIES entries and ZIP_MAX_BYTES bytes).
  * - A central directory and end record, so the file opens in ordinary unzip tools.
  *
- * A backup archive holds, in this order:
- *   backup.json            the backup document (./format.ts), DEFLATE
+ * A backup archive ($lib/server/backup/format.ts) holds, in this order:
+ *   backup.json            the backup document, DEFLATE
  *   photos/<photoId>.jpg   then one STORE entry per receipt image (JPEG and PNG are already
  *   photos/<photoId>.png   compressed), named by the photo's id in backup.json
  */
