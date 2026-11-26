@@ -171,7 +171,7 @@ pnpm exec vitest run --project browser <path>         # one component test
 - **A .zip backup over 95 MB cannot bring its photos back in one go.** Cloudflare refuses request bodies over 100 MB on Free and Pro zones, so for a larger file the settings page offers to restore the data without photos (it sends only the backup.json inside). A chunked restore that uploads the photos in parts is a possible follow-up.
 - **Old .json backups contain no photo images.** Their photo rows come back only when restoring into the account that made the backup while the images are still stored.
 - **Restore leaves the replaced book's images in R2** (a .zip restore stores fresh copies), so unreferenced photos accumulate until a cleanup job exists.
-- **Loan interest** is not modelled; record it as a separate expense.
+- **Loan interest** is booked when it is paid or received, not accrued over the loan's term. All interest on loans given is kept out of PPh Final turnover; a business whose usaha is lending would need that revisited.
 - **Very large books** (over 10 MB or 30,000 rows per backup) cannot be restored in one go; the app refuses them before writing anything.
 
 ## Project Structure
