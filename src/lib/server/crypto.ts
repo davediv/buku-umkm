@@ -108,8 +108,8 @@ export async function decryptNPWP(encryptedNpwp: string): Promise<string | null>
 
 /**
  * Validate NPWP format
- * Valid formats: 15 or 16 digits (with or without dots/dashes)
- * Indonesian NPWP format: XX.XXX.XXX.X.XXX.XXX (15 digits) or XX.XXX.XXX.X.XX.XXX (16 digits)
+ * Valid formats: the legacy 15-digit NPWP (XX.XXX.XXX.X-XXX.XXX, dots/dash optional) or
+ * the 16-digit NPWP used since 2024 (an individual's NIK, or 0 + the 15 digits for a body)
  */
 export function validateNPWP(npwp: string): { valid: boolean; error?: string } {
 	if (!npwp) {
@@ -144,11 +144,11 @@ export function formatNPWP(npwp: string): string {
 	const clean = npwp.replace(/[.-]/g, '');
 
 	if (clean.length === 15) {
-		// Format: XX.XXX.XXX.X.XXX.XXX
-		return `${clean.slice(0, 2)}.${clean.slice(2, 5)}.${clean.slice(5, 8)}.${clean.slice(8, 9)}.${clean.slice(9, 12)}.${clean.slice(12)}`;
+		// Legacy NPWP: XX.XXX.XXX.X-XXX.XXX
+		return `${clean.slice(0, 2)}.${clean.slice(2, 5)}.${clean.slice(5, 8)}.${clean.slice(8, 9)}-${clean.slice(9, 12)}.${clean.slice(12)}`;
 	} else if (clean.length === 16) {
-		// Format: XX.XXX.XXX.X.XX.XXX
-		return `${clean.slice(0, 2)}.${clean.slice(2, 5)}.${clean.slice(5, 8)}.${clean.slice(8, 9)}.${clean.slice(9, 11)}.${clean.slice(11)}`;
+		// The 16-digit NPWP (NIK-based) is written as plain digits, without separators.
+		return clean;
 	}
 
 	return npwp;

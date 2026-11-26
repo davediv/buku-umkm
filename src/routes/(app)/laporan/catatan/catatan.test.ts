@@ -47,7 +47,7 @@ describe('notes page NPWP', () => {
 
 		const result = await loadNotes();
 
-		expect(result.catatan?.businessProfile?.npwp).toBe('01.234.567.8.901.234');
+		expect(result.catatan?.businessProfile?.npwp).toBe('01.234.567.8-901.234');
 		expect(JSON.stringify(result)).not.toContain(ciphertext);
 	});
 
