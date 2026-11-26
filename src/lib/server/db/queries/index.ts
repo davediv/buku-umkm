@@ -12,6 +12,7 @@ import {
 	transactionPhoto,
 	transactionTemplate
 } from '../schema';
+import { cashMovementRows, profitAndLossRows } from './ledger';
 
 // ============================================================================
 // Account Queries
@@ -461,58 +462,12 @@ export const transactionQueries = {
 	},
 
 	/**
-	 * Get monthly totals
-	 */
-	getMonthlyTotals(db: SQLiteDb, userId: string, year: number, month: number) {
-		const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-		const endDate =
-			month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, '0')}-01`;
-
-		return db
-			.select({
-				type: transaction.type,
-				total: sql`SUM(${transaction.amount})`
-			})
-			.from(transaction)
-			.where(
-				and(
-					eq(transaction.userId, userId),
-					gte(transaction.date, startDate),
-					lt(transaction.date, endDate)
-				)
-			)
-			.groupBy(transaction.type);
-	},
-
-	/**
-	 * Get yearly totals
-	 */
-	getYearlyTotals(db: SQLiteDb, userId: string, year: number) {
-		const startDate = `${year}-01-01`;
-		const endDate = `${year + 1}-01-01`;
-
-		return db
-			.select({
-				type: transaction.type,
-				total: sql`SUM(${transaction.amount})`
-			})
-			.from(transaction)
-			.where(
-				and(
-					eq(transaction.userId, userId),
-					gte(transaction.date, startDate),
-					lt(transaction.date, endDate)
-				)
-			)
-			.groupBy(transaction.type);
-	},
-
-	/**
 	 * Get recent transactions
 	 */
 	getRecent(db: SQLiteDb, userId: string, limit = 10) {
 		return db.query.transaction.findMany({
-			where: (transactions, { eq }) => eq(transactions.userId, userId),
+			where: (transactions, { eq }) =>
+				and(eq(transactions.userId, userId), eq(transactions.isActive, true)),
 			orderBy: (transactions, { desc }) => [desc(transactions.date), desc(transactions.createdAt)],
 			limit,
 			with: {
@@ -871,52 +826,6 @@ export const taxRecordQueries = {
 	 */
 	delete(db: SQLiteDb, userId: string, taxId: string) {
 		return db.delete(taxRecord).where(and(eq(taxRecord.userId, userId), eq(taxRecord.id, taxId)));
-	},
-
-	/**
-	 * Calculate cumulative annual revenue from transactions
-	 */
-	async getCumulativeAnnualRevenue(db: SQLiteDb, userId: string, year: number) {
-		const startOfYear = `${year}-01-01`;
-		const endOfYear = `${year + 1}-01-01`;
-
-		const result = await db
-			.select({ total: sql`COALESCE(SUM(${transaction.amount}), 0)` })
-			.from(transaction)
-			.where(
-				and(
-					eq(transaction.userId, userId),
-					eq(transaction.type, 'income'),
-					gte(transaction.date, startOfYear),
-					lt(transaction.date, endOfYear)
-				)
-			);
-
-		return Number(result[0]?.total ?? 0);
-	},
-
-	/**
-	 * Calculate monthly gross revenue from transactions
-	 */
-	async getMonthlyGrossRevenue(db: SQLiteDb, userId: string, year: number, month: number) {
-		const monthStr = month.toString().padStart(2, '0');
-		const startOfMonth = `${year}-${monthStr}-01`;
-		const endOfMonth =
-			month === 12 ? `${year + 1}-01-01` : `${year}-${(month + 1).toString().padStart(2, '0')}-01`;
-
-		const result = await db
-			.select({ total: sql`COALESCE(SUM(${transaction.amount}), 0)` })
-			.from(transaction)
-			.where(
-				and(
-					eq(transaction.userId, userId),
-					eq(transaction.type, 'income'),
-					gte(transaction.date, startOfMonth),
-					lt(transaction.date, endOfMonth)
-				)
-			);
-
-		return Number(result[0]?.total ?? 0);
 	}
 };
 
@@ -1025,37 +934,88 @@ export const dashboardQueries = {
 		}
 
 		const earliestTransactionDate = [startOfYear, today, periodStart].sort()[0];
+		// Every column needs its own alias: Drizzle maps D1 batch rows by column name, and
+		// unaliased sums with identical SQL text (only their bound dates differ) collapse
+		// into one key, shifting every later value into the wrong field.
 		const accountQuery = db
 			.select({
-				assets: sql<number>`COALESCE(SUM(CASE WHEN ${chartOfAccount.type} = 'asset' THEN ${chartOfAccount.balance} ELSE 0 END), 0)`,
-				liabilities: sql<number>`COALESCE(SUM(CASE WHEN ${chartOfAccount.type} = 'liability' THEN ${chartOfAccount.balance} ELSE 0 END), 0)`,
-				equity: sql<number>`COALESCE(SUM(CASE WHEN ${chartOfAccount.type} = 'equity' THEN ${chartOfAccount.balance} ELSE 0 END), 0)`
+				assets:
+					sql<number>`COALESCE(SUM(CASE WHEN ${chartOfAccount.type} = 'asset' THEN ${chartOfAccount.balance} ELSE 0 END), 0)`.as(
+						'assets'
+					),
+				liabilities:
+					sql<number>`COALESCE(SUM(CASE WHEN ${chartOfAccount.type} = 'liability' THEN ${chartOfAccount.balance} ELSE 0 END), 0)`.as(
+						'liabilities'
+					),
+				equity:
+					sql<number>`COALESCE(SUM(CASE WHEN ${chartOfAccount.type} = 'equity' THEN ${chartOfAccount.balance} ELSE 0 END), 0)`.as(
+						'equity'
+					)
 			})
 			.from(chartOfAccount)
 			.where(eq(chartOfAccount.userId, userId));
 		const transactionQuery = db
 			.select({
-				monthlyIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${startOfMonth} AND ${transaction.date} < ${endOfMonth} THEN ${transaction.amount} ELSE 0 END), 0)`,
-				monthlyExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${startOfMonth} AND ${transaction.date} < ${endOfMonth} THEN ${transaction.amount} ELSE 0 END), 0)`,
-				yearIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${startOfYear} THEN ${transaction.amount} ELSE 0 END), 0)`,
-				yearExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${startOfYear} THEN ${transaction.amount} ELSE 0 END), 0)`,
-				todayIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${today} AND ${transaction.date} < ${tomorrowDate} THEN ${transaction.amount} ELSE 0 END), 0)`,
-				todayExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${today} AND ${transaction.date} < ${tomorrowDate} THEN ${transaction.amount} ELSE 0 END), 0)`,
-				periodIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${periodStart} AND ${transaction.date} < ${periodEnd} THEN ${transaction.amount} ELSE 0 END), 0)`,
-				periodExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${periodStart} AND ${transaction.date} < ${periodEnd} THEN ${transaction.amount} ELSE 0 END), 0)`
+				monthlyIncome:
+					sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${startOfMonth} AND ${transaction.date} < ${endOfMonth} THEN ${transaction.amount} ELSE 0 END), 0)`.as(
+						'monthly_income'
+					),
+				monthlyExpense:
+					sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${startOfMonth} AND ${transaction.date} < ${endOfMonth} THEN ${transaction.amount} ELSE 0 END), 0)`.as(
+						'monthly_expense'
+					),
+				yearIncome:
+					sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${startOfYear} THEN ${transaction.amount} ELSE 0 END), 0)`.as(
+						'year_income'
+					),
+				yearExpense:
+					sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${startOfYear} THEN ${transaction.amount} ELSE 0 END), 0)`.as(
+						'year_expense'
+					),
+				todayIncome:
+					sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${today} AND ${transaction.date} < ${tomorrowDate} THEN ${transaction.amount} ELSE 0 END), 0)`.as(
+						'today_income'
+					),
+				todayExpense:
+					sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${today} AND ${transaction.date} < ${tomorrowDate} THEN ${transaction.amount} ELSE 0 END), 0)`.as(
+						'today_expense'
+					),
+				periodIncome:
+					sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${periodStart} AND ${transaction.date} < ${periodEnd} THEN ${transaction.amount} ELSE 0 END), 0)`.as(
+						'period_income'
+					),
+				periodExpense:
+					sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${periodStart} AND ${transaction.date} < ${periodEnd} THEN ${transaction.amount} ELSE 0 END), 0)`.as(
+						'period_expense'
+					)
 			})
 			.from(transaction)
-			.where(and(eq(transaction.userId, userId), gte(transaction.date, earliestTransactionDate)));
+			.where(
+				and(
+					eq(transaction.userId, userId),
+					profitAndLossRows(),
+					gte(transaction.date, earliestTransactionDate)
+				)
+			);
 		const debtQuery = db
 			.select({
-				piutang: sql<number>`COALESCE(SUM(CASE WHEN ${debt.type} = 'piutang' AND ${debt.status} = 'active' THEN ${debt.remainingAmount} ELSE 0 END), 0)`,
-				hutang: sql<number>`COALESCE(SUM(CASE WHEN ${debt.type} = 'hutang' AND ${debt.status} = 'active' THEN ${debt.remainingAmount} ELSE 0 END), 0)`,
-				activeCount: sql<number>`COALESCE(SUM(CASE WHEN ${debt.status} = 'active' THEN 1 ELSE 0 END), 0)`
+				piutang:
+					sql<number>`COALESCE(SUM(CASE WHEN ${debt.type} = 'piutang' AND ${debt.status} = 'active' THEN ${debt.remainingAmount} ELSE 0 END), 0)`.as(
+						'piutang'
+					),
+				hutang:
+					sql<number>`COALESCE(SUM(CASE WHEN ${debt.type} = 'hutang' AND ${debt.status} = 'active' THEN ${debt.remainingAmount} ELSE 0 END), 0)`.as(
+						'hutang'
+					),
+				activeCount:
+					sql<number>`COALESCE(SUM(CASE WHEN ${debt.status} = 'active' THEN 1 ELSE 0 END), 0)`.as(
+						'active_count'
+					)
 			})
 			.from(debt)
 			.where(eq(debt.userId, userId));
 		const taxQuery = db
-			.select({ count: sql<number>`COUNT(*)` })
+			.select({ count: sql<number>`COUNT(*)`.as('count') })
 			.from(taxRecord)
 			.where(and(eq(taxRecord.userId, userId), eq(taxRecord.status, 'unpaid')));
 
@@ -1119,311 +1079,6 @@ export const dashboardQueries = {
 	},
 
 	/**
-	 * Get dashboard summary
-	 */
-	getSummary(db: SQLiteDb, userId: string) {
-		return (async () => {
-			// Total assets
-			const assets = await db
-				.select({
-					total: sql`COALESCE(SUM(${chartOfAccount.balance}), 0)`
-				})
-				.from(chartOfAccount)
-				.where(and(eq(chartOfAccount.userId, userId), eq(chartOfAccount.type, 'asset')))
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			// Total liabilities
-			const liabilities = await db
-				.select({
-					total: sql`COALESCE(SUM(${chartOfAccount.balance}), 0)`
-				})
-				.from(chartOfAccount)
-				.where(and(eq(chartOfAccount.userId, userId), eq(chartOfAccount.type, 'liability')))
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			// Total equity
-			const equity = await db
-				.select({
-					total: sql`COALESCE(SUM(${chartOfAccount.balance}), 0)`
-				})
-				.from(chartOfAccount)
-				.where(and(eq(chartOfAccount.userId, userId), eq(chartOfAccount.type, 'equity')))
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			// This month income
-			const now = new Date();
-			const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-			const endOfMonth =
-				now.getMonth() === 11
-					? `${now.getFullYear() + 1}-01-01`
-					: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
-
-			const monthlyIncome = await db
-				.select({
-					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
-				})
-				.from(transaction)
-				.where(
-					and(
-						eq(transaction.userId, userId),
-						eq(transaction.type, 'income'),
-						gte(transaction.date, startOfMonth),
-						lt(transaction.date, endOfMonth)
-					)
-				)
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			// This month expense
-			const monthlyExpense = await db
-				.select({
-					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
-				})
-				.from(transaction)
-				.where(
-					and(
-						eq(transaction.userId, userId),
-						eq(transaction.type, 'expense'),
-						gte(transaction.date, startOfMonth),
-						lt(transaction.date, endOfMonth)
-					)
-				)
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			// Year to date revenue
-			const startOfYear = `${now.getFullYear()}-01-01`;
-			const yearIncome = await db
-				.select({
-					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
-				})
-				.from(transaction)
-				.where(
-					and(
-						eq(transaction.userId, userId),
-						eq(transaction.type, 'income'),
-						gte(transaction.date, startOfYear)
-					)
-				)
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			const yearExpense = await db
-				.select({
-					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
-				})
-				.from(transaction)
-				.where(
-					and(
-						eq(transaction.userId, userId),
-						eq(transaction.type, 'expense'),
-						gte(transaction.date, startOfYear)
-					)
-				)
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			// Active debts count
-			const activeDebts = await db
-				.select({ count: sql`COUNT(*)` })
-				.from(debt)
-				.where(and(eq(debt.userId, userId), eq(debt.status, 'active')))
-				.then((rows) => Number(rows[0]?.count ?? 0));
-
-			// Unpaid taxes
-			const unpaidTaxes = await db
-				.select({ count: sql`COUNT(*)` })
-				.from(taxRecord)
-				.where(and(eq(taxRecord.userId, userId), eq(taxRecord.status, 'unpaid')))
-				.then((rows) => Number(rows[0]?.count ?? 0));
-
-			return {
-				totalAssets: assets,
-				totalLiabilities: liabilities,
-				totalEquity: equity,
-				netWorth: assets - liabilities,
-				monthlyIncome,
-				monthlyExpense,
-				monthlyProfit: monthlyIncome - monthlyExpense,
-				yearToDateRevenue: yearIncome,
-				yearToDateExpense: yearExpense,
-				yearToDateProfit: yearIncome - yearExpense,
-				activeDebtsCount: activeDebts,
-				unpaidTaxesCount: unpaidTaxes
-			};
-		})();
-	},
-
-	/**
-	 * Get today's income, expenses, and profit/loss
-	 */
-	getTodayStats(db: SQLiteDb, userId: string) {
-		const now = new Date();
-		const today = now.toISOString().split('T')[0];
-		const tomorrow = new Date(now);
-		tomorrow.setDate(tomorrow.getDate() + 1);
-		const tomorrowStr = tomorrow.toISOString().split('T')[0];
-
-		return (async () => {
-			const income = await db
-				.select({
-					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
-				})
-				.from(transaction)
-				.where(
-					and(
-						eq(transaction.userId, userId),
-						eq(transaction.type, 'income'),
-						gte(transaction.date, today),
-						lt(transaction.date, tomorrowStr)
-					)
-				)
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			const expense = await db
-				.select({
-					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
-				})
-				.from(transaction)
-				.where(
-					and(
-						eq(transaction.userId, userId),
-						eq(transaction.type, 'expense'),
-						gte(transaction.date, today),
-						lt(transaction.date, tomorrowStr)
-					)
-				)
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			return {
-				income,
-				expense,
-				profit: income - expense
-			};
-		})();
-	},
-
-	/**
-	 * Get period-based income, expenses, and profit/loss
-	 * period: 'daily' | 'weekly' | 'monthly'
-	 */
-	getPeriodStats(
-		db: SQLiteDb,
-		userId: string,
-		period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' = 'monthly'
-	) {
-		const now = new Date();
-		let startDate: string;
-		let endDate: string;
-
-		if (period === 'daily') {
-			// Today
-			startDate = now.toISOString().split('T')[0];
-			const tomorrow = new Date(now);
-			tomorrow.setDate(tomorrow.getDate() + 1);
-			endDate = tomorrow.toISOString().split('T')[0];
-		} else if (period === 'weekly') {
-			// This week (Monday to Sunday)
-			const dayOfWeek = now.getDay();
-			const monday = new Date(now);
-			monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-			startDate = monday.toISOString().split('T')[0];
-			const sunday = new Date(monday);
-			sunday.setDate(sunday.getDate() + 6);
-			endDate = sunday.toISOString().split('T')[0];
-			// Set endDate to next day for query
-			const nextDay = new Date(sunday);
-			nextDay.setDate(nextDay.getDate() + 1);
-			endDate = nextDay.toISOString().split('T')[0];
-		} else if (period === 'monthly') {
-			// This month
-			startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-			endDate =
-				now.getMonth() === 11
-					? `${now.getFullYear() + 1}-01-01`
-					: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
-		} else if (period === 'quarterly') {
-			// This quarter
-			const currentQuarter = Math.floor(now.getMonth() / 3);
-			const quarterStartMonth = currentQuarter * 3 + 1;
-			const quarterEndMonth = quarterStartMonth + 3;
-			startDate = `${now.getFullYear()}-${String(quarterStartMonth).padStart(2, '0')}-01`;
-			endDate =
-				quarterEndMonth > 12
-					? `${now.getFullYear() + 1}-01-01`
-					: `${now.getFullYear()}-${String(quarterEndMonth).padStart(2, '0')}-01`;
-		} else {
-			// This year
-			startDate = `${now.getFullYear()}-01-01`;
-			endDate = `${now.getFullYear() + 1}-01-01`;
-		}
-
-		return (async () => {
-			const income = await db
-				.select({
-					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
-				})
-				.from(transaction)
-				.where(
-					and(
-						eq(transaction.userId, userId),
-						eq(transaction.type, 'income'),
-						gte(transaction.date, startDate),
-						lt(transaction.date, endDate)
-					)
-				)
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			const expense = await db
-				.select({
-					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
-				})
-				.from(transaction)
-				.where(
-					and(
-						eq(transaction.userId, userId),
-						eq(transaction.type, 'expense'),
-						gte(transaction.date, startDate),
-						lt(transaction.date, endDate)
-					)
-				)
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			return {
-				period,
-				startDate,
-				endDate,
-				income,
-				expense,
-				profit: income - expense
-			};
-		})();
-	},
-
-	/**
-	 * Get debt summary (total outstanding piutang and hutang)
-	 */
-	getDebtSummary(db: SQLiteDb, userId: string) {
-		return (async () => {
-			// Total outstanding piutang (receivables)
-			const piutang = await db
-				.select({
-					total: sql`COALESCE(SUM(${debt.remainingAmount}), 0)`
-				})
-				.from(debt)
-				.where(and(eq(debt.userId, userId), eq(debt.type, 'piutang'), eq(debt.status, 'active')))
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			// Total outstanding hutang (payables)
-			const hutang = await db
-				.select({
-					total: sql`COALESCE(SUM(${debt.remainingAmount}), 0)`
-				})
-				.from(debt)
-				.where(and(eq(debt.userId, userId), eq(debt.type, 'hutang'), eq(debt.status, 'active')))
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			return { piutang, hutang };
-		})();
-	},
-
-	/**
 	 * Get cash flow data for chart
 	 */
 	async getCashFlow(db: SQLiteDb, userId: string, months = 6) {
@@ -1447,6 +1102,7 @@ export const dashboardQueries = {
 			.where(
 				and(
 					eq(transaction.userId, userId),
+					cashMovementRows(),
 					inArray(transaction.type, ['income', 'expense']),
 					gte(transaction.date, toDateString(firstMonth)),
 					lt(transaction.date, toDateString(monthAfterLast))
@@ -1546,6 +1202,7 @@ export const dashboardQueries = {
 					and(
 						eq(transaction.userId, userId),
 						eq(transaction.type, 'income'),
+						profitAndLossRows(),
 						gte(transaction.date, startDate),
 						lt(transaction.date, endDate)
 					)
@@ -1567,6 +1224,7 @@ export const dashboardQueries = {
 					and(
 						eq(transaction.userId, userId),
 						eq(transaction.type, 'expense'),
+						profitAndLossRows(),
 						gte(transaction.date, startDate),
 						lt(transaction.date, endDate)
 					)
@@ -1685,6 +1343,7 @@ export const dashboardQueries = {
 					and(
 						eq(transaction.userId, userId),
 						eq(transaction.type, 'income'),
+						profitAndLossRows(),
 						gte(transaction.date, startDate),
 						lt(transaction.date, endDate)
 					)
@@ -1700,6 +1359,7 @@ export const dashboardQueries = {
 					and(
 						eq(transaction.userId, userId),
 						eq(transaction.type, 'expense'),
+						profitAndLossRows(),
 						gte(transaction.date, startDate),
 						lt(transaction.date, endDate)
 					)
@@ -1716,6 +1376,7 @@ export const dashboardQueries = {
 					and(
 						eq(transaction.userId, userId),
 						eq(transaction.type, 'income'),
+						profitAndLossRows(),
 						gte(transaction.date, prevStartDate),
 						lt(transaction.date, prevEndDate)
 					)
@@ -1731,6 +1392,7 @@ export const dashboardQueries = {
 					and(
 						eq(transaction.userId, userId),
 						eq(transaction.type, 'expense'),
+						profitAndLossRows(),
 						gte(transaction.date, prevStartDate),
 						lt(transaction.date, prevEndDate)
 					)

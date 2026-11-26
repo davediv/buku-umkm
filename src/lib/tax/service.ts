@@ -13,6 +13,7 @@ import { evaluateTaxEligibility } from './eligibility';
 import { decryptNPWP } from '$lib/server/crypto';
 import { calculateMonthlyTax } from './engine';
 import { todayInJakarta } from '$lib/shared/dates';
+import { profitAndLossRows } from '$lib/server/db/queries/ledger';
 
 // Re-export for backward compatibility
 export { getIndonesianMonthName };
@@ -138,6 +139,7 @@ export async function getRecordedMonthlyRevenue(
 			and(
 				eq(transaction.userId, userId),
 				eq(transaction.type, 'income'),
+				profitAndLossRows(),
 				gte(transaction.date, yearStartDate),
 				lt(transaction.date, yearEndDate)
 			)
@@ -166,6 +168,7 @@ export async function getRecordedAnnualExpenseTotal(
 			and(
 				eq(transaction.userId, userId),
 				eq(transaction.type, 'expense'),
+				profitAndLossRows(),
 				gte(transaction.date, `${year}-01-01`),
 				lt(transaction.date, `${year + 1}-01-01`)
 			)
