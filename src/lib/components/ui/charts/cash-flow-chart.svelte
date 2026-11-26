@@ -47,13 +47,18 @@
 	let chartHeight = $derived(Math.max(height - 28, 120));
 	let plotWidth = $derived(WIDTH - MARGIN.left - MARGIN.right);
 	let plotHeight = $derived(chartHeight - MARGIN.top - MARGIN.bottom);
+	let maximum = $derived(Math.max(0, ...chartData.flatMap((item) => [item.income, item.expense])));
 	let maxValue = $derived.by(() => {
-		const maximum = Math.max(0, ...chartData.flatMap((item) => [item.income, item.expense]));
 		if (maximum === 0) return 1;
 		const magnitude = 10 ** Math.floor(Math.log10(maximum));
-		return Math.ceil(maximum / magnitude) * magnitude;
+		const rounded = Math.ceil(maximum / magnitude) * magnitude;
+		// Rupiah are whole numbers: keep the four axis steps whole too (5 -> 8, not 1,25 steps).
+		return Math.ceil(rounded / 4) * 4;
 	});
-	let ticks = $derived(Array.from({ length: 5 }, (_, index) => (maxValue * index) / 4));
+	// With no movement at all, a single 0 line instead of an invented 0-1 scale.
+	let ticks = $derived(
+		maximum === 0 ? [0] : Array.from({ length: 5 }, (_, index) => (maxValue * index) / 4)
+	);
 	let groupWidth = $derived(chartData.length > 0 ? plotWidth / chartData.length : plotWidth);
 	let barWidth = $derived(Math.max(4, Math.min(26, (groupWidth - 12) / 2)));
 
@@ -124,7 +129,8 @@
 				rx="2"
 				class="fill-green-500"
 			>
-				<title>{item.label} {item.year}: Kas masuk Rp {fullNumber.format(item.income)}</title>
+				<title>{`${item.label} ${item.year}: Kas masuk Rp ${fullNumber.format(item.income)}`}</title
+				>
 			</rect>
 			<rect
 				x={barX(index, 1)}
@@ -134,7 +140,9 @@
 				rx="2"
 				class="fill-red-500"
 			>
-				<title>{item.label} {item.year}: Kas keluar Rp {fullNumber.format(item.expense)}</title>
+				<title
+					>{`${item.label} ${item.year}: Kas keluar Rp ${fullNumber.format(item.expense)}`}</title
+				>
 			</rect>
 			<text
 				x={MARGIN.left + index * groupWidth + groupWidth / 2}
