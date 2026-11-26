@@ -12,10 +12,17 @@ import type {
 	DebtRecord,
 	FinanceRepository,
 	LoanPrincipal,
+	MovementReversal,
+	NewCategory,
 	PaymentRecord,
 	StoredCommand,
 	TransactionRecord
 } from './repository';
+import {
+	LOAN_INTEREST_CATEGORIES,
+	loanInterestDescription,
+	type InterestType
+} from '$lib/debts/interest';
 
 type CommandKind = 'transaction.create' | 'transfer.create' | 'debt.create' | 'debt.payment';
 
@@ -35,7 +42,21 @@ export type TransferRecord = {
 export type DebtPaymentOutcome = {
 	debt: DebtRecord;
 	payment: PaymentRecord;
-	transaction: TransactionRecord;
+	/** The principal's movement; null for a loan payment of interest alone. */
+	transaction: TransactionRecord | null;
+	/** The interest's profit-and-loss transaction; null when the payment has no interest. */
+	interestTransaction: TransactionRecord | null;
+};
+
+/**
+ * What a debt payment command stores. Commands stored before loan interest existed have
+ * a principal transaction always and no interestTransactionId.
+ */
+type PaymentIds = {
+	debtId: string;
+	paymentId: string;
+	transactionId: string | null;
+	interestTransactionId?: string | null;
 };
 
 function parseStoredResult<T>(stored: { kind: string; result: string }, kind: CommandKind): T {
@@ -78,7 +99,10 @@ function requirePersisted<T>(entity: T | undefined, message: string): T {
 	return entity;
 }
 
-function requireStandaloneTransaction(entity: TransactionRecord): void {
+function requireStandaloneTransaction(
+	entity: TransactionRecord,
+	interestOf: PaymentRecord | undefined
+): void {
 	if (entity.debtId) {
 		throw new FinanceError(
 			'Transaksi yang terhubung ke hutang/piutang tidak dapat diubah terpisah dari catatannya',
@@ -93,6 +117,32 @@ function requireStandaloneTransaction(entity: TransactionRecord): void {
 			'LINKED_TRANSACTION'
 		);
 	}
+	if (interestOf) {
+		throw new FinanceError(
+			'Bunga ini tercatat dari pembayaran pinjaman. Untuk mengoreksinya, batalkan pembayaran tersebut di catatan pinjamannya.',
+			409,
+			'LINKED_TRANSACTION'
+		);
+	}
+}
+
+/** Undoes a movement that still counts in the books: the opposite of its balance effect. */
+function reversalOf(movement: TransactionRecord): MovementReversal {
+	return {
+		transactionId: movement.id,
+		accountId: movement.accountId,
+		balanceDelta: -balanceEffect(movement.type, movement.amount)
+	};
+}
+
+/**
+ * The id a user's loan interest category gets when their first interest payment creates
+ * it. It is fixed per user and side, so two first payments racing each other create one
+ * category (the second insert is ignored) and both book under it. A category restored
+ * from a backup has a fresh id instead, which findSystemCategory finds by code first.
+ */
+function interestCategoryId(userId: string, type: InterestType): string {
+	return `loan-interest-${type}-${userId}`;
 }
 
 function requireAccountOpenOn(account: AccountRecord, date: string): void {
@@ -196,14 +246,25 @@ export function createFinancialMutationService(
 		};
 	}
 
+	async function findStandaloneTransaction(
+		userId: string,
+		transactionId: string
+	): Promise<TransactionRecord> {
+		const [existing, interestOf] = await Promise.all([
+			repository.findTransaction(userId, transactionId),
+			repository.findInterestPayment(userId, transactionId)
+		]);
+		if (!existing) throw new FinanceError('Transaksi tidak ditemukan', 404, 'NOT_FOUND');
+		requireStandaloneTransaction(existing, interestOf);
+		return existing;
+	}
+
 	async function updateTransaction(
 		userId: string,
 		transactionId: string,
 		input: UpdateTransactionCommand
 	): Promise<TransactionRecord> {
-		const existing = await repository.findTransaction(userId, transactionId);
-		if (!existing) throw new FinanceError('Transaksi tidak ditemukan', 404, 'NOT_FOUND');
-		requireStandaloneTransaction(existing);
+		const existing = await findStandaloneTransaction(userId, transactionId);
 		if (input.date !== undefined) {
 			const account =
 				existing.account ?? (await repository.findAccount(userId, existing.accountId));
@@ -250,9 +311,7 @@ export function createFinancialMutationService(
 	}
 
 	async function deleteTransaction(userId: string, transactionId: string): Promise<void> {
-		const existing = await repository.findTransaction(userId, transactionId);
-		if (!existing) throw new FinanceError('Transaksi tidak ditemukan', 404, 'NOT_FOUND');
-		requireStandaloneTransaction(existing);
+		const existing = await findStandaloneTransaction(userId, transactionId);
 		await repository.deleteTransactionAtomic(
 			userId,
 			transactionId,
@@ -557,17 +616,43 @@ export function createFinancialMutationService(
 		const movement = existing.principalTransactionId
 			? await repository.findTransaction(userId, existing.principalTransactionId)
 			: undefined;
-		await repository.deleteDebtAtomic(
-			userId,
-			debtId,
-			movement
-				? {
-						transactionId: movement.id,
-						accountId: movement.accountId,
-						balanceDelta: -balanceEffect(movement.type, movement.amount)
-					}
-				: null
-		);
+		await repository.deleteDebtAtomic(userId, debtId, movement ? reversalOf(movement) : null);
+	}
+
+	/**
+	 * The debt, payment and movements a payment command wrote. A replayed request whose
+	 * payment has since been reversed is refused rather than answered with a stale result.
+	 */
+	async function loadPaymentOutcome(
+		userId: string,
+		ids: PaymentIds,
+		replayed: boolean
+	): Promise<DebtPaymentOutcome> {
+		const missing = replayed
+			? 'Pembayaran sebelumnya tidak tersedia'
+			: 'Pembayaran gagal dimuat setelah disimpan';
+		const [found, principal, interest] = await Promise.all([
+			repository.findDebt(userId, ids.debtId),
+			ids.transactionId ? repository.findTransaction(userId, ids.transactionId) : undefined,
+			ids.interestTransactionId
+				? repository.findTransaction(userId, ids.interestTransactionId)
+				: undefined
+		]);
+		const canonicalDebt = requirePersisted(found, missing);
+		const payment = canonicalDebt.payments.find((item) => item.id === ids.paymentId);
+		if (!payment && replayed) {
+			throw new FinanceError(
+				'Pembayaran dari permintaan ini sudah dibatalkan',
+				409,
+				'PAYMENT_REVERSED'
+			);
+		}
+		return {
+			debt: canonicalDebt,
+			payment: requirePersisted(payment, missing),
+			transaction: ids.transactionId ? requirePersisted(principal, missing) : null,
+			interestTransaction: ids.interestTransactionId ? requirePersisted(interest, missing) : null
+		};
 	}
 
 	async function replayDebtPayment(
@@ -576,37 +661,47 @@ export function createFinancialMutationService(
 	): Promise<MutationOutcome<DebtPaymentOutcome> | null> {
 		const stored = await repository.findCommand(userId, idempotencyKey);
 		if (!stored) return null;
-		const result = parseStoredResult<{
-			debtId: string;
-			paymentId: string;
-			transactionId: string;
-		}>(stored, 'debt.payment');
-		const [updatedDebt, paymentTransaction] = await Promise.all([
-			repository.findDebt(userId, result.debtId),
-			repository.findTransaction(userId, result.transactionId)
-		]);
-		const canonicalDebt = requirePersisted(updatedDebt, 'Pembayaran sebelumnya tidak tersedia');
-		const payment = canonicalDebt.payments.find((item) => item.id === result.paymentId);
-		if (!payment) {
-			throw new FinanceError(
-				'Pembayaran dari permintaan ini sudah dibatalkan',
-				409,
-				'PAYMENT_REVERSED'
-			);
-		}
+		const ids = parseStoredResult<PaymentIds>(stored, 'debt.payment');
+		return { entity: await loadPaymentOutcome(userId, ids, true), replayed: true };
+	}
+
+	/**
+	 * The system category loan interest of one side is booked under: the user's own, or a
+	 * new one for the payment's batch to create.
+	 */
+	async function interestCategory(
+		userId: string,
+		type: InterestType
+	): Promise<{ id: string; create: NewCategory | null }> {
+		const definition = LOAN_INTEREST_CATEGORIES[type];
+		const existing = await repository.findSystemCategory(userId, type, definition.code);
+		if (existing) return { id: existing.id, create: null };
+		const id = interestCategoryId(userId, type);
 		return {
-			entity: {
-				debt: canonicalDebt,
-				payment,
-				transaction: requirePersisted(
-					paymentTransaction,
-					'Transaksi pembayaran sebelumnya tidak tersedia'
-				)
-			},
-			replayed: true
+			id,
+			create: {
+				id,
+				userId,
+				code: definition.code,
+				name: definition.name,
+				type,
+				isSystem: true,
+				isActive: true,
+				icon: definition.icon,
+				color: definition.color
+			}
 		};
 	}
 
+	/**
+	 * Records one payment. `amount` is the principal: it reduces what the debt still owes
+	 * and moves cash with the debt linked, so it is never revenue or expense. A loan payment
+	 * may also carry interest, booked as its own transaction without the debt link (an
+	 * expense on a loan received, income on a loan given) on the same date and account. A
+	 * payment of interest alone (principal 0) is allowed while the loan is still open, as
+	 * monthly interest on an informal loan often is: only through the loan is a lender's
+	 * interest kept out of PPh Final turnover. Everything is written in one batch.
+	 */
 	async function recordDebtPayment(
 		userId: string,
 		debtId: string,
@@ -632,6 +727,17 @@ export function createFinancialMutationService(
 		if (existingDebt.status === 'paid') {
 			throw new FinanceError('Hutang/piutang sudah lunas', 400, 'ALREADY_PAID');
 		}
+		const interestAmount = input.interestAmount ?? 0;
+		if (interestAmount > 0 && existingDebt.kind !== 'loan') {
+			throw new FinanceError(
+				'Bunga hanya dapat dicatat pada pembayaran pinjaman',
+				400,
+				'INTEREST_NOT_ALLOWED'
+			);
+		}
+		if (input.amount <= 0 && interestAmount <= 0) {
+			throw new FinanceError('Jumlah pembayaran harus lebih dari 0');
+		}
 		if (input.amount > existingDebt.remainingAmount) {
 			throw new FinanceError(
 				`Jumlah pembayaran tidak boleh melebihi sisa tagihan (Rp${existingDebt.remainingAmount.toLocaleString('id-ID')})`,
@@ -640,39 +746,61 @@ export function createFinancialMutationService(
 			);
 		}
 
-		const paymentId = createId();
-		const transactionId = createId();
+		// Both parts move money the same way: in on a receivable, out on a payable. That is
+		// also the side interest falls on: income on a loan given, expense on one received.
 		const transactionType = existingDebt.type === 'piutang' ? 'income' : 'expense';
-		const transactionDescription = paymentDescription(existingDebt);
-		const command = storedCommand(createId, userId, idempotencyKey, 'debt.payment', {
+		const ids: PaymentIds = {
 			debtId,
-			paymentId,
-			transactionId
-		});
+			paymentId: createId(),
+			transactionId: input.amount > 0 ? createId() : null,
+			interestTransactionId: interestAmount > 0 ? createId() : null
+		};
+		const category = ids.interestTransactionId
+			? await interestCategory(userId, transactionType)
+			: null;
+		const movement = { userId, date: input.date, accountId: input.accountId, toAccountId: null };
+		const command = storedCommand(createId, userId, idempotencyKey, 'debt.payment', ids);
 		try {
 			await repository.recordDebtPaymentAtomic({
 				command,
-				balanceDelta: balanceEffect(transactionType, input.amount),
-				entry: {
-					id: transactionId,
-					userId,
-					date: input.date,
-					type: transactionType,
-					amount: input.amount,
-					description: transactionDescription,
-					accountId: input.accountId,
-					categoryId: null,
-					toAccountId: null,
-					debtId
-				},
+				balanceDelta: balanceEffect(transactionType, input.amount + interestAmount),
+				principal: ids.transactionId
+					? {
+							...movement,
+							id: ids.transactionId,
+							type: transactionType,
+							amount: input.amount,
+							description: paymentDescription(existingDebt),
+							categoryId: null,
+							debtId
+						}
+					: null,
+				interest:
+					ids.interestTransactionId && category
+						? {
+								entry: {
+									...movement,
+									id: ids.interestTransactionId,
+									type: transactionType,
+									amount: interestAmount,
+									description: loanInterestDescription(existingDebt.type, existingDebt.contactName),
+									categoryId: category.id,
+									// No debt link: interest is revenue or expense (ledger.ts).
+									debtId: null
+								},
+								category: category.create
+							}
+						: null,
 				payment: {
-					id: paymentId,
+					id: ids.paymentId,
 					debtId,
 					userId,
 					amount: input.amount,
+					interestAmount,
 					date: input.date,
 					accountId: input.accountId,
-					transactionId,
+					transactionId: ids.transactionId,
+					interestTransactionId: ids.interestTransactionId ?? null,
 					notes: input.notes
 				}
 			});
@@ -682,31 +810,14 @@ export function createFinancialMutationService(
 			throw error;
 		}
 
-		const [updatedDebt, paymentTransaction] = await Promise.all([
-			repository.findDebt(userId, debtId),
-			repository.findTransaction(userId, transactionId)
-		]);
-		const canonicalDebt = requirePersisted(updatedDebt, 'Pembayaran gagal dimuat setelah disimpan');
-		return {
-			entity: {
-				debt: canonicalDebt,
-				payment: requirePersisted(
-					canonicalDebt.payments.find((item) => item.id === paymentId),
-					'Pembayaran gagal dimuat setelah disimpan'
-				),
-				transaction: requirePersisted(
-					paymentTransaction,
-					'Transaksi pembayaran gagal dimuat setelah disimpan'
-				)
-			},
-			replayed: false
-		};
+		return { entity: await loadPaymentOutcome(userId, ids, false), replayed: false };
 	}
 
 	/**
 	 * Takes back a payment recorded by mistake: removes it from the debt's history,
-	 * soft-deletes its transaction, reverses its balance effect and reopens the debt.
-	 * Trade debts keep their revenue or expense, which was recognised on the debt date.
+	 * soft-deletes its principal and interest transactions, reverses both balance effects
+	 * and reopens the debt, all in one batch. Loan interest leaves the income statement
+	 * with it; trade debts keep their revenue or expense, recognised on the debt date.
 	 */
 	async function reverseDebtPayment(
 		userId: string,
@@ -724,21 +835,20 @@ export function createFinancialMutationService(
 			);
 		}
 		// Only a movement that still counts in the books has a balance effect to undo.
-		const movement = payment.transactionId
-			? await repository.findTransaction(userId, payment.transactionId)
-			: undefined;
+		const movements = await Promise.all(
+			[payment.transactionId, payment.interestTransactionId].map((id) =>
+				id ? repository.findTransaction(userId, id) : undefined
+			)
+		);
 		await repository.reverseDebtPaymentAtomic({
 			userId,
 			debtId,
 			paymentId,
 			amount: payment.amount,
-			movement: movement
-				? {
-						transactionId: movement.id,
-						accountId: movement.accountId,
-						balanceDelta: -balanceEffect(movement.type, movement.amount)
-					}
-				: null
+			interestAmount: payment.interestAmount,
+			movements: movements
+				.filter((item): item is TransactionRecord => item !== undefined)
+				.map(reversalOf)
 		});
 		return requirePersisted(
 			await repository.findDebt(userId, debtId),

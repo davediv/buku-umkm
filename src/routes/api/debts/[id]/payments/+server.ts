@@ -47,7 +47,13 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 						: 'Pembayaran berhasil dicatat',
 				payment: presentPayment(result.entity.payment),
 				debt: presentDebt(result.entity.debt),
-				transaction: presentTransaction(result.entity.transaction),
+				// The principal's movement and the interest's transaction; either may be null.
+				transaction: result.entity.transaction
+					? presentTransaction(result.entity.transaction)
+					: null,
+				interestTransaction: result.entity.interestTransaction
+					? presentTransaction(result.entity.interestTransaction)
+					: null,
 				replayed: result.replayed
 			},
 			{ status: result.replayed ? 200 : 201 }

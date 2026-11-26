@@ -4,7 +4,11 @@ import { createTestD1 } from '$lib/server/testing/d1';
 import { createFinancialMutationService } from '$lib/server/finance/commands';
 import { createD1FinanceRepository } from '$lib/server/finance/repository';
 import { getBalanceSheetAsOf } from '$lib/server/reports/balance-sheet';
-import { getRecordedAnnualExpenseTotal, getRecordedMonthlyRevenue } from '$lib/tax/service';
+import {
+	getRecordedAnnualExpenseTotal,
+	getRecordedAnnualLoanInterestIncome,
+	getRecordedMonthlyRevenue
+} from '$lib/tax/service';
 import { dashboardQueries, transactionQueries } from './index';
 
 let harness: Awaited<ReturnType<typeof createTestD1>>;
@@ -68,9 +72,10 @@ async function setup() {
 			dueDate: null,
 			description: null
 		});
-	const pay = (debtId: string, amount: number, date: string) =>
+	const pay = (debtId: string, amount: number, date: string, interestAmount = 0) =>
 		service.recordDebtPayment(userId, debtId, nextKey(), {
 			amount,
+			interestAmount,
 			date,
 			accountId: kas,
 			notes: null
@@ -284,6 +289,86 @@ describe('profit-and-loss totals on D1', () => {
 					{ label: '2025-06', income: 500_000, expense: 0 }
 				]);
 			});
+		});
+	});
+
+	describe('loan interest', () => {
+		/**
+		 * April 2025: a cash sale, a payment on a loan received (principal and interest) and
+		 * one on a loan given; in May, interest alone on the loan given.
+		 */
+		async function seedInterest() {
+			const books = await setup();
+			const { record, createDebt, pay } = books;
+			const received = await createDebt('hutang', 'loan', 5_000_000, '2025-03-20', 'Koperasi');
+			const given = await createDebt('piutang', 'loan', 2_000_000, '2025-03-15', 'Citra');
+			await record('income', 100, '2025-04-01');
+			await pay(received.entity.id, 500_000, '2025-04-10', 50_000);
+			await pay(given.entity.id, 300_000, '2025-04-12', 30_000);
+			await pay(given.entity.id, 0, '2025-05-12', 20_000);
+			return books;
+		}
+
+		beforeEach(() => {
+			vi.useFakeTimers({ toFake: ['Date'] });
+			vi.setSystemTime(new Date(2025, 3, 30, 12));
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('books interest expense and income in the income statement', async () => {
+			const { userId } = await seedInterest();
+			const { db } = harness;
+
+			const lines = await dashboardQueries.getProfitLossByCategory(db, userId, 'monthly');
+			expect(lines.income).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ categoryName: 'Tanpa Kategori', total: 100 }),
+					expect.objectContaining({
+						categoryCode: '4901',
+						categoryName: 'Pendapatan Bunga',
+						total: 30_000
+					})
+				])
+			);
+			expect(lines.expense).toEqual([
+				expect.objectContaining({
+					categoryCode: '7101',
+					categoryName: 'Beban Bunga',
+					total: 50_000
+				})
+			]);
+			const overview = await dashboardQueries.getOverview(db, userId, 'monthly');
+			expect(overview.periodStats).toMatchObject({ income: 30_100, expense: 50_000 });
+			expect(overview.summary).toMatchObject({ yearToDateRevenue: 50_100 });
+		});
+
+		it('keeps interest on a loan given out of PPh Final turnover', async () => {
+			const { userId } = await seedInterest();
+			const { db } = harness;
+
+			const revenue = await getRecordedMonthlyRevenue(db, userId, 2025);
+			expect(revenue.slice(2, 5)).toEqual([0, 100, 0]);
+			expect(await getRecordedAnnualLoanInterestIncome(db, userId, 2025)).toBe(50_000);
+			// Interest paid is an expense like any other.
+			expect(await getRecordedAnnualExpenseTotal(db, userId, 2025)).toBe(50_000);
+		});
+
+		it('keeps the balance sheet balanced', async () => {
+			const { userId } = await seedInterest();
+
+			const sheet = await getBalanceSheetAsOf(harness.db, userId, '2025-12-31');
+			// Kas: 50jt + 5jt - 2jt + 100 - 550rb + 330rb + 20rb
+			expect(sheet.assets.breakdown.kas.items[0].balance).toBe(52_800_100);
+			expect(sheet.assets.breakdown.piutangDetail.subtotal).toBe(1_700_000);
+			expect(sheet.liabilities.total).toBe(4_500_000);
+			expect(sheet.equity.components).toEqual([
+				{ name: 'Modal dari saldo awal', amount: 50_000_000 },
+				{ name: 'Akumulasi hasil usaha', amount: 100 + 50_000 - 50_000 }
+			]);
+			expect(sheet.isBalanced).toBe(true);
 		});
 	});
 });

@@ -8,6 +8,7 @@ import type {
 	DebtRecord,
 	FinanceRepository,
 	NewTransaction,
+	PaymentRecord,
 	TransactionRecord
 } from './repository';
 
@@ -78,6 +79,8 @@ function createRepository() {
 			const item = transactions.get(id);
 			return item?.userId === userId && item.isActive ? item : undefined;
 		}),
+		findInterestPayment: vi.fn(async (): Promise<PaymentRecord | undefined> => undefined),
+		findSystemCategory: vi.fn(async (): Promise<CategoryRecord | undefined> => undefined),
 		findDebt: vi.fn(async (userId: string, id: string) => {
 			const item = debts.get(id);
 			return item?.userId === userId && item.isActive ? item : undefined;
@@ -350,9 +353,11 @@ describe('financial mutation commands', () => {
 					debtId: 'debt-1',
 					userId: 'user-1',
 					amount: 100_000,
+					interestAmount: 0,
 					date: '2026-08-21',
 					accountId: 'account-1',
 					transactionId: 'txn-1',
+					interestTransactionId: null,
 					notes: null,
 					createdAt: now
 				}

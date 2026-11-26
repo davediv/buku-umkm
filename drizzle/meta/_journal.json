@@ -85,6 +85,13 @@
       "when": 1795717026950,
       "tag": "0011_tax_profile_turnover_limit_exceeded",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1795718924923,
+      "tag": "0012_debt_payment_interest",
+      "breakpoints": true
     }
   ]
 }

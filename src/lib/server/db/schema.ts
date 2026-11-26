@@ -447,14 +447,25 @@ export const debtPayment = sqliteTable(
 		userId: text('user_id')
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' }),
-		amount: integer('amount').notNull(), // Payment amount in Rupiah
+		// The principal paid in Rupiah: what reduces the debt's remaining amount. 0 only on a
+		// loan payment that pays interest alone.
+		amount: integer('amount').notNull(),
 		date: text('date').notNull(), // ISO 8601 date
 		accountId: text('account_id')
 			.notNull()
 			.references(() => chartOfAccount.id, { onDelete: 'cascade' }), // Account where payment is recorded
+		// The principal's cash movement (debtId set); null when no principal was paid.
 		transactionId: text('transaction_id').references(() => transaction.id, {
 			onDelete: 'set null'
-		}), // Associated transaction
+		}),
+		// Loans only: interest paid (hutang) or received (piutang) with this payment, in Rupiah.
+		interestAmount: integer('interest_amount').default(0).notNull(),
+		// The interest's transaction: an expense or income WITHOUT debtId, so it counts in the
+		// income statement (see $lib/server/db/queries/ledger). Null when there is no interest.
+		interestTransactionId: text('interest_transaction_id').references(
+			(): AnySQLiteColumn => transaction.id,
+			{ onDelete: 'set null' }
+		),
 		notes: text('notes'),
 		createdAt: integer('created_at', { mode: 'timestamp_ms' })
 			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -464,7 +475,9 @@ export const debtPayment = sqliteTable(
 		index('debt_payment_debtId_idx').on(table.debtId),
 		index('debt_payment_userId_idx').on(table.userId),
 		index('debt_payment_date_idx').on(table.date),
-		index('debt_payment_transactionId_idx').on(table.transactionId)
+		index('debt_payment_transactionId_idx').on(table.transactionId),
+		// Serves the turnover filter, which looks up each income row here.
+		index('debt_payment_interestTransactionId_idx').on(table.interestTransactionId)
 	]
 );
 

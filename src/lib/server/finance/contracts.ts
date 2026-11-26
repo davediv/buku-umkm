@@ -72,7 +72,10 @@ export type UpdateDebtCommand = {
 };
 
 export type RecordDebtPaymentCommand = {
+	/** The principal paid: what the debt's remaining amount goes down by. */
 	amount: number;
+	/** Loans only: interest paid or received on top of the principal; 0 or absent for none. */
+	interestAmount?: number;
 	date: string;
 	accountId: string;
 	notes: string | null;
@@ -115,6 +118,19 @@ function money(value: unknown, label = 'Jumlah'): number {
 	const parsed = typeof value === 'number' ? value : Number(value);
 	if (!Number.isSafeInteger(parsed) || parsed <= 0) {
 		throw new FinanceError(`${label} harus berupa Rupiah bulat dan lebih dari 0`);
+	}
+	if (parsed > MAX_TRANSACTION_AMOUNT) {
+		throw new FinanceError(`${label} maksimal Rp${MAX_TRANSACTION_AMOUNT.toLocaleString('id-ID')}`);
+	}
+	return parsed;
+}
+
+/** Whole Rupiah from 0 up; absent, null and '' read as 0. */
+function optionalMoney(value: unknown, label: string): number {
+	if (value === undefined || value === null || value === '') return 0;
+	const parsed = typeof value === 'number' ? value : Number(value);
+	if (!Number.isSafeInteger(parsed) || parsed < 0) {
+		throw new FinanceError(`${label} harus berupa Rupiah bulat, 0 atau lebih`);
 	}
 	if (parsed > MAX_TRANSACTION_AMOUNT) {
 		throw new FinanceError(`${label} maksimal Rp${MAX_TRANSACTION_AMOUNT.toLocaleString('id-ID')}`);
@@ -254,10 +270,20 @@ export function parseUpdateDebt(value: unknown): UpdateDebtCommand {
 	return command;
 }
 
+/**
+ * `amount` is the principal. A loan payment may add `interest_amount`; with interest, the
+ * principal may be 0 (a payment of interest alone). Whether the debt is a loan is checked
+ * by the command, which knows the debt.
+ */
 export function parseDebtPayment(value: unknown): RecordDebtPaymentCommand {
 	const body = asObject(value);
+	const interestAmount = optionalMoney(body.interest_amount, 'Bunga');
 	return {
-		amount: money(body.amount, 'Jumlah pembayaran'),
+		amount:
+			interestAmount > 0
+				? optionalMoney(body.amount, 'Pokok')
+				: money(body.amount, 'Jumlah pembayaran'),
+		interestAmount,
 		date: date(body.date, 'Tanggal'),
 		accountId: requiredString(body.account_id, 'Akun', 100),
 		notes: optionalString(body.notes, 'Catatan', 1000)

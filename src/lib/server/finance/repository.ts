@@ -33,6 +33,7 @@ export type StoredCommand = {
 export type NewTransaction = typeof transaction.$inferInsert;
 export type NewDebt = typeof debt.$inferInsert;
 export type NewPayment = typeof debtPayment.$inferInsert;
+export type NewCategory = typeof category.$inferInsert;
 
 /** The cash movement that pays out or receives a loan's principal. */
 export type LoanPrincipal = { entry: NewTransaction; balanceDelta: number };
@@ -43,14 +44,34 @@ export type LoanPrincipal = { entry: NewTransaction; balanceDelta: number };
  */
 export type MovementReversal = { transactionId: string; accountId: string; balanceDelta: number };
 
+/**
+ * One debt payment, written as a whole: its principal reduces what the debt still owes
+ * and moves cash with the debt linked; its interest (loans only) is a profit-and-loss
+ * transaction of its own. `balanceDelta` is both effects on the payment's account.
+ */
+export type PaymentRecording = {
+	command: StoredCommand;
+	payment: NewPayment;
+	/** The principal's movement, linked to the debt; null when only interest is paid. */
+	principal: NewTransaction | null;
+	interest: {
+		entry: NewTransaction;
+		/** The interest category to create first, when the user does not have it yet. */
+		category: NewCategory | null;
+	} | null;
+	balanceDelta: number;
+};
+
 /** Takes back one debt payment, restoring what the debt still owes. */
 export type PaymentReversal = {
 	userId: string;
 	debtId: string;
 	paymentId: string;
+	/** The principal paid, given back to the debt. */
 	amount: number;
-	/** The payment's cash movement, or null when it no longer counts in the books. */
-	movement: MovementReversal | null;
+	interestAmount: number;
+	/** The payment's principal and interest movements that still count in the books. */
+	movements: MovementReversal[];
 };
 
 /** One side of a transfer: the transaction (leg) and the account it moved money through. */
@@ -69,6 +90,14 @@ export interface FinanceRepository {
 	findAccount(userId: string, accountId: string): Promise<AccountRecord | undefined>;
 	findCategory(userId: string, categoryId: string): Promise<CategoryRecord | undefined>;
 	findTransaction(userId: string, transactionId: string): Promise<TransactionRecord | undefined>;
+	/** The payment whose interest a transaction books, if it is one. */
+	findInterestPayment(userId: string, transactionId: string): Promise<PaymentRecord | undefined>;
+	/** A system category by type and code, active or not; the oldest if several match. */
+	findSystemCategory(
+		userId: string,
+		type: string,
+		code: string
+	): Promise<CategoryRecord | undefined>;
 	findDebt(userId: string, debtId: string): Promise<DebtRecord | undefined>;
 	/** Both legs of a transfer, reversed ones included. */
 	findTransferLegs(userId: string, transferId: string): Promise<TransactionRecord[]>;
@@ -107,12 +136,7 @@ export interface FinanceRepository {
 		debtId: string,
 		principal: MovementReversal | null
 	): Promise<void>;
-	recordDebtPaymentAtomic(input: {
-		command: StoredCommand;
-		payment: NewPayment;
-		entry: NewTransaction;
-		balanceDelta: number;
-	}): Promise<void>;
+	recordDebtPaymentAtomic(input: PaymentRecording): Promise<void>;
 	reverseDebtPaymentAtomic(input: PaymentReversal): Promise<void>;
 	reverseTransferAtomic(input: TransferReversal): Promise<void>;
 }
@@ -274,6 +298,24 @@ export function createD1FinanceRepository(db: SQLiteDb): FinanceRepository {
 				with: { account: true, category: true, toAccount: true }
 			});
 		},
+		findInterestPayment(userId, transactionId) {
+			return db.query.debtPayment.findFirst({
+				where: (item, { eq, and }) =>
+					and(eq(item.userId, userId), eq(item.interestTransactionId, transactionId))
+			});
+		},
+		findSystemCategory(userId, type, code) {
+			return db.query.category.findFirst({
+				where: (item, { eq, and }) =>
+					and(
+						eq(item.userId, userId),
+						eq(item.type, type),
+						eq(item.code, code),
+						eq(item.isSystem, true)
+					),
+				orderBy: (item, { asc }) => [asc(item.createdAt), asc(item.id)]
+			});
+		},
 		findDebt(userId, debtId) {
 			return db.query.debt.findFirst({
 				where: (item, { eq, and }) =>
@@ -411,7 +453,13 @@ export function createD1FinanceRepository(db: SQLiteDb): FinanceRepository {
 				throw error;
 			}
 		},
-		async recordDebtPaymentAtomic({ command: commandRecord, payment, entry, balanceDelta }) {
+		async recordDebtPaymentAtomic({
+			command: commandRecord,
+			payment,
+			principal,
+			interest,
+			balanceDelta
+		}) {
 			const userId = commandRecord.userId;
 			try {
 				await runBatch(db, [
@@ -426,7 +474,13 @@ export function createD1FinanceRepository(db: SQLiteDb): FinanceRepository {
 						)})`
 					),
 					db.insert(financialCommand).values(commandRecord),
-					db.insert(transaction).values(entry),
+					...(principal ? [db.insert(transaction).values(principal)] : []),
+					// A concurrent first interest payment may have just created the category;
+					// it then has the same id (see commands.ts), so this insert is a no-op.
+					...(interest?.category
+						? [db.insert(category).values(interest.category).onConflictDoNothing()]
+						: []),
+					...(interest ? [db.insert(transaction).values(interest.entry)] : []),
 					adjustBalance(db, userId, payment.accountId, balanceDelta),
 					db.insert(debtPayment).values(payment),
 					db
@@ -444,15 +498,16 @@ export function createD1FinanceRepository(db: SQLiteDb): FinanceRepository {
 			}
 		},
 		async reverseDebtPaymentAtomic(reversal) {
-			const { userId, debtId, paymentId, amount, movement } = reversal;
+			const { userId, debtId, paymentId, amount, interestAmount, movements } = reversal;
 			// The payment still exists (so it is never reversed twice), its debt is still
-			// recorded, and its movement still counts in the books.
+			// recorded, and its movements still count in the books.
 			const conditions = [
 				sql`exists (select 1 from ${debtPayment} where ${and(
 					eq(debtPayment.userId, userId),
 					eq(debtPayment.debtId, debtId),
 					eq(debtPayment.id, paymentId),
-					eq(debtPayment.amount, amount)
+					eq(debtPayment.amount, amount),
+					eq(debtPayment.interestAmount, interestAmount)
 				)})`,
 				sql`exists (select 1 from ${debt} where ${and(
 					eq(debt.userId, userId),
@@ -460,7 +515,7 @@ export function createD1FinanceRepository(db: SQLiteDb): FinanceRepository {
 					eq(debt.isActive, true),
 					gte(debt.paidAmount, amount)
 				)})`,
-				...(movement ? [transactionIsActive(userId, movement.transactionId)] : [])
+				...movements.map((movement) => transactionIsActive(userId, movement.transactionId))
 			];
 			try {
 				await runBatch(db, [
@@ -468,7 +523,7 @@ export function createD1FinanceRepository(db: SQLiteDb): FinanceRepository {
 					db
 						.delete(debtPayment)
 						.where(and(eq(debtPayment.userId, userId), eq(debtPayment.id, paymentId))),
-					...(movement ? reverseMovement(db, userId, movement) : []),
+					...movements.flatMap((movement) => reverseMovement(db, userId, movement)),
 					db
 						.update(debt)
 						.set({

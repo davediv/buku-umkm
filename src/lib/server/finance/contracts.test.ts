@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	parseCreateDebt,
 	parseCreateTransaction,
+	parseDebtPayment,
 	parseUpdateTransaction,
 	requireIdempotencyKey
 } from './contracts';
@@ -67,5 +68,37 @@ describe('financial command contracts', () => {
 			/Akun hanya diisi untuk pinjaman/
 		);
 		expect(() => parseCreateDebt({ ...base, kind: 'gift' })).toThrow(/Jenis catatan tidak valid/);
+	});
+
+	it('reads a payment as principal plus optional interest', () => {
+		const base = { date: '2026-08-30', account_id: 'kas-1' };
+
+		expect(parseDebtPayment({ ...base, amount: 100_000 })).toMatchObject({
+			amount: 100_000,
+			interestAmount: 0
+		});
+		expect(parseDebtPayment({ ...base, amount: 100_000, interest_amount: 5_000 })).toMatchObject({
+			amount: 100_000,
+			interestAmount: 5_000
+		});
+		// Interest alone: the principal may then be 0 or left out.
+		expect(parseDebtPayment({ ...base, amount: 0, interest_amount: 5_000 })).toMatchObject({
+			amount: 0,
+			interestAmount: 5_000
+		});
+		expect(parseDebtPayment({ ...base, interest_amount: 5_000 })).toMatchObject({ amount: 0 });
+		expect(() => parseDebtPayment({ ...base, amount: 0 })).toThrow(/lebih dari 0/);
+		expect(() => parseDebtPayment({ ...base, amount: 0, interest_amount: 0 })).toThrow(
+			/lebih dari 0/
+		);
+		expect(() => parseDebtPayment({ ...base, amount: 100, interest_amount: -1 })).toThrow(
+			/Bunga harus berupa Rupiah bulat/
+		);
+		expect(() => parseDebtPayment({ ...base, amount: 100, interest_amount: 1.5 })).toThrow(
+			/Bunga harus berupa Rupiah bulat/
+		);
+		expect(() => parseDebtPayment({ ...base, amount: -5, interest_amount: 100 })).toThrow(
+			/Pokok harus berupa Rupiah bulat/
+		);
 	});
 });

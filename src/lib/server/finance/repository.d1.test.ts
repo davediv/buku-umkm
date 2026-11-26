@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq, inArray } from 'drizzle-orm';
 import {
+	category,
 	chartOfAccount,
 	debt,
 	debtPayment,
@@ -182,7 +183,7 @@ describe('financial writes on D1', () => {
 					result: '{}'
 				},
 				balanceDelta: -amount,
-				entry: {
+				principal: {
 					id: transactionId,
 					userId,
 					date: '2026-11-10',
@@ -191,6 +192,7 @@ describe('financial writes on D1', () => {
 					accountId: kas,
 					debtId
 				},
+				interest: null,
 				payment: {
 					id: crypto.randomUUID(),
 					debtId,
@@ -318,6 +320,308 @@ describe('financial writes on D1', () => {
 		});
 	});
 
+	describe('loan interest', () => {
+		const loan = (type: 'piutang' | 'hutang', accountId: string, originalAmount: number) => ({
+			type,
+			kind: 'loan' as const,
+			accountId,
+			contactName: 'Koperasi Maju',
+			contactPhone: null,
+			contactAddress: null,
+			originalAmount,
+			date: '2026-11-01',
+			dueDate: null,
+			description: null
+		});
+		const payment = (amount: number, interestAmount: number, accountId: string) => ({
+			amount,
+			interestAmount,
+			date: '2026-11-10',
+			accountId,
+			notes: null
+		});
+
+		async function rowOf(transactionId: string) {
+			const [row] = await harness.db
+				.select()
+				.from(transaction)
+				.where(eq(transaction.id, transactionId));
+			return row;
+		}
+
+		async function categoriesOf(userId: string) {
+			return harness.db.select().from(category).where(eq(category.userId, userId));
+		}
+
+		it('moves principal and interest out together, reducing the loan by the principal only', async () => {
+			const { userId, kas, service } = await setup(0);
+			const { entity: received } = await service.createDebt(
+				userId,
+				'int-debt-0001',
+				loan('hutang', kas, 1_000_000)
+			);
+			expect(await balanceOf(kas)).toBe(1_000_000);
+
+			const { entity } = await service.recordDebtPayment(
+				userId,
+				received.id,
+				'int-pay-0001',
+				payment(200_000, 15_000, kas)
+			);
+
+			expect(await balanceOf(kas)).toBe(785_000);
+			expect(entity.debt).toMatchObject({
+				status: 'active',
+				paidAmount: 200_000,
+				remainingAmount: 800_000
+			});
+			expect(entity.payment).toMatchObject({
+				amount: 200_000,
+				interestAmount: 15_000,
+				transactionId: entity.transaction!.id,
+				interestTransactionId: entity.interestTransaction!.id
+			});
+			expect(await rowOf(entity.transaction!.id)).toMatchObject({
+				type: 'expense',
+				amount: 200_000,
+				debtId: received.id,
+				categoryId: null
+			});
+			// Its own transaction, without the debt link, so it is an expense in the books.
+			const interest = await rowOf(entity.interestTransaction!.id);
+			expect(interest).toMatchObject({
+				type: 'expense',
+				amount: 15_000,
+				date: '2026-11-10',
+				accountId: kas,
+				debtId: null,
+				toAccountId: null,
+				description: 'Bunga pinjaman ke Koperasi Maju',
+				isActive: true
+			});
+			expect(await categoriesOf(userId)).toEqual([
+				expect.objectContaining({
+					id: interest.categoryId,
+					code: '7101',
+					name: 'Beban Bunga',
+					type: 'expense',
+					isSystem: true
+				})
+			]);
+		});
+
+		it('books interest on a loan given as income under its own category, created once', async () => {
+			const { userId, kas, service } = await setup(1_000_000);
+			const { entity: given } = await service.createDebt(
+				userId,
+				'int-debt-0002',
+				loan('piutang', kas, 600_000)
+			);
+			const first = await service.recordDebtPayment(
+				userId,
+				given.id,
+				'int-pay-0002',
+				payment(100_000, 10_000, kas)
+			);
+			const second = await service.recordDebtPayment(
+				userId,
+				given.id,
+				'int-pay-0003',
+				payment(100_000, 8_000, kas)
+			);
+
+			expect(await balanceOf(kas)).toBe(400_000 + 110_000 + 108_000);
+			expect(second.entity.debt).toMatchObject({ paidAmount: 200_000, remainingAmount: 400_000 });
+			const [firstInterest, secondInterest] = await Promise.all([
+				rowOf(first.entity.interestTransaction!.id),
+				rowOf(second.entity.interestTransaction!.id)
+			]);
+			expect(firstInterest).toMatchObject({
+				type: 'income',
+				amount: 10_000,
+				debtId: null,
+				description: 'Bunga pinjaman dari Koperasi Maju'
+			});
+			expect(secondInterest.categoryId).toBe(firstInterest.categoryId);
+			expect(await categoriesOf(userId)).toEqual([
+				expect.objectContaining({ code: '4901', name: 'Pendapatan Bunga', type: 'income' })
+			]);
+		});
+
+		it('creates one category when two first interest payments race', async () => {
+			const { userId, kas, service } = await setup(0);
+			const [a, b] = await Promise.all([
+				service.createDebt(userId, 'int-debt-0003', loan('hutang', kas, 500_000)),
+				service.createDebt(userId, 'int-debt-0004', loan('hutang', kas, 500_000))
+			]);
+			// Both looked the category up before either batch created it.
+			const [first, second] = await Promise.all([
+				service.recordDebtPayment(userId, a.entity.id, 'int-pay-0004', payment(0, 5_000, kas)),
+				service.recordDebtPayment(userId, b.entity.id, 'int-pay-0005', payment(0, 7_000, kas))
+			]);
+
+			const categories = await categoriesOf(userId);
+			expect(categories).toHaveLength(1);
+			expect((await rowOf(first.entity.interestTransaction!.id)).categoryId).toBe(categories[0].id);
+			expect((await rowOf(second.entity.interestTransaction!.id)).categoryId).toBe(
+				categories[0].id
+			);
+			expect(await balanceOf(kas)).toBe(1_000_000 - 12_000);
+		});
+
+		it('records interest alone while the loan is open, leaving the principal as it was', async () => {
+			const { userId, kas, service } = await setup(0);
+			const { entity: received } = await service.createDebt(
+				userId,
+				'int-debt-0005',
+				loan('hutang', kas, 1_000_000)
+			);
+			const { entity } = await service.recordDebtPayment(
+				userId,
+				received.id,
+				'int-pay-0006',
+				payment(0, 20_000, kas)
+			);
+
+			expect(entity.transaction).toBeNull();
+			expect(entity.payment).toMatchObject({
+				amount: 0,
+				interestAmount: 20_000,
+				transactionId: null
+			});
+			expect(entity.debt).toMatchObject({
+				status: 'active',
+				paidAmount: 0,
+				remainingAmount: 1_000_000
+			});
+			expect(await balanceOf(kas)).toBe(980_000);
+			// The principal is still owed in full, and can be paid off later.
+			const settled = await service.recordDebtPayment(
+				userId,
+				received.id,
+				'int-pay-0007',
+				payment(1_000_000, 20_000, kas)
+			);
+			expect(settled.entity.debt).toMatchObject({ status: 'paid', remainingAmount: 0 });
+			await expect(
+				service.recordDebtPayment(userId, received.id, 'int-pay-0008', payment(0, 1_000, kas))
+			).rejects.toMatchObject({ code: 'ALREADY_PAID' });
+		});
+
+		it('refuses interest on a trade debt, writing nothing', async () => {
+			const { userId, kas, service } = await setup(0);
+			const { entity: payable } = await service.createDebt(userId, 'int-debt-0006', {
+				...loan('hutang', kas, 300_000),
+				kind: 'trade',
+				accountId: null
+			});
+
+			await expect(
+				service.recordDebtPayment(userId, payable.id, 'int-pay-0009', payment(100_000, 5_000, kas))
+			).rejects.toMatchObject({ code: 'INTEREST_NOT_ALLOWED', status: 400 });
+			expect(await balanceOf(kas)).toBe(0);
+			expect(await countRows(transaction, userId)).toBe(0);
+			expect(await countRows(financialCommand, userId)).toBe(1);
+			expect(await categoriesOf(userId)).toEqual([]);
+		});
+
+		it('reverses principal and interest together, restoring the balance for both', async () => {
+			const { userId, kas, service } = await setup(1_000_000);
+			const { entity: lent } = await service.createDebt(
+				userId,
+				'int-debt-0007',
+				loan('piutang', kas, 500_000)
+			);
+			const { entity } = await service.recordDebtPayment(
+				userId,
+				lent.id,
+				'int-pay-0010',
+				payment(500_000, 25_000, kas)
+			);
+			expect(entity.debt.status).toBe('paid');
+			expect(await balanceOf(kas)).toBe(1_025_000);
+
+			const reopened = await service.reverseDebtPayment(userId, lent.id, entity.payment.id);
+			expect(reopened).toMatchObject({
+				status: 'active',
+				paidAmount: 0,
+				remainingAmount: 500_000,
+				payments: []
+			});
+			expect(await balanceOf(kas)).toBe(500_000);
+			expect((await rowOf(entity.transaction!.id)).isActive).toBe(false);
+			expect((await rowOf(entity.interestTransaction!.id)).isActive).toBe(false);
+			await expect(
+				service.reverseDebtPayment(userId, lent.id, entity.payment.id)
+			).rejects.toMatchObject({ code: 'PAYMENT_NOT_FOUND' });
+			expect(await balanceOf(kas)).toBe(500_000);
+		});
+
+		it('reverses a payment of interest alone', async () => {
+			const { userId, kas, service } = await setup(0);
+			const { entity: received } = await service.createDebt(
+				userId,
+				'int-debt-0008',
+				loan('hutang', kas, 300_000)
+			);
+			const { entity } = await service.recordDebtPayment(
+				userId,
+				received.id,
+				'int-pay-0011',
+				payment(0, 9_000, kas)
+			);
+			expect(await balanceOf(kas)).toBe(291_000);
+
+			const reopened = await service.reverseDebtPayment(userId, received.id, entity.payment.id);
+			expect(reopened).toMatchObject({ paidAmount: 0, remainingAmount: 300_000, payments: [] });
+			expect(await balanceOf(kas)).toBe(300_000);
+			expect((await rowOf(entity.interestTransaction!.id)).isActive).toBe(false);
+		});
+
+		it('answers a replay with both transactions, recording nothing again', async () => {
+			const { userId, kas, service } = await setup(0);
+			const { entity: received } = await service.createDebt(
+				userId,
+				'int-debt-0009',
+				loan('hutang', kas, 300_000)
+			);
+			const input = payment(100_000, 3_000, kas);
+			const first = await service.recordDebtPayment(userId, received.id, 'int-pay-0012', input);
+			const replay = await service.recordDebtPayment(userId, received.id, 'int-pay-0012', input);
+
+			expect(replay.replayed).toBe(true);
+			expect(replay.entity.transaction?.id).toBe(first.entity.transaction!.id);
+			expect(replay.entity.interestTransaction?.id).toBe(first.entity.interestTransaction!.id);
+			expect(await balanceOf(kas)).toBe(197_000);
+		});
+
+		it('keeps the interest from being edited or deleted apart from its payment', async () => {
+			const { userId, kas, service } = await setup(0);
+			const { entity: received } = await service.createDebt(
+				userId,
+				'int-debt-0010',
+				loan('hutang', kas, 300_000)
+			);
+			const { entity } = await service.recordDebtPayment(
+				userId,
+				received.id,
+				'int-pay-0013',
+				payment(100_000, 4_000, kas)
+			);
+			const interestId = entity.interestTransaction!.id;
+
+			await expect(
+				service.updateTransaction(userId, interestId, { amount: 1_000 })
+			).rejects.toMatchObject({ code: 'LINKED_TRANSACTION', status: 409 });
+			await expect(service.deleteTransaction(userId, interestId)).rejects.toMatchObject({
+				code: 'LINKED_TRANSACTION',
+				status: 409
+			});
+			expect(await rowOf(interestId)).toMatchObject({ amount: 4_000, isActive: true });
+			expect(await balanceOf(kas)).toBe(196_000);
+		});
+	});
+
 	describe('reversing a debt payment', () => {
 		const tradeDebt = (type: 'piutang' | 'hutang', originalAmount: number) => ({
 			type,
@@ -376,7 +680,7 @@ describe('financial writes on D1', () => {
 			});
 			expect(reopened.payments.map((item) => item.id)).not.toContain(settled.payment.id);
 			expect(await balanceOf(kas)).toBe(50_000);
-			expect(await transactionIsActive(settled.transaction.id)).toBe(false);
+			expect(await transactionIsActive(settled.transaction!.id)).toBe(false);
 
 			// The reopened debt takes payments again, up to what it still owes.
 			const repaid = await pay(service, userId, receivable.id, kas, 150_000);
@@ -412,7 +716,8 @@ describe('financial writes on D1', () => {
 				debtId: receivable.id,
 				paymentId: paid.payment.id,
 				amount: 100_000,
-				movement: { transactionId: paid.transaction.id, accountId: kas, balanceDelta: -100_000 }
+				interestAmount: 0,
+				movements: [{ transactionId: paid.transaction!.id, accountId: kas, balanceDelta: -100_000 }]
 			};
 
 			// Two requests passed the service's pre-check; only the first may commit.
@@ -457,7 +762,8 @@ describe('financial writes on D1', () => {
 					debtId: first.id,
 					paymentId: paid.payment.id,
 					amount: 40_000,
-					movement: null
+					interestAmount: 0,
+					movements: []
 				})
 			).rejects.toMatchObject({ code: 'PAYMENT_NOT_FOUND' });
 

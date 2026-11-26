@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SQLiteDb } from '../index';
-import { dashboardQueries, debtQueries } from './index';
+import { categoryQueries, dashboardQueries, debtQueries } from './index';
 
 describe('debtQueries list projections', () => {
 	it('omits payment relations from summary lists while preserving the full-list contract', async () => {
@@ -12,6 +12,31 @@ describe('debtQueries list projections', () => {
 
 		await debtQueries.findAll(db, 'user-1');
 		expect(findMany.mock.calls[1]?.[0]).toMatchObject({ with: { payments: true } });
+	});
+});
+
+describe('categoryQueries.generateNextCode', () => {
+	const withCodes = (...codes: string[]) =>
+		({
+			query: {
+				category: { findMany: vi.fn().mockResolvedValue(codes.map((code) => ({ code }))) }
+			}
+		}) as unknown as SQLiteDb;
+
+	it('numbers on from the highest code, ignoring the loan interest categories', async () => {
+		expect(await categoryQueries.generateNextCode(withCodes(), 'user-1', 'expense')).toBe('5001');
+		expect(
+			await categoryQueries.generateNextCode(withCodes('5101', '5901', '7101'), 'user-1', 'expense')
+		).toBe('5902');
+		expect(
+			await categoryQueries.generateNextCode(withCodes('4101', '4901'), 'user-1', 'income')
+		).toBe('4102');
+	});
+
+	it('never hands out a loan interest code', async () => {
+		expect(await categoryQueries.generateNextCode(withCodes('4900'), 'user-1', 'income')).toBe(
+			'4902'
+		);
 	});
 });
 

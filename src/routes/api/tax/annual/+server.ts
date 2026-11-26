@@ -4,6 +4,7 @@ import { getDb } from '$lib/server/db';
 import { calculateMonthlyTax } from '$lib/tax/engine';
 import {
 	getRecordedAnnualExpenseTotal,
+	getRecordedAnnualLoanInterestIncome,
 	getTaxRecordsForYear,
 	getTaxYearContext
 } from '$lib/tax/service';
@@ -52,11 +53,12 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		}
 		const monthlyRevenues = context.aggregatedMonthlyRevenue;
 
-		// Payment records and the expense total are independent. Aggregate expenses
-		// in D1 instead of transferring every expense row to the Worker.
-		const [taxRecords, totalExpenses] = await Promise.all([
+		// Payment records and the totals are independent. Aggregate in D1 instead of
+		// transferring every row to the Worker.
+		const [taxRecords, totalExpenses, totalLoanInterestIncome] = await Promise.all([
 			getTaxRecordsForYear(db, userId, year),
-			getRecordedAnnualExpenseTotal(db, userId, year)
+			getRecordedAnnualExpenseTotal(db, userId, year),
+			getRecordedAnnualLoanInterestIncome(db, userId, year)
 		]);
 
 		// Build monthly breakdown
@@ -120,7 +122,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			0
 		);
 
-		const netIncome = totalRecordedGrossRevenue - totalExpenses;
+		// Loan interest received is income in the books but not PPh Final turnover.
+		const netIncome = totalRecordedGrossRevenue + totalLoanInterestIncome - totalExpenses;
 
 		// Build response
 		const response = {
@@ -137,6 +140,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				totalTaxDue,
 				totalTaxPaid,
 				totalExpenses,
+				totalLoanInterestIncome,
 				netIncome,
 				thresholdAmount: taxpayerType === TAXPAYER_TYPE.WP_BADAN ? null : REVENUE_THRESHOLD_WP_OP,
 				thresholdExceeded: months.some((m) => !m.isBelowThreshold)

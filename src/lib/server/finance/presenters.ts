@@ -53,10 +53,13 @@ export function presentTransaction(item: TransactionRecord) {
 export function presentPayment(item: PaymentRecord) {
 	return {
 		id: item.id,
+		/** The principal paid. */
 		amount: item.amount,
+		interestAmount: item.interestAmount,
 		date: item.date,
 		accountId: item.accountId,
 		transactionId: item.transactionId,
+		interestTransactionId: item.interestTransactionId,
 		notes: item.notes,
 		createdAt: timestamp(item.createdAt)
 	};

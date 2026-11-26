@@ -14,7 +14,12 @@ import { evaluateTaxEligibility } from './eligibility';
 import { decryptNPWP } from '$lib/server/crypto';
 import { calculateMonthlyTax } from './engine';
 import { jakartaToday } from './period';
-import { profitAndLossRows, tradeDebtRows } from '$lib/server/db/queries/ledger';
+import {
+	loanInterestRows,
+	profitAndLossRows,
+	tradeDebtRows,
+	turnoverRows
+} from '$lib/server/db/queries/ledger';
 
 // Re-export for backward compatibility
 export { getIndonesianMonthName };
@@ -123,8 +128,10 @@ const monthOf = (date: SQLiteColumn) => sql<string>`substr(${date}, 1, 7)`;
 
 /**
  * Recorded gross turnover by month, on the accrual basis: profit-and-loss income plus
- * credit sales on their debt date (collecting them later adds nothing). Aggregated in
- * D1 as one statement, since the tax UI only needs 12 totals.
+ * credit sales on their debt date (collecting them later adds nothing). Interest on a
+ * loan the business gave is income but not turnover from its usaha (turnoverRows() in
+ * ledger.ts), so it is left out. Aggregated in D1 as one statement, since the tax UI
+ * only needs 12 totals.
  */
 export async function getRecordedMonthlyRevenue(
 	db: SQLiteDb,
@@ -146,7 +153,7 @@ export async function getRecordedMonthlyRevenue(
 			and(
 				eq(transaction.userId, userId),
 				eq(transaction.type, 'income'),
-				profitAndLossRows(),
+				turnoverRows(),
 				gte(transaction.date, yearStartDate),
 				lt(transaction.date, yearEndDate)
 			)
@@ -178,6 +185,32 @@ export async function getRecordedMonthlyRevenue(
 		}
 	}
 	return monthlyRevenue;
+}
+
+/**
+ * Interest received on loans the business gave during the year: income in the books that
+ * is not PPh Final turnover (see getRecordedMonthlyRevenue), so the annual draft adds it
+ * back to show the recorded net income.
+ */
+export async function getRecordedAnnualLoanInterestIncome(
+	db: SQLiteDb,
+	userId: string,
+	year: number
+): Promise<number> {
+	const [row] = await db
+		.select({ total: sql<number>`COALESCE(SUM(${transaction.amount}), 0)` })
+		.from(transaction)
+		.where(
+			and(
+				eq(transaction.userId, userId),
+				eq(transaction.type, 'income'),
+				profitAndLossRows(),
+				loanInterestRows(),
+				gte(transaction.date, `${year}-01-01`),
+				lt(transaction.date, `${year + 1}-01-01`)
+			)
+		);
+	return Number(row?.total ?? 0);
 }
 
 /** Recorded expense for the year: profit-and-loss expense plus credit purchases. */

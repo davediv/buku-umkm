@@ -1,14 +1,16 @@
-import { and, eq, gte, isNull, lt, sql, type SQL } from 'drizzle-orm';
+import { and, eq, gte, isNull, lt, not, sql, type SQL } from 'drizzle-orm';
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import type { SQLiteDb } from '../index';
-import { debt, transaction } from '../schema';
+import { debt, debtPayment, transaction } from '../schema';
 
 /*
  * The books are kept on the accrual basis (SAK EMKM):
  * - revenue and expense are the profit-and-loss transactions below, plus credit sales
  *   (trade piutang) and credit purchases (trade hutang) on the debt's date;
  * - paying or collecting any debt only moves cash, and a loan's principal is never
- *   revenue or expense.
+ *   revenue or expense;
+ * - interest paid or received with a loan payment is its own transaction without a debt
+ *   link, so it is revenue or expense like any other.
  */
 
 /**
@@ -24,6 +26,29 @@ export function profitAndLossRows(): SQL {
 		isNull(transaction.toAccountId),
 		isNull(transaction.debtId)
 	)!;
+}
+
+/**
+ * Transaction rows that book interest on a loan: the interest part of a loan payment
+ * (debt_payment.interest_transaction_id). They are profit-and-loss rows.
+ */
+export function loanInterestRows(): SQL {
+	return sql`exists (select 1 from ${debtPayment} where ${and(
+		eq(debtPayment.userId, transaction.userId),
+		eq(debtPayment.interestTransactionId, transaction.id)
+	)})`;
+}
+
+/**
+ * Transaction rows whose income is gross turnover from the business (peredaran bruto dari
+ * usaha) for PPh Final 0,5%: profit-and-loss rows except loan interest. PP 55/2022 Pasal 56
+ * (as amended by PP 20/2026) puts the final rate on income from usaha, measured as
+ * peredaran bruto; interest on money the business lent is not income from its usaha, so
+ * it stays in the income statement but not in the tax base. (Interest the business pays
+ * is an expense, which the gross-turnover base never deducts anyway.)
+ */
+export function turnoverRows(): SQL {
+	return and(profitAndLossRows(), not(loanInterestRows()))!;
 }
 
 /**

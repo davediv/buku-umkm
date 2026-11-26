@@ -14,6 +14,7 @@ import {
 	sql
 } from 'drizzle-orm';
 import type { SQLiteDb } from '../index';
+import { LOAN_INTEREST_CATEGORY_CODES } from '$lib/debts/interest';
 import { todayInJakarta } from '$lib/shared/dates';
 import {
 	chartOfAccount,
@@ -273,15 +274,22 @@ export const categoryQueries = {
 	/**
 	 * Generate next available code for a category type
 	 * Income: 4xxx, Expense: 5xxx-8xxx
+	 *
+	 * The loan interest categories' codes ($lib/debts/interest) are skipped: they neither
+	 * move the numbering (a first interest payment would otherwise send every new expense
+	 * category to 7102) nor are handed out.
 	 */
 	generateNextCode(db: SQLiteDb, userId: string, type: 'income' | 'expense') {
 		const baseCode = type === 'income' ? 4000 : 5000;
 		return this.findByType(db, userId, type).then((categories) => {
 			const maxCode = categories.reduce((max, cat) => {
+				if (LOAN_INTEREST_CATEGORY_CODES.has(cat.code)) return max;
 				const codeNum = parseInt(cat.code, 10);
 				return codeNum > max ? codeNum : max;
 			}, baseCode);
-			return String(maxCode + 1);
+			let next = maxCode + 1;
+			while (LOAN_INTEREST_CATEGORY_CODES.has(String(next))) next++;
+			return String(next);
 		});
 	}
 };
