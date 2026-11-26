@@ -2,6 +2,7 @@ import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { dashboardQueries, chartOfAccountQueries } from '$lib/server/db/queries';
 import { reportPeriodRanges, type ReportPeriod } from '$lib/server/db/queries/ledger';
+import { describeReportPeriod } from '$lib/server/reports/period-label';
 import { todayInJakarta } from '$lib/shared/dates';
 import { redirect } from '@sveltejs/kit';
 import { summarizeError } from '$lib/server/error-summary';
@@ -68,21 +69,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			percentage: totalExpense > 0 ? (c.total / totalExpense) * 100 : 0
 		}));
 
-		// Format period label
-		const [year, month] = today.split('-').map(Number);
-		const labels: Record<ReportPeriod, string> = {
-			daily: 'Hari Ini',
-			weekly: 'Minggu Ini',
-			monthly: 'Bulan Ini',
-			quarterly: `Q${Math.floor((month - 1) / 3) + 1} ${year}`,
-			yearly: 'Tahun Ini'
-		};
 		const { start: startDate, end: endDate } = reportPeriodRanges(period, today).current;
 
 		return {
 			profitLoss: {
 				period,
-				periodLabel: labels[period],
+				periodLabel: describeReportPeriod(period, { start: startDate, end: endDate }),
 				startDate,
 				endDate,
 				income: currentPeriod.income,

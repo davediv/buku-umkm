@@ -1,4 +1,5 @@
 import { formatRupiah, formatDateLong } from '$lib/utils';
+import { todayInJakarta } from '$lib/shared/dates';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type JsPDFAny = any;
@@ -196,7 +197,7 @@ function addReportFooter(doc: JsPDFAny): number {
 
 	// Footer text
 	const footerText = `Dokumen ini dihasilkan secara otomatis oleh Buku UMKM`;
-	const dateText = `Tanggal cetak: ${formatDateLong(new Date().toISOString().split('T')[0])}`;
+	const dateText = `Tanggal cetak: ${formatDateLong(todayInJakarta())}`;
 
 	doc.text(footerText, 20, footerY);
 	doc.text(dateText, 20, footerY + 4);
