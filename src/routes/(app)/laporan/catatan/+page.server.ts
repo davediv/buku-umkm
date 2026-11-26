@@ -6,6 +6,7 @@ import { getIndonesianMonthName } from '$lib/tax/config';
 import { reportPeriodRanges } from '$lib/server/db/queries/ledger';
 import { todayInJakarta } from '$lib/shared/dates';
 import { summarizeError } from '$lib/server/error-summary';
+import { decryptNPWP, formatNPWP } from '$lib/server/crypto';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Check authentication
@@ -26,6 +27,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	try {
 		// Get business profile
 		const profile = await businessProfileQueries.findByUserId(db, userId);
+		// The stored NPWP is ciphertext: only the decrypted, formatted number may reach the page.
+		const npwp = profile?.npwp ? await decryptNPWP(profile.npwp) : null;
 
 		// Reporting period, on the Jakarta calendar like every other report
 		const today = todayInJakarta();
@@ -102,7 +105,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 							name: profile.name,
 							address: profile.address,
 							phone: profile.phone,
-							npwp: profile.npwp,
+							npwp: npwp ? formatNPWP(npwp) : null,
 							businessType: profile.businessType,
 							ownerName: profile.ownerName
 						}
