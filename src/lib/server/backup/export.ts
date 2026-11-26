@@ -214,6 +214,7 @@ export async function buildBackupDocument(
 			finalRegimeStartYear: item.finalRegimeStartYear,
 			regimeChoice: item.regimeChoice,
 			everUsedGeneralRegime: item.everUsedGeneralRegime,
+			turnoverLimitExceeded: item.turnoverLimitExceeded,
 			priorYearAggregatedRevenue: item.priorYearAggregatedRevenue,
 			externalMonthlyRevenue: item.externalMonthlyRevenue,
 			revenueDataComplete: item.revenueDataComplete,

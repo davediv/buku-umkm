@@ -15,6 +15,7 @@ function profile(overrides: Partial<TaxProfileData> = {}): TaxProfileData {
 		finalRegimeStartYear: 2024,
 		regimeChoice: TAX_REGIME_CHOICE.FINAL_UMKM,
 		everUsedGeneralRegime: false,
+		turnoverLimitExceeded: false,
 		priorYearAggregatedRevenue: 300_000_000,
 		externalMonthlyRevenue: Array(12).fill(0),
 		revenueDataComplete: true,
@@ -346,5 +347,54 @@ describe('PP 55/2022 Pasal 60 ayat (2): Rp500 juta for individuals (not amended)
 			2027
 		);
 		expect(result.individualTurnoverFacility).toBe(false);
+	});
+});
+
+describe('chose the Pasal 17 rates vs. turnover that passed Rp4,8 miliar', () => {
+	it('keeps choosing the Pasal 17 rates permanent for every legal form', () => {
+		const koperasi = cooperative({
+			registeredAt: '2026-06-01',
+			finalRegimeStartYear: 2026,
+			everUsedGeneralRegime: true
+		});
+		const result = evaluate(koperasi, 2027);
+		expect(result.status).toBe('ineligible');
+		expect(result.reasons[0]).toContain('Pasal 57 ayat (2) huruf a');
+	});
+
+	it('does not end the final rate for a koperasi that once passed Rp4,8 miliar (ayat (4))', () => {
+		const koperasi = cooperative({
+			registeredAt: '2026-06-01',
+			finalRegimeStartYear: 2026,
+			turnoverLimitExceeded: true,
+			priorYearAggregatedRevenue: 1_000_000_000
+		});
+		expect(evaluate(koperasi, 2027).status).toBe('eligible');
+	});
+
+	it('still ends it under PP 55 criteria for tax years up to 2025', () => {
+		const result = evaluate({ turnoverLimitExceeded: true }, 2025);
+		expect(result.status).toBe('ineligible');
+		expect(result.reasons[0]).toContain('Rp4,8 miliar');
+	});
+
+	it('ends it for a CV on the Pasal II angka 1 huruf e transition', () => {
+		const result = evaluate(
+			{
+				legalForm: TAX_LEGAL_FORM.CV,
+				registeredAt: '2024-01-15',
+				finalRegimeStartYear: 2024,
+				turnoverLimitExceeded: true
+			},
+			2027
+		);
+		expect(result.status).toBe('ineligible');
+		expect(result.reasons[0]).toContain('Pasal II angka 1 huruf e');
+	});
+
+	it("treats an individual's own exceeded turnover as the founder group's (huruf e)", () => {
+		const result = evaluate({ turnoverLimitExceeded: true, groupTurnoverExceeded: false }, 2027);
+		expect(result.status).toBe('ineligible');
+		expect(result.reasons[0]).toContain('Pasal 57 ayat (2) huruf e');
 	});
 });

@@ -272,7 +272,8 @@ const GRACE_2026_REASON =
 function individualOrCompanyOutcome(profile: TaxProfileData, taxYear: number): Outcome {
 	const isCompany = profile.legalForm === TAX_LEGAL_FORM.SINGLE_MEMBER_COMPANY;
 	const expert = isCompany && profile.soleOwnerProvidesProfessionalServices;
-	const groupExceeded = profile.groupTurnoverExceeded;
+	// The taxpayer's own turnover is part of the founder group's, so it settles the answer.
+	const groupExceeded = profile.turnoverLimitExceeded ? true : profile.groupTurnoverExceeded;
 
 	// Before 22 April 2026 tax year 2026 was still governed by PP 55/2022 with its time limits,
 	// so a taxpayer already registered then needs a PP 55 basis to cover the whole year.
@@ -458,12 +459,27 @@ export function evaluateTaxEligibility(
 	}
 
 	// Pasal 57 ayat (2) huruf a, ayat (3) and ayat (4): choosing the Pasal 17 rates (notified to
-	// DJP) is permanent. Being moved to them after turnover passed Rp4.8 billion is treated the
-	// same way, which also covers Pasal 57 ayat (2) huruf e for the taxpayer's own turnover.
+	// DJP) is permanent for every legal form.
 	if (profile.regimeChoice === TAX_REGIME_CHOICE.GENERAL || profile.everUsedGeneralRegime) {
 		return stop(
 			'ineligible',
-			'Tarif umum Pasal 17 UU PPh telah dipilih atau wajib dipakai, sehingga tarif final UMKM tidak dapat dipakai lagi (Pasal 57 ayat (2) huruf a, ayat (3), dan ayat (4) PP 55/2022 sebagaimana diubah PP 20/2026).'
+			'Tarif umum Pasal 17 UU PPh telah dipilih, sehingga tarif final UMKM tidak dapat dipakai lagi (Pasal 57 ayat (2) huruf a, ayat (3), dan ayat (4) PP 55/2022 sebagaimana diubah PP 20/2026).'
+		);
+	}
+
+	// Own turnover that once passed Rp4.8 billion. Up to tax year 2025, and for CV, firma, PT
+	// and BUM Desa on the Pasal II angka 1 huruf e transition (which keeps PP 55's criteria),
+	// the later tax years stay excluded. From 2026 an individual or perseroan perorangan is
+	// judged with its founder group under Pasal 57 ayat (2) huruf e (individualOrCompanyOutcome),
+	// and a koperasi only by the previous year's turnover: Pasal 57 ayat (4) PP 20/2026 does not
+	// make passing the limit permanent for it.
+	if (
+		profile.turnoverLimitExceeded &&
+		(taxYear < PP20_FIRST_TAX_YEAR || TRANSITIONAL_BODY_FORMS.has(profile.legalForm))
+	) {
+		return stop(
+			'ineligible',
+			'Omzet pernah melebihi Rp4,8 miliar dalam satu tahun pajak. Menurut kriteria PP 55/2022, yang juga berlaku bagi CV, firma, PT, dan BUM Desa pada masa peralihan (Pasal II angka 1 huruf e PP 20/2026), tarif final tidak dapat dipakai pada tahun-tahun pajak berikutnya.'
 		);
 	}
 

@@ -85,6 +85,11 @@ function parseProfile(value: unknown): { data?: TaxProfileData; error?: string }
 	if (booleanFields.some((field) => typeof body[field] !== 'boolean')) {
 		return { error: 'Konfirmasi profil pajak belum lengkap.' };
 	}
+	// Optional so a page cached before this question existed can still save; absent means no.
+	const turnoverLimitExceeded = body.turnoverLimitExceeded ?? false;
+	if (typeof turnoverLimitExceeded !== 'boolean') {
+		return { error: 'Jawaban omzet melebihi Rp4,8 miliar tidak valid.' };
+	}
 	// Optional: null (or absent) leaves Pasal 57 ayat (2) huruf e unanswered, and eligibility
 	// then fails closed where the answer matters.
 	const groupTurnoverExceeded = body.groupTurnoverExceeded ?? null;
@@ -100,6 +105,7 @@ function parseProfile(value: unknown): { data?: TaxProfileData; error?: string }
 			finalRegimeStartYear,
 			regimeChoice: regimeChoice as TaxProfileData['regimeChoice'],
 			everUsedGeneralRegime: body.everUsedGeneralRegime as boolean,
+			turnoverLimitExceeded,
 			priorYearAggregatedRevenue,
 			externalMonthlyRevenue: externalMonthlyRevenue as number[],
 			revenueDataComplete: body.revenueDataComplete as boolean,

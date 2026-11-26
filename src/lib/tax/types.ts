@@ -25,7 +25,10 @@ export interface TaxProfileData {
 	registeredAt: string;
 	finalRegimeStartYear: number;
 	regimeChoice: TaxRegimeChoice;
+	/** Chose (and notified DJP of) the Pasal 17 rates: Pasal 57 ayat (2) huruf a and ayat (3). */
 	everUsedGeneralRegime: boolean;
+	/** The taxpayer's own turnover passed Rp4.8 billion in an earlier tax year. */
+	turnoverLimitExceeded: boolean;
 	priorYearAggregatedRevenue: number;
 	externalMonthlyRevenue: number[];
 	revenueDataComplete: boolean;

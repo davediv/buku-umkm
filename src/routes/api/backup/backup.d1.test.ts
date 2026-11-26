@@ -8,7 +8,7 @@ import {
 	transaction,
 	transactionPhoto
 } from '$lib/server/db/schema';
-import type { BackupDocument } from '$lib/server/backup/format';
+import { BACKUP_SCHEMA_VERSION, type BackupDocument } from '$lib/server/backup/format';
 import { createTestD1 } from '$lib/server/testing/d1';
 
 const dbRef = vi.hoisted(() => ({ current: undefined as unknown }));
@@ -135,7 +135,7 @@ describe('POST /api/backup', () => {
 
 		expect(file).toMatchObject({
 			format: 'buku-umkm-backup',
-			schemaVersion: '2.0.0',
+			schemaVersion: BACKUP_SCHEMA_VERSION,
 			businessName: 'Warung Sri & Anak',
 			contents: { photoImages: 'not_included', npwp: 'encrypted' },
 			onboardingState: { status: 'completed' },

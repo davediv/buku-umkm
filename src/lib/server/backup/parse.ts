@@ -458,6 +458,7 @@ function readTaxProfile(row: RecordReader, userId: string): NewTaxProfile {
 		),
 		regimeChoice: row.choice('regimeChoice', 'Pilihan rezim pajak', REGIME_CHOICES),
 		everUsedGeneralRegime: row.flag('everUsedGeneralRegime', false),
+		turnoverLimitExceeded: row.flag('turnoverLimitExceeded', false),
 		priorYearAggregatedRevenue: row.rupiah(
 			'priorYearAggregatedRevenue',
 			'Omzet agregat tahun sebelumnya',

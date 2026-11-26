@@ -25,6 +25,7 @@
 			finalRegimeStartYear: source.profile?.finalRegimeStartYear ?? source.taxYear,
 			regimeChoice: source.profile?.regimeChoice ?? TAX_REGIME_CHOICE.FINAL_UMKM,
 			everUsedGeneralRegime: source.profile?.everUsedGeneralRegime ?? false,
+			turnoverLimitExceeded: source.profile?.turnoverLimitExceeded ?? false,
 			// Money fields bind number | null: null while a field is cleared.
 			priorYearAggregatedRevenue: (source.profile?.priorYearAggregatedRevenue ?? 0) as
 				number | null,
@@ -54,6 +55,8 @@
 	const isBody = $derived(legalForm !== '' && isBodyLegalForm(legalForm));
 	const asksExpertService = $derived(legalForm !== '' && asksExpertServiceQuestion(legalForm));
 	const asksFounderGroup = $derived(legalForm !== '' && asksFounderGroupQuestion(legalForm));
+	// Individuals and perseroan perorangan answer this through the founder-group question.
+	const asksOwnTurnover = $derived(legalForm !== '' && !asksFounderGroup);
 
 	async function saveProfile(event: SubmitEvent) {
 		event.preventDefault();
@@ -73,7 +76,8 @@
 					soleOwnerProvidesProfessionalServices:
 						asksExpertService && form.soleOwnerProvidesProfessionalServices,
 					usesOtherTaxFacility: isBody && form.usesOtherTaxFacility,
-					groupTurnoverExceeded: asksFounderGroup ? form.groupTurnoverExceeded : null
+					groupTurnoverExceeded: asksFounderGroup ? form.groupTurnoverExceeded : null,
+					turnoverLimitExceeded: asksOwnTurnover && form.turnoverLimitExceeded
 				})
 			});
 			const result = (await response.json()) as { error?: string };
@@ -255,11 +259,22 @@
 				<label class="flex items-start gap-3 text-sm">
 					<input type="checkbox" bind:checked={form.everUsedGeneralRegime} class="mt-1 h-4 w-4" />
 					<span>
-						Saya pernah memberitahukan kepada DJP bahwa saya memilih tarif umum Pasal 17, atau wajib
-						memakai tarif umum karena omzet melebihi Rp4,8 miliar (Pasal 57 ayat (2) huruf a dan
-						ayat (4)).
+						Saya pernah memberitahukan kepada DJP bahwa saya memilih tarif umum Pasal 17 (Pasal 57
+						ayat (2) huruf a dan ayat (3)).
 					</span>
 				</label>
+				{#if asksOwnTurnover}
+					<label class="flex items-start gap-3 text-sm">
+						<input type="checkbox" bind:checked={form.turnoverLimitExceeded} class="mt-1 h-4 w-4" />
+						<span>
+							Omzet bruto usaha ini pernah melebihi Rp4,8 miliar dalam satu tahun pajak.
+							{#if legalForm === TAX_LEGAL_FORM.COOPERATIVE}
+								Mulai Tahun Pajak 2026 hal ini tidak menutup tarif final bagi koperasi; yang dinilai
+								adalah omzet tahun pajak sebelumnya (Pasal 57 ayat (1) dan ayat (4) PP 20/2026).
+							{/if}
+						</span>
+					</label>
+				{/if}
 				{#if isIndividual}
 					<label class="flex items-start gap-3 text-sm">
 						<input

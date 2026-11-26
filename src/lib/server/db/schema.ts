@@ -505,7 +505,13 @@ export const taxProfile = sqliteTable(
 		registeredAt: text('registered_at').notNull(),
 		finalRegimeStartYear: integer('final_regime_start_year').notNull(),
 		regimeChoice: text('regime_choice').notNull(),
+		// Chose (and notified DJP of) the Pasal 17 rates: permanent for every legal form.
 		everUsedGeneralRegime: integer('ever_used_general_regime', { mode: 'boolean' })
+			.default(false)
+			.notNull(),
+		// The taxpayer's own turnover passed Rp4.8 billion in an earlier tax year. Whether that is
+		// permanent depends on the legal form and tax year (src/lib/tax/eligibility.ts).
+		turnoverLimitExceeded: integer('turnover_limit_exceeded', { mode: 'boolean' })
 			.default(false)
 			.notNull(),
 		priorYearAggregatedRevenue: integer('prior_year_aggregated_revenue').default(0).notNull(),

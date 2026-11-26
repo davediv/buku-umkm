@@ -15,7 +15,7 @@
 export const BACKUP_FORMAT = 'buku-umkm-backup';
 
 /** Written into new backups. Restore accepts major versions 1 and 2. */
-export const BACKUP_SCHEMA_VERSION = '2.0.0';
+export const BACKUP_SCHEMA_VERSION = '2.1.0';
 
 export const SUPPORTED_BACKUP_MAJOR_VERSIONS = [1, 2] as const;
 
@@ -150,6 +150,8 @@ export type BackupTaxProfile = {
 	finalRegimeStartYear: number;
 	regimeChoice: string;
 	everUsedGeneralRegime: boolean;
+	/** Added in 2.1; older files default to false. */
+	turnoverLimitExceeded?: boolean;
 	priorYearAggregatedRevenue: number;
 	/** JSON array of 12 monthly amounts, as stored. */
 	externalMonthlyRevenue: string;

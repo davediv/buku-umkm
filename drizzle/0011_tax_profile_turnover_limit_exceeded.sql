@@ -1,0 +1,1 @@
+ALTER TABLE `tax_profile` ADD `turnover_limit_exceeded` integer DEFAULT false NOT NULL;

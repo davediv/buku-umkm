@@ -22,7 +22,7 @@ import { getRecordedMonthlyRevenue } from '$lib/tax/service';
 import { createTestD1 } from '$lib/server/testing/d1';
 import { buildBackupDocument } from './export';
 import { BackupError } from './parse';
-import { MAX_RESTORE_ROWS } from './format';
+import { BACKUP_SCHEMA_VERSION, MAX_RESTORE_ROWS } from './format';
 import { restoreBackup, type RestoreOptions } from './restore';
 
 let harness: Awaited<ReturnType<typeof createTestD1>>;
@@ -344,7 +344,7 @@ describe('restoreBackup', () => {
 		});
 
 		expect(summary).toEqual({
-			schemaVersion: '2.0.0',
+			schemaVersion: BACKUP_SCHEMA_VERSION,
 			restored: {
 				businessProfile: 1,
 				accounts: 3,
