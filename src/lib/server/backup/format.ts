@@ -6,7 +6,9 @@
  * Versions:
  * - 1.x: written before November 2026. Only active transactions, no debt kind or loan
  *   columns, no onboarding state; 1.0/1.1 also lack tax profiles and opening balances.
- * - 2.0: every row, including deleted transactions and debts, with `format` set.
+ * - 2.0: every row, including deleted transactions and debts, every debt column, the
+ *   onboarding state, the tax profile's group-turnover answer and the tax actually
+ *   paid, with `format` set.
  */
 
 /** Identifies a Buku UMKM backup from version 2 on. */
@@ -156,6 +158,8 @@ export type BackupTaxProfile = {
 	hasProfessionalServiceIncome: boolean;
 	soleOwnerProvidesProfessionalServices: boolean;
 	usesOtherTaxFacility: boolean;
+	/** Null until the owner answers (drizzle/0008). */
+	groupTurnoverExceeded: boolean | null;
 	createdAt: BackupTimestamp;
 	updatedAt: BackupTimestamp;
 };
@@ -168,6 +172,8 @@ export type BackupTaxRecord = {
 	taxableIncome: number;
 	taxRate: number;
 	taxAmount: number;
+	/** What the owner says was paid (drizzle/0010); null when not recorded. */
+	paidAmount: number | null;
 	status: string;
 	billingCode: string | null;
 	paymentDate: string | null;

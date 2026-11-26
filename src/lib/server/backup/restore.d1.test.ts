@@ -20,6 +20,7 @@ import { createFinancialMutationService } from '$lib/server/finance/commands';
 import { getBalanceSheetAsOf } from '$lib/server/reports/balance-sheet';
 import { getRecordedMonthlyRevenue } from '$lib/tax/service';
 import { createTestD1 } from '$lib/server/testing/d1';
+import { buildBackupDocument } from './export';
 import { BackupError } from './parse';
 import { MAX_RESTORE_ROWS } from './format';
 import { restoreBackup, type RestoreOptions } from './restore';
@@ -73,29 +74,9 @@ function fakeReceipts(keys: string[] = []) {
 /** Opens only the ciphertext "cipher-ok", as a deployment with that key would. */
 const decryptNpwp = async (value: string) => (value === 'cipher-ok' ? '012345678901234' : null);
 
-/** Every row of every table the user owns, as a version 2 backup document. */
+/** The user's backup file as it would be downloaded and uploaded again. */
 async function snapshot(userId: string) {
-	const { db } = harness;
-	const rows = async <T extends (typeof USER_TABLES)[number]>(table: T) =>
-		db.select().from(table).where(eq(table.userId, userId));
-	const [state] = await rows(onboardingState);
-	return JSON.parse(
-		JSON.stringify({
-			format: 'buku-umkm-backup',
-			schemaVersion: '2.0.0',
-			businessProfiles: await rows(businessProfile),
-			onboardingState: state ?? null,
-			accounts: await rows(chartOfAccount),
-			categories: await rows(category),
-			transactions: await rows(transaction),
-			debts: await rows(debt),
-			debtPayments: await rows(debtPayment),
-			taxProfiles: await rows(taxProfile),
-			taxRecords: await rows(taxRecord),
-			templates: await rows(transactionTemplate),
-			photos: await rows(transactionPhoto)
-		})
-	);
+	return JSON.parse(JSON.stringify(await buildBackupDocument(harness.db, userId)));
 }
 
 async function rowCounts(userId: string) {
@@ -300,6 +281,7 @@ async function seedBooks(userId: string) {
 		taxableIncome: 1_000_000,
 		taxRate: 50,
 		taxAmount: 5_000,
+		paidAmount: 4_000,
 		status: 'paid',
 		billingCode: '123456789012345',
 		paymentDate: '2026-04-10'
@@ -410,6 +392,8 @@ describe('restoreBackup', () => {
 			.from(taxProfile)
 			.where(eq(taxProfile.userId, userId));
 		expect(eligibility).toMatchObject({ taxYear: 2026, groupTurnoverExceeded: true });
+		const [record] = await harness.db.select().from(taxRecord).where(eq(taxRecord.userId, userId));
+		expect(record).toMatchObject({ month: 3, taxAmount: 5_000, paidAmount: 4_000 });
 		// Idempotency keys named the old rows; replaying one must not find a stale result.
 		expect((await rowCounts(userId)).financial_command).toBe(0);
 	});
@@ -522,7 +506,9 @@ describe('restoreBackup', () => {
 		expect(summary.photosDropped).toBe(1);
 		expect(summary.restored.taxRecords).toBe(1);
 		const records = await harness.db.select().from(taxRecord).where(eq(taxRecord.userId, userId));
-		expect(records.map((record) => record.status)).toEqual(['paid']);
+		expect(records.map(({ status, paidAmount }) => ({ status, paidAmount }))).toEqual([
+			{ status: 'paid', paidAmount: 250 }
+		]);
 		const [account] = await harness.db
 			.select()
 			.from(chartOfAccount)

@@ -471,6 +471,8 @@ function readTaxProfile(row: RecordReader, userId: string): NewTaxProfile {
 }
 
 function readTaxRecord(row: RecordReader, userId: string): NewTaxRecord {
+	const taxAmount = row.rupiah('taxAmount', 'Jumlah pajak');
+	const status = row.choice('status', 'Status pajak', TAX_STATUSES, 'unpaid');
 	return {
 		id: crypto.randomUUID(),
 		userId,
@@ -479,8 +481,15 @@ function readTaxRecord(row: RecordReader, userId: string): NewTaxRecord {
 		taxType: row.choice('taxType', 'Jenis pajak', TAX_TYPES),
 		taxableIncome: row.rupiah('taxableIncome', 'Dasar pengenaan pajak'),
 		taxRate: row.integer('taxRate', 'Tarif pajak', 0, 10_000),
-		taxAmount: row.rupiah('taxAmount', 'Jumlah pajak'),
-		status: row.choice('status', 'Status pajak', TAX_STATUSES, 'unpaid'),
+		taxAmount,
+		// Files written before paid_amount existed: a paid record paid its estimate, as
+		// migration 0010 assumed for stored rows.
+		paidAmount: row.has('paidAmount')
+			? row.rupiah('paidAmount', 'Jumlah yang dibayar')
+			: status === 'paid'
+				? taxAmount
+				: null,
+		status,
 		billingCode: row.text('billingCode', 'Kode billing', 100),
 		paymentDate: row.optionalDate('paymentDate', 'Tanggal bayar'),
 		notes: row.text('notes', 'Catatan', 1000),
