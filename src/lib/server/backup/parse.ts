@@ -326,8 +326,13 @@ function readOnboardingState(document: Row, userId: string): NewOnboardingState 
 function readCategory(row: RecordReader, id: string, userId: string): NewCategory {
 	const type = row.raw('type');
 	if (!isCategoryType(type)) row.fail('Tipe kategori harus income atau expense');
-	const code = row.check(validateCategoryCode(row.raw('code'), type));
-	if (!code) row.fail('Kode kategori wajib diisi');
+	// Codes created before the 4xxx / 5xxx-8xxx rule may be free-form. They are only
+	// displayed, so such a code is kept as plain text instead of failing the restore.
+	const validCode = validateCategoryCode(row.raw('code'), type);
+	const code =
+		validCode.ok && validCode.value
+			? validCode.value
+			: row.requiredText('code', 'Kode kategori', 20);
 	// Icon and colour are display-only, and rows saved before they were validated may hold
 	// anything; an unknown value is dropped (the UI shows its default) rather than refused.
 	const icon = validateCategoryIcon(row.raw('icon'));

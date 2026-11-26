@@ -528,6 +528,32 @@ describe('restoreBackup', () => {
 		expect(state.status).toBe('completed');
 	});
 
+	it('keeps a free-form category code saved before codes were validated', async () => {
+		const userId = await harness.createUser();
+		await restoreBackup(
+			harness.db,
+			userId,
+			{
+				schemaVersion: '1.0.0',
+				businessProfiles: [],
+				accounts: [],
+				categories: [
+					{ id: 'c1', code: 'LAIN-1', name: 'Lain-lain', type: 'expense' },
+					{ id: 'c2', code: '9999', name: 'Pendapatan lama', type: 'income' }
+				],
+				transactions: [],
+				debts: [],
+				debtPayments: [],
+				taxRecords: [],
+				templates: [],
+				photos: []
+			},
+			{ decryptNpwp }
+		);
+		const categories = await harness.db.select().from(category).where(eq(category.userId, userId));
+		expect(categories.map((item) => item.code).sort()).toEqual(['9999', 'LAIN-1']);
+	});
+
 	it('inserts a large book in statements under D1 parameter limit', async () => {
 		const userId = await harness.createUser();
 		const transactions = Array.from({ length: 600 }, (_, i) => ({
@@ -689,7 +715,6 @@ describe('restoreBackup refuses an invalid file and changes nothing', () => {
 			},
 			/hanya diisi untuk pinjaman/
 		],
-		['a category code outside its type', (f) => (f.categories[0].code = '9999'), /Kode kategori/],
 		['an overlong template name', (f) => (f.templates[0].name = 'x'.repeat(201)), /maksimal 200/],
 		['an unknown tax status', (f) => (f.taxRecords[0].status = 'lunas'), /Status pajak/],
 		['a duplicate account id', (f) => f.accounts.push({ ...f.accounts[0] }), /ID yang sama/],
