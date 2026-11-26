@@ -13,7 +13,7 @@ Built for UMKM (Usaha Mikro, Kecil, dan Menengah): business owners can manage th
 - **Debts & receivables** — Hutang/piutang usaha and loans, with payment history; a loan payment splits principal (cash only) from interest, booked as an expense on a loan received or income on a loan given (kept out of PPh Final turnover)
 - **Exports** — PDF and Excel reports, CSV transactions, and an SPT Tahunan support draft
 - **Accounts** — Email and password sign-in, email verification, password reset by email, and permanent account deletion
-- **Backup & restore** — A versioned JSON backup of the whole book, restored atomically and validated row by row
+- **Backup & restore** — A versioned .zip backup of the whole book with its receipt photos, validated row by row and restored atomically (older .json backups still restore)
 - **Installable PWA** — Cached public shell, offline page and locally kept transaction drafts (cleared on sign-out)
 
 ## Tech Stack
@@ -159,7 +159,7 @@ pnpm exec vitest run --project browser <path>         # one component test
 
 ## Security Notes
 
-- Every query is scoped to the signed-in user, including relation loads; restore remaps all ids and never accepts storage keys from a file.
+- Every query is scoped to the signed-in user, including relation loads; restore remaps all ids and never accepts storage keys from a file. Images in a .zip backup are checked by their bytes (JPEG or PNG, at most 500 KB, 3 per transaction) and stored under fresh keys in the restoring user's prefix.
 - Content Security Policy with per-request nonces (`kit.csp` in `svelte.config.js`); static assets get their headers from `_headers`.
 - State-changing requests need a matching `Origin` header (or `Sec-Fetch-Site: same-origin`).
 - NPWP is encrypted at rest with AES-256-GCM. Receipt photos are served `private, no-store` and only to their owner.
@@ -168,7 +168,9 @@ pnpm exec vitest run --project browser <path>         # one component test
 ## Known Limitations
 
 - **SvelteKit 3:** `pnpm audit` still lists SvelteKit 2.x advisories. The high and moderate ones affect only remote functions, which this app does not use; the low ones are fixed only in SvelteKit 3. The migration is planned as a separate change.
-- **Backups do not contain photo images.** Photo rows come back only when restoring into the account that made the backup while the images are still stored. Restore leaves the replaced images in R2, so unreferenced photos accumulate until a cleanup job exists.
+- **A .zip backup over 95 MB cannot bring its photos back in one go.** Cloudflare refuses request bodies over 100 MB on Free and Pro zones, so for a larger file the settings page offers to restore the data without photos (it sends only the backup.json inside). A chunked restore that uploads the photos in parts is a possible follow-up.
+- **Old .json backups contain no photo images.** Their photo rows come back only when restoring into the account that made the backup while the images are still stored.
+- **Restore leaves the replaced book's images in R2** (a .zip restore stores fresh copies), so unreferenced photos accumulate until a cleanup job exists.
 - **Loan interest** is not modelled; record it as a separate expense.
 - **Very large books** (over 10 MB or 30,000 rows per backup) cannot be restored in one go; the app refuses them before writing anything.
 
