@@ -428,6 +428,20 @@ export const transactionQueries = {
 	},
 
 	/**
+	 * The loan whose payment booked this transaction as interest, or null. Such a
+	 * transaction is corrected only by reversing that payment.
+	 */
+	findInterestDebtId(db: SQLiteDb, userId: string, transactionId: string) {
+		return db.query.debtPayment
+			.findFirst({
+				where: (payments, { eq, and }) =>
+					and(eq(payments.userId, userId), eq(payments.interestTransactionId, transactionId)),
+				columns: { debtId: true }
+			})
+			.then((row) => row?.debtId ?? null);
+	},
+
+	/**
 	 * Create new transaction
 	 */
 	create(

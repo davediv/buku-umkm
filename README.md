@@ -10,7 +10,7 @@ Built for UMKM (Usaha Mikro, Kecil, dan Menengah): business owners can manage th
 - **Accrual bookkeeping (SAK EMKM)** — Credit sales and purchases count on the day they are recorded; payments only move cash; loans received or given never count as income or expense
 - **Financial reports** — Income statement (Laba Rugi), balance sheet (Neraca) and notes (Catatan), on the Asia/Jakarta calendar
 - **PPh Final 0.5% estimates** — Eligibility under PP 55/2022 as amended by PP 20/2026, the Rp500 juta exemption for individuals, billing-code details, payments actually made with underpayment warnings, and reminders for every open month with deadlines moved past weekends, national holidays and cuti bersama
-- **Debts & receivables** — Hutang/piutang usaha and loans, with payment history
+- **Debts & receivables** — Hutang/piutang usaha and loans, with payment history; a loan payment splits principal (cash only) from interest, booked as an expense on a loan received or income on a loan given (kept out of PPh Final turnover)
 - **Exports** — PDF and Excel reports, CSV transactions, and an SPT Tahunan support draft
 - **Accounts** — Email and password sign-in, email verification, password reset by email, and permanent account deletion
 - **Backup & restore** — A versioned JSON backup of the whole book, restored atomically and validated row by row

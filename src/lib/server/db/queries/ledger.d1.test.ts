@@ -303,10 +303,10 @@ describe('profit-and-loss totals on D1', () => {
 			const received = await createDebt('hutang', 'loan', 5_000_000, '2025-03-20', 'Koperasi');
 			const given = await createDebt('piutang', 'loan', 2_000_000, '2025-03-15', 'Citra');
 			await record('income', 100, '2025-04-01');
-			await pay(received.entity.id, 500_000, '2025-04-10', 50_000);
+			const paid = await pay(received.entity.id, 500_000, '2025-04-10', 50_000);
 			await pay(given.entity.id, 300_000, '2025-04-12', 30_000);
 			await pay(given.entity.id, 0, '2025-05-12', 20_000);
-			return books;
+			return { ...books, receivedId: received.entity.id, paid: paid.entity };
 		}
 
 		beforeEach(() => {
@@ -354,6 +354,22 @@ describe('profit-and-loss totals on D1', () => {
 			expect(await getRecordedAnnualLoanInterestIncome(db, userId, 2025)).toBe(50_000);
 			// Interest paid is an expense like any other.
 			expect(await getRecordedAnnualExpenseTotal(db, userId, 2025)).toBe(50_000);
+		});
+
+		it('links the interest transaction back to its loan, and nothing else', async () => {
+			const { userId, receivedId, paid } = await seedInterest();
+			const { db } = harness;
+
+			expect(
+				await transactionQueries.findInterestDebtId(db, userId, paid.interestTransaction!.id)
+			).toBe(receivedId);
+			expect(await transactionQueries.findInterestDebtId(db, userId, paid.transaction!.id)).toBe(
+				null
+			);
+			const other = await setup();
+			expect(
+				await transactionQueries.findInterestDebtId(db, other.userId, paid.interestTransaction!.id)
+			).toBe(null);
 		});
 
 		it('keeps the balance sheet balanced', async () => {

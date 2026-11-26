@@ -21,11 +21,12 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	try {
 		// Load independent form data together so valid edit routes need one database round trip window.
-		const [transaction, allCategories, allAccounts, photos] = await Promise.all([
+		const [transaction, allCategories, allAccounts, photos, interestDebtId] = await Promise.all([
 			transactionQueries.findById(db, userId, transactionId, true),
 			categoryQueries.findAll(db, userId),
 			chartOfAccountQueries.findAll(db, userId),
-			transactionPhotoQueries.findByTransactionId(db, userId, transactionId)
+			transactionPhotoQueries.findByTransactionId(db, userId, transactionId),
+			transactionQueries.findInterestDebtId(db, userId, transactionId)
 		]);
 
 		if (!transaction) {
@@ -43,7 +44,9 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			transaction,
 			categories,
 			accounts,
-			photos
+			photos,
+			// Loan interest booked by a debt payment: read-only here, like debt movements.
+			interestDebtId
 		};
 	} catch (cause) {
 		if (isHttpError(cause)) throw cause;

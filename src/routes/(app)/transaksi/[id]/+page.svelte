@@ -60,8 +60,9 @@
 	);
 	let currentDetailHref = $derived(`${page.url.pathname}${page.url.search}`);
 
-	// Transfer legs and debt movements are written together with their counterpart, so
-	// they are corrected as a whole: a transfer is reversed, a debt payment from its debt.
+	// Transfer legs, debt movements and loan interest are written together with their
+	// counterpart, so they are corrected as a whole: a transfer is reversed, a debt payment
+	// (with its interest) from its debt.
 	let transfer = $derived.by(() => {
 		const item = data.transaction;
 		if (!item.toAccountId) return null;
@@ -73,7 +74,8 @@
 		};
 	});
 	let debtId = $derived(transfer ? null : data.transaction.debtId);
-	let linked = $derived(transfer !== null || debtId !== null);
+	let interestDebtId = $derived(data.interestDebtId);
+	let linked = $derived(transfer !== null || debtId !== null || interestDebtId !== null);
 	let showReverseConfirm = $state(false);
 	let reversing = $state(false);
 	let reversalStatus = $state<{ kind: 'success' | 'error'; message: string } | null>(null);
@@ -382,6 +384,12 @@
 							<dd class="min-w-0 break-words">{data.transaction.account?.name ?? '-'}</dd>
 						</div>
 					{/if}
+					{#if data.transaction.category}
+						<div class="flex gap-3">
+							<dt class="w-28 shrink-0 text-muted-foreground">Kategori</dt>
+							<dd class="min-w-0 break-words">{data.transaction.category.name}</dd>
+						</div>
+					{/if}
 					<div class="flex gap-3">
 						<dt class="w-28 shrink-0 text-muted-foreground">Keterangan</dt>
 						<dd class="min-w-0 break-words">{data.transaction.description || '-'}</dd>
@@ -412,6 +420,16 @@
 						<Undo2 class="h-4 w-4" aria-hidden="true" />Batalkan transfer
 					</button>
 				{/if}
+			{:else if interestDebtId}
+				<p class="text-sm text-muted-foreground">
+					Bunga ini tercatat dari pembayaran pinjaman dan dihitung di laporan laba rugi. Untuk
+					mengoreksinya, batalkan pembayaran tersebut di catatan pinjamannya.
+				</p>
+				<a
+					href="/hutang-piutang/{interestDebtId}"
+					class="inline-flex min-h-12 w-full items-center justify-center rounded-xl border px-4 text-base font-medium transition-colors hover:bg-secondary"
+					>Buka catatan pinjaman</a
+				>
 			{:else if debtId}
 				<p class="text-sm text-muted-foreground">
 					Transaksi ini tercatat dari catatan utang/piutang. Untuk mengoreksinya, buka catatan

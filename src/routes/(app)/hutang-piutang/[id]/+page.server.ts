@@ -57,7 +57,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		// Format payments for display
 		const payments = debt.payments.map((p) => ({
 			id: p.id,
+			// The principal; loans may add interest, booked as its own transaction.
 			amount: p.amount,
+			interestAmount: p.interestAmount,
 			date: p.date,
 			accountId: p.accountId,
 			// The account the payment moved through (it may since be deactivated).

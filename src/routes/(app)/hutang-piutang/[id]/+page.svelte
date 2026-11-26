@@ -13,6 +13,7 @@
 		CheckCircle,
 		AlertCircle,
 		X,
+		Percent,
 		Plus,
 		Undo2
 	} from '@lucide/svelte';
@@ -44,8 +45,9 @@
 	let reversalTarget = $state<(typeof data.payments)[number] | null>(null);
 	let reversing = $state(false);
 
-	// Form state
+	// Form state. On a loan, paymentAmount is the principal and paymentInterest the interest.
 	let paymentAmount = $state<number | null>(null);
+	let paymentInterest = $state<number | null>(null);
 	let paymentDate = $state(todayInJakarta());
 	let paymentAccount = $state('');
 	let paymentNotes = $state('');
@@ -56,12 +58,19 @@
 	let accounts = $derived(data.accounts);
 	let dueState = $derived(getDebtDueState(debt, data.today));
 	let kindLabel = $derived(debtKindLabel(debt.type, debt.kind));
+	let isLoan = $derived(debt.kind === 'loan');
+	// The totals on this page are principal; interest is booked apart, in the income statement.
+	let interestTotal = $derived(payments.reduce((sum, item) => sum + item.interestAmount, 0));
+	// How the interest reads in the income statement, and the verb for money in or out.
+	let interestLabel = $derived(debt.type === 'piutang' ? 'Pendapatan bunga' : 'Beban bunga');
+	let settledVerb = $derived(debt.type === 'piutang' ? 'Diterima' : 'Dibayar');
+	let paymentTotal = $derived((paymentAmount ?? 0) + (isLoan ? (paymentInterest ?? 0) : 0));
 	// What a payment does to the books: debts only move cash once recorded.
 	let paymentEffect = $derived(
-		debt.kind === 'loan'
+		isLoan
 			? debt.type === 'piutang'
-				? 'Pengembalian pinjaman tidak dihitung sebagai pendapatan.'
-				: 'Pembayaran pokok pinjaman tidak dihitung sebagai beban. Catat bunga, jika ada, sebagai transaksi pengeluaran terpisah.'
+				? 'Pengembalian pokok tidak dihitung sebagai pendapatan. Bunga yang diterima dicatat sebagai pendapatan bunga di laporan laba rugi.'
+				: 'Pembayaran pokok tidak dihitung sebagai beban. Bunga yang dibayar dicatat sebagai beban bunga di laporan laba rugi.'
 			: debt.type === 'piutang'
 				? 'Pendapatannya sudah dihitung saat piutang dicatat. Penerimaan ini hanya menambah saldo kas.'
 				: 'Bebannya sudah dihitung saat utang dicatat. Pembayaran ini hanya mengurangi saldo kas.'
@@ -85,12 +94,33 @@
 		const account = payment.accountName ?? 'kas/rekening';
 		const direction = debt.type === 'piutang' ? 'berkurang' : 'bertambah';
 		const reopened = dueState.kind === 'paid' ? ', dan statusnya kembali belum lunas' : '';
+		const total = payment.amount + payment.interestAmount;
+		const parts =
+			payment.interestAmount > 0
+				? ` (pokok ${formatRupiah(payment.amount)} + bunga ${formatRupiah(payment.interestAmount)})`
+				: '';
+		const remaining = isLoan ? 'Sisa pokok' : 'Sisa tagihan';
+		const restored =
+			payment.amount > 0
+				? `${remaining} kembali menjadi ${formatRupiah(debt.remainingAmount + payment.amount)}${reopened}.`
+				: `${remaining} tetap ${formatRupiah(debt.remainingAmount)}.`;
 		return (
-			`Pembayaran ${formatRupiah(payment.amount)} tanggal ${formatDate(payment.date)} akan dihapus ` +
+			`Pembayaran ${formatRupiah(total)} tanggal ${formatDate(payment.date)} akan dihapus ` +
 			`dari riwayat dan transaksinya dibatalkan. Saldo ${account} ${direction} ` +
-			`${formatRupiah(payment.amount)}. Sisa tagihan kembali menjadi ` +
-			`${formatRupiah(debt.remainingAmount + payment.amount)}${reopened}.`
+			`${formatRupiah(total)}${parts}. ${restored}`
 		);
+	}
+
+	// What the reversal does to the income statement, after the cash effect above.
+	function reversalBooksEffect(payment: (typeof data.payments)[number]): string {
+		if (isLoan) {
+			return payment.interestAmount > 0
+				? `${interestLabel} ${formatRupiah(payment.interestAmount)} dihapus dari laporan laba rugi. Pinjamannya tetap tercatat.`
+				: 'Pinjamannya tetap tercatat.';
+		}
+		return debt.type === 'piutang'
+			? 'Pendapatan yang dicatat saat piutang dibuat tidak berubah.'
+			: 'Beban yang dicatat saat utang dibuat tidak berubah.';
 	}
 
 	function promptReversal(payment: (typeof data.payments)[number]) {
@@ -130,6 +160,7 @@
 		success = null;
 		pageError = null;
 		paymentAmount = debt.remainingAmount;
+		paymentInterest = null;
 		paymentDate = todayInJakarta();
 		paymentAccount = '';
 		paymentNotes = '';
@@ -150,10 +181,13 @@
 		success = null;
 
 		const amount = paymentAmount ?? 0;
+		const interestAmount = isLoan ? (paymentInterest ?? 0) : 0;
 
-		// Validate amount
-		if (amount <= 0) {
-			error = 'Jumlah pembayaran harus lebih dari 0';
+		// Validate amount: a loan payment may be interest alone, with no principal.
+		if (isLoan ? amount + interestAmount <= 0 : amount <= 0) {
+			error = isLoan
+				? 'Isi pokok, bunga, atau keduanya dengan jumlah lebih dari 0'
+				: 'Jumlah pembayaran harus lebih dari 0';
 			loading = false;
 			return;
 		}
@@ -179,6 +213,7 @@
 				},
 				body: JSON.stringify({
 					amount,
+					...(interestAmount > 0 ? { interest_amount: interestAmount } : {}),
 					date: paymentDate,
 					account_id: paymentAccount,
 					notes: paymentNotes || undefined
@@ -275,12 +310,14 @@
 		<OperationStatus kind="error" message={pageError} ondismiss={() => (pageError = null)} />
 	{/if}
 
-	<!-- Amount Cards -->
-	<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+	<!-- Amount Cards: principal only; a loan's interest has its own card. -->
+	<div class="grid grid-cols-1 gap-4 {isLoan ? 'sm:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'}">
 		<div class="bg-card border rounded-lg p-4">
 			<div class="flex items-center gap-2 mb-1">
 				<Wallet class="w-4 h-4 text-muted-foreground" />
-				<span class="text-sm text-muted-foreground">Jumlah Awal</span>
+				<span class="text-sm text-muted-foreground"
+					>{isLoan ? 'Pokok Pinjaman' : 'Jumlah Awal'}</span
+				>
 			</div>
 			<p class="text-xl font-semibold {getTypeColor(debt.type)}">
 				{formatRupiah(debt.originalAmount)}
@@ -289,14 +326,16 @@
 		<div class="bg-card border rounded-lg p-4">
 			<div class="flex items-center gap-2 mb-1">
 				<CheckCircle class="w-4 h-4 text-muted-foreground" />
-				<span class="text-sm text-muted-foreground">Sudah Dibayar</span>
+				<span class="text-sm text-muted-foreground"
+					>{isLoan ? `Pokok ${settledVerb}` : 'Sudah Dibayar'}</span
+				>
 			</div>
 			<p class="text-xl font-semibold text-green-600">{formatRupiah(debt.paidAmount)}</p>
 		</div>
 		<div class="bg-card border rounded-lg p-4">
 			<div class="flex items-center gap-2 mb-1">
 				<Clock class="w-4 h-4 text-muted-foreground" />
-				<span class="text-sm text-muted-foreground">Sisa Tagihan</span>
+				<span class="text-sm text-muted-foreground">{isLoan ? 'Sisa Pokok' : 'Sisa Tagihan'}</span>
 			</div>
 			<p
 				class="text-xl font-semibold {dueState.kind === 'paid' ? 'text-green-600' : 'text-red-600'}"
@@ -304,6 +343,18 @@
 				{formatRupiah(debt.remainingAmount)}
 			</p>
 		</div>
+		{#if isLoan}
+			<div class="bg-card border rounded-lg p-4">
+				<div class="flex items-center gap-2 mb-1">
+					<Percent class="w-4 h-4 text-muted-foreground" />
+					<span class="text-sm text-muted-foreground">Bunga {settledVerb}</span>
+				</div>
+				<p class="text-xl font-semibold">{formatRupiah(interestTotal)}</p>
+				<p class="mt-1 text-xs text-muted-foreground">
+					Di luar pokok, dicatat sebagai {interestLabel.toLowerCase()}.
+				</p>
+			</div>
+		{/if}
 	</div>
 
 	<!-- Details & Payment History Grid -->
@@ -407,7 +458,16 @@
 									/>
 								</div>
 								<div class="min-w-0">
-									<p class="text-sm font-medium">{formatRupiah(payment.amount)}</p>
+									<p class="text-sm font-medium">
+										{formatRupiah(payment.amount + payment.interestAmount)}
+									</p>
+									{#if payment.interestAmount > 0}
+										<p class="text-xs text-muted-foreground">
+											Pokok {formatRupiah(payment.amount)} · Bunga {formatRupiah(
+												payment.interestAmount
+											)}
+										</p>
+									{/if}
 									<p class="text-xs text-muted-foreground">
 										{formatDate(payment.date)}{payment.accountName
 											? ` · ${payment.accountName}`
@@ -426,7 +486,7 @@
 									onclick={() => promptReversal(payment)}
 									disabled={reversing}
 									class="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
-									aria-label={`Batalkan pembayaran ${formatRupiah(payment.amount)} tanggal ${formatDate(payment.date)}`}
+									aria-label={`Batalkan pembayaran ${formatRupiah(payment.amount + payment.interestAmount)} tanggal ${formatDate(payment.date)}`}
 								>
 									<Undo2 class="h-4 w-4" aria-hidden="true" />
 									<span class="sm:hidden">Batalkan</span>
@@ -461,7 +521,8 @@
 >
 	<div class="flex items-center justify-between mb-6">
 		<h2 id="payment-modal-title" class="text-lg font-semibold">
-			{debt.type === 'piutang' ? 'Catat Penerimaan Piutang' : 'Catat Pembayaran Utang'}
+			{debt.type === 'piutang' ? 'Catat Penerimaan' : 'Catat Pembayaran'}
+			{isLoan ? 'Pinjaman' : debt.type === 'piutang' ? 'Piutang' : 'Utang'}
 		</h2>
 		<button
 			type="button"
@@ -477,7 +538,7 @@
 	<!-- Current Amount Info -->
 	<div class="mb-6 p-3 bg-muted/50 rounded-lg">
 		<div class="flex justify-between text-sm">
-			<span class="text-muted-foreground">Sisa Tagihan</span>
+			<span class="text-muted-foreground">{isLoan ? 'Sisa Pokok' : 'Sisa Tagihan'}</span>
 			<span class="font-semibold {dueState.kind === 'paid' ? 'text-green-600' : 'text-red-600'}">
 				{formatRupiah(debt.remainingAmount)}
 			</span>
@@ -488,19 +549,45 @@
 	<form onsubmit={handlePaymentSubmit} class="space-y-4">
 		<div class="space-y-2">
 			<label for="paymentAmount" class="text-sm font-medium">
-				{debt.type === 'piutang' ? 'Jumlah diterima' : 'Jumlah dibayar'} *
+				{isLoan ? 'Pokok' : `${debt.type === 'piutang' ? 'Jumlah diterima' : 'Jumlah dibayar'} *`}
 			</label>
 			<MoneyInput
 				data-dialog-initial-focus
 				id="paymentAmount"
 				bind:value={paymentAmount}
 				placeholder="Contoh: 500.000"
-				required
+				aria-describedby="paymentAmountHelp"
+				required={!isLoan}
 			/>
-			<p class="text-xs text-muted-foreground">
-				Maksimal: {formatRupiah(debt.remainingAmount)}
+			<p id="paymentAmountHelp" class="text-xs text-muted-foreground">
+				{isLoan
+					? `Mengurangi sisa pokok. Maksimal ${formatRupiah(debt.remainingAmount)}; isi 0 bila hanya bunga.`
+					: `Maksimal: ${formatRupiah(debt.remainingAmount)}`}
 			</p>
 		</div>
+
+		{#if isLoan}
+			<div class="space-y-2">
+				<label for="paymentInterest" class="text-sm font-medium">
+					Bunga <span class="font-normal text-muted-foreground">(opsional)</span>
+				</label>
+				<MoneyInput
+					id="paymentInterest"
+					bind:value={paymentInterest}
+					placeholder="Contoh: 25.000"
+					aria-describedby="paymentInterestHelp"
+				/>
+				<p id="paymentInterestHelp" class="text-xs text-muted-foreground">
+					{debt.type === 'piutang'
+						? 'Dicatat sebagai pendapatan bunga, tetapi tidak dihitung sebagai omzet PPh Final 0,5%: bunga pinjaman bukan peredaran bruto dari usaha (PP 55/2022 Pasal 56).'
+						: 'Dicatat sebagai beban bunga. Tidak mengurangi sisa pokok.'}
+				</p>
+			</div>
+			<div class="flex justify-between rounded-lg bg-muted/50 p-3 text-sm">
+				<span class="text-muted-foreground">Total {settledVerb.toLowerCase()}</span>
+				<span class="font-semibold">{formatRupiah(paymentTotal)}</span>
+			</div>
+		{/if}
 
 		<div class="space-y-2">
 			<label for="paymentDate" class="text-sm font-medium">Tanggal *</label>
@@ -533,7 +620,9 @@
 				{/each}
 			</select>
 			<p class="text-xs text-muted-foreground">
-				Saldo rekening akan {debt.type === 'piutang' ? 'bertambah' : 'berkurang'} sebesar pembayaran.
+				Saldo rekening akan {debt.type === 'piutang' ? 'bertambah' : 'berkurang'} sebesar {isLoan
+					? 'pokok ditambah bunga'
+					: 'pembayaran'}.
 			</p>
 		</div>
 
@@ -591,11 +680,7 @@
 	{#if reversalTarget}
 		<AlertDialogDescription>{reversalEffect(reversalTarget)}</AlertDialogDescription>
 		<p class="mt-3 text-sm text-muted-foreground">
-			{debt.kind === 'loan'
-				? 'Pinjamannya tetap tercatat.'
-				: debt.type === 'piutang'
-					? 'Pendapatan yang dicatat saat piutang dibuat tidak berubah.'
-					: 'Beban yang dicatat saat utang dibuat tidak berubah.'}
+			{reversalBooksEffect(reversalTarget)}
 			Catat ulang pembayaran yang benar bila perlu.
 		</p>
 	{/if}

@@ -37,6 +37,8 @@ export interface SPTSummary {
 	totalTaxDue: number;
 	totalTaxPaid: number;
 	totalExpenses: number;
+	/** Interest on loans given: recorded income, but not PPh Final turnover. */
+	totalLoanInterestIncome: number;
 	netIncome: number;
 	thresholdAmount: number | null;
 	thresholdExceeded: boolean;
@@ -107,6 +109,7 @@ export async function exportSPTToExcel(
 		['Total PPh Final Terutang', sptData.summary.totalTaxDue],
 		['Total PPh Final Dibayar', sptData.summary.totalTaxPaid],
 		['Total Pengeluaran', sptData.summary.totalExpenses],
+		['Pendapatan Bunga Pinjaman (bukan omzet)', sptData.summary.totalLoanInterestIncome],
 		['Pendapatan Bersih (Laba/Rugi)', sptData.summary.netIncome],
 		[''],
 		['STATUS'],
@@ -294,6 +297,10 @@ export async function exportSPTToPDF(
 			['Total PPh Final Terutang', formatRupiah(sptData.summary.totalTaxDue)],
 			['Total PPh Final Dibayar', formatRupiah(sptData.summary.totalTaxPaid)],
 			['Total Pengeluaran', formatRupiah(sptData.summary.totalExpenses)],
+			[
+				'Pendapatan Bunga Pinjaman (bukan omzet)',
+				formatRupiah(sptData.summary.totalLoanInterestIncome)
+			],
 			['Pendapatan Bersih (Laba/Rugi)', formatRupiah(sptData.summary.netIncome)]
 		],
 		theme: 'striped',

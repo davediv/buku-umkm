@@ -215,6 +215,19 @@
 					<p class="text-sm text-muted-foreground">Pengeluaran tercatat</p>
 					<p class="text-xl font-semibold">{formatRupiah(sptData.summary.totalExpenses)}</p>
 				</div>
+				{#if sptData.summary.totalLoanInterestIncome > 0}
+					<div class="rounded-lg bg-muted/50 p-3">
+						<p class="text-sm text-muted-foreground">Pendapatan bunga pinjaman</p>
+						<p class="text-xl font-semibold">
+							{formatRupiah(sptData.summary.totalLoanInterestIncome)}
+						</p>
+						<p class="mt-1 text-xs text-muted-foreground">
+							Bukan omzet PPh Final 0,5%: bunga pinjaman bukan peredaran bruto dari usaha (PP
+							55/2022 Pasal 56), jadi dilaporkan terpisah dari omzet. Sudah termasuk dalam
+							pendapatan bersih.
+						</p>
+					</div>
+				{/if}
 				<div class="rounded-lg bg-muted/50 p-3">
 					<p class="text-sm text-muted-foreground">Pendapatan bersih tercatat</p>
 					<p class="text-xl font-semibold">{formatRupiah(sptData.summary.netIncome)}</p>
