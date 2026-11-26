@@ -17,15 +17,13 @@ import {
 } from '$lib/server/db/schema';
 import { decryptNPWP, validateNPWP } from '$lib/server/crypto';
 import {
+	findReceiptObjects,
 	isOwnReceiptKey,
+	MAX_PHOTOS_PER_TRANSACTION,
 	receiptMimeType,
-	receiptPrefix,
 	receiptUrl
 } from '$lib/server/photos/receipts';
 import { parseBackup, type PhotoCandidate } from './parse';
-
-/** As the upload route allows. */
-const MAX_PHOTOS_PER_TRANSACTION = 3;
 
 export type RestoreSummary = {
 	schemaVersion: string;
@@ -62,24 +60,6 @@ async function resolveNpwp(
 	const plain = await decrypt(ciphertext).catch(() => null);
 	if (!plain || !validateNPWP(plain).valid) return { npwp: null, dropped: true };
 	return { npwp: ciphertext, dropped: false };
-}
-
-/** Sizes of the caller's receipt objects among `wanted`, from R2 listings of their prefix. */
-async function findReceiptObjects(
-	receipts: Pick<R2Bucket, 'list'>,
-	userId: string,
-	wanted: Set<string>
-): Promise<Map<string, number>> {
-	const found = new Map<string, number>();
-	let cursor: string | undefined;
-	do {
-		const page = await receipts.list({ prefix: receiptPrefix(userId), cursor, limit: 1000 });
-		for (const object of page.objects) {
-			if (wanted.has(object.key)) found.set(object.key, object.size);
-		}
-		cursor = page.truncated ? page.cursor : undefined;
-	} while (cursor && found.size < wanted.size);
-	return found;
 }
 
 /**

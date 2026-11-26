@@ -6,6 +6,12 @@
 
 export type ReceiptExtension = 'jpg' | 'png';
 
+/** The largest receipt image, whether uploaded or restored from a backup. */
+export const MAX_RECEIPT_BYTES = 500 * 1024;
+
+/** The most photos one transaction keeps, whether uploaded or restored. */
+export const MAX_PHOTOS_PER_TRANSACTION = 3;
+
 /** The longest file name kept for a receipt photo, in characters. */
 export const MAX_PHOTO_FILE_NAME_LENGTH = 120;
 
@@ -48,6 +54,33 @@ export function isOwnReceiptKey(userId: string, key: unknown): key is string {
 		!key.includes('\\') &&
 		!key.includes('\0')
 	);
+}
+
+/** The image type the bytes actually are, whatever a file name or an upload claims. */
+export function imageExtension(bytes: Uint8Array): ReceiptExtension | null {
+	if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'jpg';
+	if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+		return 'png';
+	}
+	return null;
+}
+
+/** Sizes of the user's receipt objects among `wanted`, from R2 listings of their prefix. */
+export async function findReceiptObjects(
+	receipts: Pick<R2Bucket, 'list'>,
+	userId: string,
+	wanted: Set<string>
+): Promise<Map<string, number>> {
+	const found = new Map<string, number>();
+	let cursor: string | undefined;
+	do {
+		const page = await receipts.list({ prefix: receiptPrefix(userId), cursor, limit: 1000 });
+		for (const object of page.objects) {
+			if (wanted.has(object.key)) found.set(object.key, object.size);
+		}
+		cursor = page.truncated ? page.cursor : undefined;
+	} while (cursor && found.size < wanted.size);
+	return found;
 }
 
 /** The image type a receipt key was written with, from its extension. */

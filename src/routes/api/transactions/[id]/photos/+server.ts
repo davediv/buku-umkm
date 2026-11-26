@@ -12,31 +12,22 @@ import {
 	readBodyWithLimit
 } from '$lib/server/backup/request-body';
 import {
+	imageExtension,
+	MAX_PHOTOS_PER_TRANSACTION,
+	MAX_RECEIPT_BYTES,
 	receiptKey,
 	receiptUrl,
-	sanitizePhotoFileName,
-	type ReceiptExtension
+	sanitizePhotoFileName
 } from '$lib/server/photos/receipts';
 
-const MAX_PHOTOS_PER_TRANSACTION = 3;
-const MAX_FILE_SIZE = 500 * 1024; // 500KB
 /** The file plus the multipart boundary and part headers around it. */
-const MAX_UPLOAD_BYTES = MAX_FILE_SIZE + 16 * 1024;
+const MAX_UPLOAD_BYTES = MAX_RECEIPT_BYTES + 16 * 1024;
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
 
 const tooLarge = () =>
-	json({ error: `Ukuran file maksimal adalah ${MAX_FILE_SIZE / 1024}KB` }, { status: 413 });
+	json({ error: `Ukuran file maksimal adalah ${MAX_RECEIPT_BYTES / 1024}KB` }, { status: 413 });
 const tooMany = () =>
 	json({ error: `Maksimal ${MAX_PHOTOS_PER_TRANSACTION} foto per transaksi` }, { status: 400 });
-
-/** The image type the bytes actually are, whatever the upload claimed. */
-function imageExtension(bytes: Uint8Array): ReceiptExtension | null {
-	if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'jpg';
-	if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
-		return 'png';
-	}
-	return null;
-}
 
 // GET /api/transactions/[id]/photos - Get all photos for a transaction
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -138,7 +129,7 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
 			return json({ error: 'Format file harus JPEG atau PNG' }, { status: 400 });
 		}
 
-		if (file.size > MAX_FILE_SIZE) return tooLarge();
+		if (file.size > MAX_RECEIPT_BYTES) return tooLarge();
 
 		// Verify actual file content is an image; its bytes, not the claim, set the type.
 		const bytes = new Uint8Array(await file.arrayBuffer());
