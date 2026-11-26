@@ -24,6 +24,7 @@
 		AlertDialogTitle
 	} from '$lib/components/ui/alert-dialog';
 	import CategoryIcon from '$lib/components/category-icon.svelte';
+	import { isTransferLeg, transactionCategoryLabel } from '$lib/transactions/labels';
 	import OperationStatus from '$lib/components/operation-status.svelte';
 	import { toast } from '$lib/components/ui/toast';
 	import {
@@ -122,10 +123,6 @@
 	/** Transfer legs and debt movements are corrected from their transfer or debt, not here. */
 	function isLinked(transaction: { toAccountId: string | null; debtId: string | null }): boolean {
 		return transaction.toAccountId !== null || transaction.debtId !== null;
-	}
-
-	function isTransfer(transaction: { type: string; toAccountId: string | null }): boolean {
-		return transaction.toAccountId !== null || transaction.type === 'transfer';
 	}
 
 	/** White on a category's own colour, grey on the light fallback circle. */
@@ -398,7 +395,7 @@
 										'#e5e7eb'
 									)}"
 								>
-									{#if !transaction.category && isTransfer(transaction)}
+									{#if !transaction.category && isTransferLeg(transaction)}
 										<ArrowLeftRight class="h-4 w-4" aria-hidden="true" />
 									{:else}
 										<CategoryIcon name={transaction.category?.icon} />
@@ -406,8 +403,7 @@
 								</span>
 								<div class="min-w-0">
 									<h2 class="truncate text-sm font-medium">
-										{transaction.category?.name ||
-											(isTransfer(transaction) ? 'Transfer' : 'Tanpa kategori')}
+										{transactionCategoryLabel(transaction)}
 									</h2>
 									<p class="text-xs text-muted-foreground">{formatDate(transaction.date)}</p>
 								</div>
@@ -505,16 +501,13 @@
 												'#e5e7eb'
 											)}"
 										>
-											{#if !transaction.category && isTransfer(transaction)}
+											{#if !transaction.category && isTransferLeg(transaction)}
 												<ArrowLeftRight class="h-3.5 w-3.5" aria-hidden="true" />
 											{:else}
 												<CategoryIcon name={transaction.category?.icon} class="h-3.5 w-3.5" />
 											{/if}
 										</span>
-										<span class="text-sm"
-											>{transaction.category?.name ||
-												(isTransfer(transaction) ? 'Transfer' : '-')}</span
-										>
+										<span class="text-sm">{transactionCategoryLabel(transaction, '-')}</span>
 									</div>
 								</td>
 								<td class="px-4 py-3 text-sm">

@@ -1,4 +1,5 @@
 import { formatDateLong } from '$lib/utils';
+import { transactionCategoryLabel, transactionKindLabel } from '$lib/transactions/labels';
 
 export type ExportFormat = 'xlsx' | 'csv';
 
@@ -10,6 +11,8 @@ export type TransactionForExport = {
 	account: { name: string } | null;
 	category: { name: string } | null;
 	toAccount: { name: string } | null;
+	toAccountId?: string | null;
+	debtId?: string | null;
 	isTaxed: boolean;
 	taxAmount: number;
 };
@@ -31,10 +34,9 @@ function convertToExportRows(transactions: TransactionForExport[]): TransactionE
 	return transactions.map((t) => ({
 		date: formatDateLong(t.date),
 		type: t.type,
-		typeLabel:
-			t.type === 'income' ? 'Pemasukan' : t.type === 'expense' ? 'Pengeluaran' : 'Transfer',
+		typeLabel: transactionKindLabel(t),
 		description: t.description || '-',
-		category: t.category?.name || '-',
+		category: transactionCategoryLabel(t, '-'),
 		account: t.account?.name || '-',
 		toAccount: t.toAccount?.name,
 		amount: t.amount,

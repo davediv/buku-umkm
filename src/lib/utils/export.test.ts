@@ -57,3 +57,56 @@ describe('CSV transaction exports', () => {
 		expect(revokeObjectURL).toHaveBeenCalledWith('blob:csv-export');
 	});
 });
+
+describe('CSV transaction labels', () => {
+	it('labels transfer legs and debt cash movements instead of calling them income', async () => {
+		let csv = '';
+		vi.stubGlobal(
+			'Blob',
+			class {
+				constructor(parts: string[]) {
+					csv = parts.join('');
+				}
+			}
+		);
+		vi.stubGlobal('document', {
+			createElement: vi.fn().mockReturnValue({ click: vi.fn() }),
+			body: { appendChild: vi.fn(), removeChild: vi.fn() }
+		});
+		vi.stubGlobal('URL', { createObjectURL: vi.fn(), revokeObjectURL: vi.fn() });
+		const base = {
+			date: '2026-11-27',
+			description: null,
+			account: { name: 'Kas' },
+			isTaxed: false,
+			taxAmount: 0
+		};
+
+		await exportTransactions(
+			[
+				{
+					...base,
+					type: 'income',
+					amount: 500_000,
+					category: null,
+					toAccount: null,
+					debtId: 'loan-1'
+				},
+				{
+					...base,
+					type: 'expense',
+					amount: 60_000,
+					category: null,
+					toAccount: { name: 'Bank' },
+					toAccountId: 'bank'
+				}
+			],
+			'csv',
+			'transaksi'
+		);
+
+		expect(csv).toContain('Kas masuk (utang/piutang),Utang & piutang,Kas');
+		expect(csv).toContain('Transfer,Transfer,Kas,Bank');
+		expect(csv).not.toContain('Pemasukan');
+	});
+});
