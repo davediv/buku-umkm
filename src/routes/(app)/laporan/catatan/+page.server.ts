@@ -80,14 +80,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 - Penjualan tunai diakui sebagai pendapatan pada tanggal transaksi; penjualan kredit diakui sebagai pendapatan dan piutang usaha pada tanggal piutang dicatat
 - Pembelian dan biaya tunai diakui sebagai beban pada tanggal transaksi; pembelian kredit diakui sebagai beban dan utang usaha pada tanggal utang dicatat
 - Penerimaan piutang dan pembayaran utang hanya mengurangi saldo piutang atau utang, dan tidak diakui lagi sebagai pendapatan atau beban
-- Pinjaman yang diberikan atau diterima dicatat sebagai piutang atau utang beserta perpindahan kasnya, dan tidak diakui sebagai pendapatan atau beban
+- Pinjaman yang diberikan atau diterima dicatat sebagai piutang atau utang beserta perpindahan kasnya, dan pokoknya tidak diakui sebagai pendapatan atau beban; bunganya diakui sebagai pendapatan bunga atau beban bunga pada tanggal diterima atau dibayar
 - Transfer antar kas dan rekening milik usaha tidak memengaruhi laba/rugi
 - Piutang dan utang disajikan sebesar sisa yang belum dibayar; penyisihan piutang tak tertagih dan penyusutan aset tetap belum dihitung otomatis`
 			},
 			{
 				title: '5. Perpajakan',
 				content:
-					'Estimasi PPh Final UMKM hanya dapat digunakan setelah bentuk wajib pajak, periode fasilitas, pilihan rezim, dan omzet agregat diverifikasi terhadap aturan yang berlaku untuk tahun pajak terkait.'
+					'Estimasi PPh Final UMKM hanya dapat digunakan setelah bentuk wajib pajak, periode fasilitas, pilihan rezim, dan omzet agregat diverifikasi terhadap aturan yang berlaku untuk tahun pajak terkait. Pendapatan bunga atas pinjaman yang diberikan bukan peredaran bruto dari usaha, sehingga tidak dihitung dalam omzet PPh Final.'
 			},
 			{
 				title: '6. Periode Pelaporan',
