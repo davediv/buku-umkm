@@ -24,7 +24,7 @@
 		Save,
 		Trash2
 	} from '@lucide/svelte';
-	import { BUSINESS_TYPES } from '$lib/constants';
+	import { BUSINESS_TYPES, MAX_BACKUP_BYTES } from '$lib/constants';
 	import { getBusinessTypeLabel, formatDateTime } from '$lib/utils';
 	import {
 		getSettingsHref,
@@ -223,7 +223,19 @@
 			localStorage.setItem('lastBackupDate', now);
 			lastBackupDate = now;
 
-			toast.success('Backup berhasil dibuat!');
+			const photoCount = Number(response.headers.get('X-Backup-Photo-Count') ?? 0);
+			toast.success(
+				'Backup berhasil dibuat!',
+				photoCount > 0
+					? `File backup tidak berisi gambar ${photoCount} foto nota. Foto hanya kembali bila dipulihkan ke akun ini selama gambarnya masih tersimpan.`
+					: undefined
+			);
+			if (response.headers.get('X-Backup-Restorable') === 'false') {
+				toast.warning(
+					'Backup terlalu besar untuk dipulihkan',
+					'Data Anda melebihi batas pemulihan sekali jalan. Simpan file ini, lalu hubungi pengelola aplikasi bila perlu memulihkannya.'
+				);
+			}
 		} catch (error) {
 			console.error('Backup error:', error);
 			toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan saat membuat backup');
@@ -236,10 +248,17 @@
 	function handleFileSelect(event: Event) {
 		const input = event.target as HTMLInputElement;
 		const file = input.files?.[0];
-		if (file) {
-			selectedFile = file;
-			showRestoreConfirm = true;
+		if (!file) return;
+		if (file.size > MAX_BACKUP_BYTES) {
+			input.value = '';
+			toast.error(
+				'File backup terlalu besar',
+				`Ukuran maksimal ${MAX_BACKUP_BYTES / 1024 / 1024} MB. Pastikan Anda memilih file backup Buku UMKM.`
+			);
+			return;
 		}
+		selectedFile = file;
+		showRestoreConfirm = true;
 	}
 
 	// Handle restore confirmation
@@ -258,7 +277,15 @@
 				body: formData
 			});
 
-			const result = (await response.json()) as { success?: boolean; error?: string };
+			const result = (await response.json()) as {
+				success?: boolean;
+				error?: string;
+				summary?: {
+					restored: { transactions: number; accounts: number; debts: number };
+					photosDropped: number;
+					npwpDropped: boolean;
+				};
+			};
 
 			if (!response.ok) {
 				throw new Error(result.error || 'Gagal memulihkan data');
@@ -275,7 +302,25 @@
 			// Invalidate all data
 			await invalidateAll();
 
-			toast.success('Data berhasil dipulihkan!');
+			const summary = result.summary;
+			toast.success(
+				'Data berhasil dipulihkan!',
+				summary
+					? `${summary.restored.transactions} transaksi, ${summary.restored.accounts} akun, dan ${summary.restored.debts} hutang/piutang dipulihkan.`
+					: undefined
+			);
+			if (summary && summary.photosDropped > 0) {
+				toast.warning(
+					`${summary.photosDropped} foto nota tidak dipulihkan`,
+					'Gambar foto tidak ada di file backup. Foto hanya kembali bila dipulihkan ke akun yang membuat backup selama gambarnya masih tersimpan.'
+				);
+			}
+			if (summary?.npwpDropped) {
+				toast.warning(
+					'NPWP perlu diisi ulang',
+					'NPWP di file backup tidak dapat dibuka di sini. Isi kembali NPWP Anda di Profil Usaha.'
+				);
+			}
 		} catch (error) {
 			console.error('Restore error:', error);
 			const errorMessage =
@@ -843,6 +888,10 @@
 			Data saat ini akan ditimpa!
 		</p>
 		<p class="text-sm text-amber-700 dark:text-amber-300 mt-1">
+			Gambar foto nota tidak ada di file backup; foto hanya kembali bila gambarnya masih tersimpan
+			di akun ini.
+		</p>
+		<p class="text-sm text-amber-700 dark:text-amber-300 mt-1">
 			{#if selectedFile}
 				File: {selectedFile.name}
 			{/if}
@@ -880,8 +929,8 @@
 		<AlertDialogTitle>Hapus akun permanen?</AlertDialogTitle>
 	</div>
 	<AlertDialogDescription>
-		Semua buku, foto nota, dan akun {data.user.email} akan dihapus dan tidak dapat dipulihkan. Anda akan
-		keluar dari semua perangkat.
+		Semua buku, foto nota, dan akun <span class="break-all">{data.user.email}</span> akan dihapus dan
+		tidak dapat dipulihkan. Anda akan keluar dari semua perangkat.
 	</AlertDialogDescription>
 
 	<form

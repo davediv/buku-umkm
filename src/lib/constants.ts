@@ -4,6 +4,9 @@ export const MAX_TRANSACTION_AMOUNT = 999_999_999_999;
 // App version for backup metadata
 export const APP_VERSION = '0.0.1';
 
+// The largest backup file restore accepts (checked in the browser and on the server).
+export const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
+
 // Business types
 export const BUSINESS_TYPES = [
 	{ value: 'warung_makan', label: 'Warung Makan/Restoran' },

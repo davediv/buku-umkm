@@ -24,7 +24,7 @@ export const SUPPORTED_BACKUP_MAJOR_VERSIONS = [1, 2] as const;
  * declared. Parsed, a 9 MB file and the rows built from it take about 40 MB of heap,
  * inside a Worker isolate's 128 MB, which concurrent requests share.
  */
-export const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
+export { MAX_BACKUP_BYTES } from '$lib/constants';
 
 /**
  * The most rows one restore writes, checked before any row is read. A restore is one D1
