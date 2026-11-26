@@ -11,7 +11,11 @@ export const MAX_PHOTO_FILE_NAME_LENGTH = 120;
 
 const MAX_KEY_LENGTH = 512;
 
+// An empty or slash-containing id would widen the prefix to other users' photos.
+const isSafeUserId = (userId: string) => userId !== '' && !userId.includes('/');
+
 export function receiptPrefix(userId: string): string {
+	if (!isSafeUserId(userId)) throw new Error('Refusing an unsafe receipt prefix');
 	return `receipts/${userId}/`;
 }
 
@@ -35,6 +39,7 @@ export function receiptUrl(key: string): string {
  */
 export function isOwnReceiptKey(userId: string, key: unknown): key is string {
 	return (
+		isSafeUserId(userId) &&
 		typeof key === 'string' &&
 		key.length <= MAX_KEY_LENGTH &&
 		key.startsWith(receiptPrefix(userId)) &&

@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { SQLiteDb } from '$lib/server/db';
 import { verification } from '$lib/server/db/schema';
 import { summarizeError } from '$lib/server/error-summary';
+import { receiptPrefix } from '$lib/server/photos/receipts';
 
 /**
  * Account deletion, wired into better-auth's `user.deleteUser` (see $lib/server/auth).
@@ -31,19 +32,13 @@ const R2_PAGE_SIZE = 1000;
 export const RECEIPTS_NOT_DELETED = 'RECEIPTS_NOT_DELETED';
 
 /** Where a user's receipt photos live: receipts/<userId>/<transactionId>/<photoId>.<ext>. */
-export function userReceiptPrefix(userId: string): string {
-	// An empty or slash-containing id would widen the prefix to other users' photos.
-	if (!userId || userId.includes('/')) throw new Error('Refusing an unsafe receipt prefix');
-	return `receipts/${userId}/`;
-}
-
 /**
  * Deletes every R2 object under the user's receipt prefix, a page at a time, and returns how
  * many it deleted. Each pass lists from the start because the previous page is gone by then.
  * Throws if R2 fails; whatever is left is deleted by the next attempt.
  */
 export async function deleteUserReceipts(bucket: ReceiptBucket, userId: string): Promise<number> {
-	const prefix = userReceiptPrefix(userId);
+	const prefix = receiptPrefix(userId);
 	let deleted = 0;
 	let previousFirstKey: string | undefined;
 	for (;;) {
@@ -87,7 +82,7 @@ export function deleteUserOptions(deps: AccountDeletionDeps) {
 					await deleteUserReceipts(bucket, user.id);
 				} catch (cause) {
 					console.error(
-						`Receipt photos may remain under ${userReceiptPrefix(user.id)} after account deletion`,
+						`Receipt photos may remain under ${receiptPrefix(user.id)} after account deletion`,
 						summarizeError(cause)
 					);
 				}
