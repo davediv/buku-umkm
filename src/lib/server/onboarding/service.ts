@@ -74,8 +74,9 @@ export function parseOnboardingForm(formData: FormData): OnboardingFormResult {
 		errors.accountType = 'Pilih jenis akun yang valid';
 	}
 
+	// Digits only: Number() would read an Indonesian "750.000" as 750 and accept "1e6".
 	if (
-		openingBalanceRaw === '' ||
+		!/^\d+$/.test(openingBalanceRaw) ||
 		!Number.isSafeInteger(openingBalance) ||
 		openingBalance < 0 ||
 		openingBalance > MAX_TRANSACTION_AMOUNT

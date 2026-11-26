@@ -4,6 +4,7 @@
 	import { INDONESIAN_MONTHS, TAX_LEGAL_FORM, TAX_REGIME_CHOICE } from '$lib/tax/config';
 	import { formatRupiah } from '$lib/utils';
 	import { toast } from '$lib/components/ui/toast';
+	import { MoneyInput } from '$lib/components/ui/money-input';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -18,8 +19,11 @@
 			finalRegimeStartYear: source.profile?.finalRegimeStartYear ?? source.taxYear,
 			regimeChoice: source.profile?.regimeChoice ?? TAX_REGIME_CHOICE.FINAL_UMKM,
 			everUsedGeneralRegime: source.profile?.everUsedGeneralRegime ?? false,
-			priorYearAggregatedRevenue: source.profile?.priorYearAggregatedRevenue ?? 0,
-			externalMonthlyRevenue: source.profile?.externalMonthlyRevenue ?? Array(12).fill(0),
+			// Money fields bind number | null: null while a field is cleared.
+			priorYearAggregatedRevenue: (source.profile?.priorYearAggregatedRevenue ?? 0) as
+				number | null,
+			externalMonthlyRevenue: (source.profile?.externalMonthlyRevenue ??
+				Array<number>(12).fill(0)) as (number | null)[],
 			revenueDataComplete: source.profile?.revenueDataComplete ?? false,
 			aggregationConfirmed: source.profile?.aggregationConfirmed ?? false,
 			hasProfessionalServiceIncome: source.profile?.hasProfessionalServiceIncome ?? false,
@@ -34,7 +38,7 @@
 	let form = $state(createForm(data));
 
 	const externalRevenueTotal = $derived(
-		form.externalMonthlyRevenue.reduce((sum, value) => sum + (Number(value) || 0), 0)
+		form.externalMonthlyRevenue.reduce<number>((sum, value) => sum + (value ?? 0), 0)
 	);
 
 	async function saveProfile(event: SubmitEvent) {
@@ -46,7 +50,12 @@
 			const response = await fetch('/api/tax/profile', {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(form)
+				// An empty month counts as no revenue outside Buku UMKM.
+				body: JSON.stringify({
+					...form,
+					priorYearAggregatedRevenue: form.priorYearAggregatedRevenue ?? 0,
+					externalMonthlyRevenue: form.externalMonthlyRevenue.map((amount) => amount ?? 0)
+				})
 			});
 			const result = (await response.json()) as { error?: string };
 			if (!response.ok) throw new Error(result.error || 'Profil pajak gagal disimpan.');
@@ -171,13 +180,11 @@
 
 			<label class="block max-w-md space-y-1.5 text-sm font-medium">
 				<span>Total omzet agregat tahun {data.taxYear - 1}</span>
-				<input
-					type="number"
-					min="0"
-					step="1"
+				<MoneyInput
 					bind:value={form.priorYearAggregatedRevenue}
 					required
-					class="h-11 w-full rounded-md border bg-background px-3 font-normal"
+					placeholder="0"
+					class="md:h-11 px-3 font-normal"
 				/>
 			</label>
 
@@ -192,12 +199,10 @@
 					{#each INDONESIAN_MONTHS as monthName, index (monthName)}
 						<label class="space-y-1 text-sm">
 							<span>{monthName}</span>
-							<input
-								type="number"
-								min="0"
-								step="1"
+							<MoneyInput
 								bind:value={form.externalMonthlyRevenue[index]}
-								class="h-10 w-full rounded-md border bg-background px-3"
+								placeholder="0"
+								class="h-10 px-3"
 							/>
 						</label>
 					{/each}

@@ -82,6 +82,28 @@ describe('parseOnboardingForm', () => {
 			});
 		}
 	});
+
+	it.each(['750.000', '1.500.000', '1e6', '0x10', 'Rp 750000', '-0', ''])(
+		'rejects an opening balance of %j instead of misreading it',
+		(openingBalance) => {
+			const formData = validFormData();
+			formData.set('openingBalance', openingBalance);
+
+			const result = parseOnboardingForm(formData);
+			expect(result.success).toBe(false);
+			if (!result.success) expect(Object.keys(result.errors)).toEqual(['openingBalance']);
+		}
+	);
+
+	it('accepts a zero opening balance', () => {
+		const formData = validFormData();
+		formData.set('openingBalance', '0');
+
+		expect(parseOnboardingForm(formData)).toMatchObject({
+			success: true,
+			data: { openingBalance: 0 }
+		});
+	});
 });
 
 describe('onboarding provisioning', () => {

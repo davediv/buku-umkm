@@ -3,6 +3,7 @@
 	import { t } from '$lib/i18n';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+	import { MoneyInput } from '$lib/components/ui/money-input';
 	import { Label } from '$lib/components/ui/label';
 	import {
 		ArrowLeft,
@@ -18,6 +19,7 @@
 	} from '@lucide/svelte';
 	import { getBusinessTypeLabel } from '$lib/utils';
 	import { todayInJakarta } from '$lib/shared/dates';
+	import { MAX_TRANSACTION_AMOUNT } from '$lib/constants';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -32,7 +34,7 @@
 	let ownerName = $state('');
 	let businessType = $state('');
 	let accountName = $state('');
-	let openingBalance = $state(0);
+	let openingBalance = $state<number | null>(0);
 	let openingDate = $state(todayInJakarta());
 
 	// Validation errors
@@ -106,8 +108,10 @@
 		if (!accountName.trim()) {
 			errors.accountName = 'Nama akun wajib diisi';
 		}
-		if (openingBalance < 0) {
-			errors.openingBalance = 'Saldo tidak boleh negatif';
+		if (openingBalance === null) {
+			errors.openingBalance = 'Saldo awal wajib diisi. Isi 0 bila belum ada saldo.';
+		} else if (openingBalance > MAX_TRANSACTION_AMOUNT) {
+			errors.openingBalance = `Saldo awal maksimal Rp${MAX_TRANSACTION_AMOUNT.toLocaleString('id-ID')}`;
 		}
 		if (!openingDate || openingDate > todayInJakarta()) {
 			errors.openingDate = 'Tanggal saldo awal tidak valid';
@@ -164,7 +168,8 @@
 			formData.set('businessType', businessType);
 			formData.set('accountName', accountName);
 			formData.set('accountType', selectedAccountType);
-			formData.set('openingBalance', String(openingBalance));
+			// Plain digits: the action reads them with Number(), which takes "750.000" as 750.
+			formData.set('openingBalance', String(openingBalance ?? ''));
 			formData.set('openingDate', openingDate);
 			formData.set('return_to', data.returnTo);
 			const response = await fetch('?/complete', { method: 'POST', body: formData });
@@ -191,7 +196,7 @@
 	// Computed properties
 	let canProceedStep1 = $derived(businessName.trim() && ownerName.trim());
 	let canProceedStep2 = $derived(!!businessType);
-	let canFinish = $derived(accountName.trim() && openingBalance >= 0 && !!openingDate);
+	let canFinish = $derived(accountName.trim() && openingBalance !== null && !!openingDate);
 </script>
 
 <svelte:head>
@@ -407,13 +412,11 @@
 
 						<div class="space-y-2">
 							<Label for="openingBalance">Saldo Awal (Rp)</Label>
-							<Input
+							<MoneyInput
 								id="openingBalance"
-								type="number"
 								placeholder="0"
 								bind:value={openingBalance}
 								error={!!errors.openingBalance}
-								min="0"
 							/>
 							<p class="text-sm text-muted-foreground">
 								Masukkan saldo uang tunai yang ada saat ini
