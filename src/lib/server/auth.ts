@@ -4,13 +4,20 @@ import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { getDb } from '$lib/server/db';
+import { enforcePasswordPolicy } from '$lib/server/security/password-policy';
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '$lib/shared/password';
 
 function createAuth() {
 	return betterAuth({
 		baseURL: env.ORIGIN,
 		secret: env.BETTER_AUTH_SECRET,
 		database: drizzleAdapter(getDb(), { provider: 'sqlite' }),
-		emailAndPassword: { enabled: true },
+		emailAndPassword: {
+			enabled: true,
+			minPasswordLength: PASSWORD_MIN_LENGTH,
+			maxPasswordLength: PASSWORD_MAX_LENGTH
+		},
+		hooks: { before: enforcePasswordPolicy },
 		plugins: [sveltekitCookies(getRequestEvent)]
 	});
 }

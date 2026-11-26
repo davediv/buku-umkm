@@ -6,6 +6,7 @@ import {
 	CREDENTIAL_RATE_LIMIT_MESSAGE,
 	isCredentialAttemptAllowed
 } from '$lib/server/security/rate-limit';
+import { getPasswordError } from '$lib/shared/password';
 import {
 	DEFAULT_APP_RETURN_TO,
 	getLoginHref,
@@ -45,14 +46,9 @@ export const actions: Actions = {
 			errors.email = 'Email tidak valid';
 		}
 
-		if (!password) {
-			errors.password = 'Kata sandi wajib diisi';
-		} else if (password.length < 8) {
-			errors.password = 'Kata sandi minimal 8 karakter';
-		} else if (password.length > 128) {
-			errors.password = 'Kata sandi maksimal 128 karakter';
-		} else if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
-			errors.password = 'Kata sandi harus mengandung huruf besar, huruf kecil, dan angka';
+		const passwordError = getPasswordError(password);
+		if (passwordError) {
+			errors.password = passwordError;
 		}
 
 		if (!confirmPassword) {
