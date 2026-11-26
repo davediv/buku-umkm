@@ -11,7 +11,7 @@
 		{
 			verified: {
 				title: 'Email berhasil diverifikasi',
-				body: 'Terima kasih. Alamat email Anda sudah terverifikasi, sehingga tautan atur ulang kata sandi dapat sampai kepada Anda.',
+				body: 'Terima kasih. Alamat email Anda sudah terverifikasi, sehingga tautan atur ulang kata sandi dapat sampai kepada Anda. Jika Anda tidak pernah mendaftar dengan email ini, gunakan "Lupa kata sandi" di halaman masuk untuk mengambil alih akun tersebut.',
 				actionLabel: 'Buka Buku UMKM',
 				actionHref: '/beranda'
 			},

@@ -4,6 +4,7 @@ import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { deleteUserOptions } from '$lib/server/account/deletion';
+import { markEmailVerifiedAfterReset } from '$lib/server/account/verification';
 import { getDb } from '$lib/server/db';
 import { passwordResetEmail, verificationEmail } from '$lib/server/email/messages';
 import { EmailNotSentError, sendAccountEmail } from '$lib/server/email/send';
@@ -61,13 +62,17 @@ function createAuth() {
 						RESET_PASSWORD_TOKEN_TTL_SECONDS
 					)
 				);
-			}
+			},
+			onPasswordReset: ({ user }) => markEmailVerifiedAfterReset(getDb(), user)
 		},
 		// Verification is soft (the owner's decision): an unverified user keeps full access to
 		// their books, so requireEmailVerification stays off and sign-in never checks it.
 		emailVerification: {
 			sendOnSignUp: true,
-			autoSignInAfterVerification: true,
+			// Off on purpose: someone may sign up with another person's address. If the link
+			// signed its opener in, the real owner would land in an account whose password the
+			// stranger knows. They sign in (or reset the password) themselves instead.
+			autoSignInAfterVerification: false,
 			expiresIn: EMAIL_VERIFICATION_TTL_SECONDS,
 			async sendVerificationEmail({ user, url, token }) {
 				const sent = await sendAccountEmail(
