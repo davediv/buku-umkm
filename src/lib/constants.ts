@@ -18,3 +18,9 @@ export const BUSINESS_TYPES = [
 ] as const;
 
 export type BusinessType = (typeof BUSINESS_TYPES)[number]['value'];
+
+/** The display label of a stored business type, or "UMKM" when it is unset or "lainnya". */
+export function businessTypeLabel(value: string | null | undefined): string {
+	if (!value || value === 'lainnya') return 'UMKM';
+	return BUSINESS_TYPES.find((type) => type.value === value)?.label ?? 'UMKM';
+}

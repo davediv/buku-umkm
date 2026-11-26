@@ -15,7 +15,12 @@ vi.stubGlobal('self', globalThis);
 const { encryptNPWP } = await import('$lib/server/crypto');
 const { load } = await import('./+page.server');
 
-type LoadResult = { catatan: { businessProfile: { npwp: string | null } | null } | null };
+type LoadResult = {
+	catatan: {
+		businessProfile: { npwp: string | null } | null;
+		notesSections: { content: string }[];
+	} | null;
+};
 
 async function loadNotes() {
 	return (await load({
@@ -30,7 +35,7 @@ function profileWith(npwp: string | null) {
 		address: 'Jl. Melati 1',
 		phone: null,
 		npwp,
-		businessType: 'Kuliner',
+		businessType: 'warung_makan',
 		ownerName: 'Sari'
 	};
 }
@@ -65,5 +70,16 @@ describe('notes page NPWP', () => {
 		profileRef.current = profileWith(null);
 
 		expect((await loadNotes()).catatan?.businessProfile?.npwp).toBeNull();
+	});
+});
+
+describe('notes page business description', () => {
+	it('names the business type by its label, not its stored code', async () => {
+		profileRef.current = profileWith(null);
+
+		const text = JSON.stringify((await loadNotes()).catatan?.notesSections);
+
+		expect(text).toContain('adalah usaha Warung Makan/Restoran');
+		expect(text).not.toContain('warung_makan');
 	});
 });

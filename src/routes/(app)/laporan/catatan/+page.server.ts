@@ -2,6 +2,7 @@ import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { businessProfileQueries } from '$lib/server/db/queries';
 import { redirect } from '@sveltejs/kit';
+import { businessTypeLabel } from '$lib/constants';
 import { getIndonesianMonthName } from '$lib/tax/config';
 import { reportPeriodRanges } from '$lib/server/db/queries/ledger';
 import { todayInJakarta } from '$lib/shared/dates';
@@ -56,7 +57,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			period: getPeriodLabel(period),
 			startDate,
 			endDate,
-			businessType: profile?.businessType || 'UMKM'
+			businessType: businessTypeLabel(profile?.businessType)
 		};
 
 		// Additional notes sections
