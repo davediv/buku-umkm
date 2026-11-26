@@ -13,7 +13,7 @@ import { REVENUE_THRESHOLD_WP_OP, TAX_TYPE, getIndonesianMonthName } from './con
 import { evaluateTaxEligibility } from './eligibility';
 import { decryptNPWP } from '$lib/server/crypto';
 import { calculateMonthlyTax } from './engine';
-import { todayInJakarta } from '$lib/shared/dates';
+import { jakartaToday } from './period';
 import { profitAndLossRows, tradeDebtRows } from '$lib/server/db/queries/ledger';
 
 // Re-export for backward compatibility
@@ -269,9 +269,7 @@ export async function getTaxDashboardEstimate(
 	db: SQLiteDb,
 	userId: string
 ): Promise<TaxDashboardEstimate> {
-	const [yearPart, monthPart] = todayInJakarta().split('-');
-	const year = Number(yearPart);
-	const month = Number(monthPart);
+	const { year, month } = jakartaToday();
 	const context = await getTaxYearContext(db, userId, year);
 	const annualRevenue = calculateCumulativeRevenue(context.aggregatedMonthlyRevenue, month);
 	const currentMonthRevenue = context.aggregatedMonthlyRevenue[month - 1] ?? 0;

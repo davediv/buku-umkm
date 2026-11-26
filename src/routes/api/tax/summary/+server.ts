@@ -8,6 +8,7 @@ import {
 	getTaxYearContext
 } from '$lib/tax/service';
 import { TAX_STATUS } from '$lib/tax/config';
+import { jakartaToday } from '$lib/tax/period';
 
 /**
  * GET /api/tax/summary
@@ -29,10 +30,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 	const db = getDb();
 
 	try {
-		// Get current year and month
-		const now = new Date();
-		const currentYear = now.getFullYear();
-		const currentMonth = now.getMonth() + 1; // 1-12
+		// Current tax period on the Jakarta calendar
+		const { year: currentYear, month: currentMonth } = jakartaToday();
 		const [context, taxRec] = await Promise.all([
 			getTaxYearContext(db, userId, currentYear),
 			getTaxRecordForMonth(db, userId, currentYear, currentMonth)

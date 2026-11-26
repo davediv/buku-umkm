@@ -8,6 +8,7 @@ import {
 	getTaxYearContext
 } from '$lib/tax/service';
 import { TAX_STATUS } from '$lib/tax/config';
+import { jakartaToday } from '$lib/tax/period';
 
 /**
  * GET /api/tax/reminder
@@ -38,11 +39,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 	const db = getDb();
 
 	try {
-		// Get current date info
-		const now = new Date();
-		const currentYear = now.getFullYear();
-		const currentMonth = now.getMonth() + 1; // 1-12
-		const currentDay = now.getDate();
+		// Today on the Jakarta calendar
+		const { year: currentYear, month: currentMonth, day: currentDay } = jakartaToday();
 
 		// Calculate previous month
 		let previousMonth = currentMonth - 1;

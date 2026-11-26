@@ -5,6 +5,7 @@
 	import ReportNavigation from '$lib/components/reports/report-navigation.svelte';
 	import { toast } from '$lib/components/ui/toast';
 	import { formatDateLong } from '$lib/utils';
+	import { todayInJakarta } from '$lib/shared/dates';
 	import { exportCatatanPDF, generatePDFFilename } from '$lib/utils/pdf-export';
 	import type { PageData } from './$types';
 
@@ -267,7 +268,7 @@
 						Dokumen ini dihasilkan secara otomatis oleh Buku UMKM
 					</p>
 					<p class="text-xs text-gray-400 dark:text-gray-600 text-center mt-1">
-						Tanggal cetak: {formatDateLong(new Date().toISOString().split('T')[0])}
+						Tanggal cetak: {formatDateLong(todayInJakarta())}
 					</p>
 				</div>
 			</div>

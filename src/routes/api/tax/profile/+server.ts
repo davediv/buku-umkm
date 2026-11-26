@@ -5,6 +5,7 @@ import { TAX_LEGAL_FORM, TAX_REGIME_CHOICE } from '$lib/tax/config';
 import { getTaxProfile, upsertTaxProfile } from '$lib/tax/service';
 import type { TaxProfileData } from '$lib/tax/types';
 import { isIsoCalendarDate } from '$lib/shared/dates';
+import { jakartaToday } from '$lib/tax/period';
 
 const LEGAL_FORMS = new Set<string>(Object.values(TAX_LEGAL_FORM));
 const REGIME_CHOICES = new Set<string>(Object.values(TAX_REGIME_CHOICE));
@@ -85,7 +86,7 @@ function parseProfile(value: unknown): { data?: TaxProfileData; error?: string }
 
 export const GET: RequestHandler = async ({ locals, url }) => {
 	if (!locals.user || !locals.session) return json({ error: 'Unauthorized' }, { status: 401 });
-	const taxYear = parseYear(url.searchParams.get('year') ?? String(new Date().getFullYear()));
+	const taxYear = parseYear(url.searchParams.get('year') ?? String(jakartaToday().year));
 	if (!taxYear) return json({ error: 'Tahun pajak tidak valid.' }, { status: 400 });
 
 	const profile = await getTaxProfile(getDb(), locals.user.id, taxYear);

@@ -10,6 +10,7 @@ import {
 	getTaxYearContext
 } from '$lib/tax/service';
 import { TAX_TYPE, TAX_STATUS } from '$lib/tax/config';
+import { jakartaToday } from '$lib/tax/period';
 
 /**
  * POST /api/tax/[year]/[month]/mark-paid
@@ -50,8 +51,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			// Ignore JSON parse errors, use defaults
 		}
 
-		// Default payment date to today
-		const paymentDate = body.paymentDate || new Date().toISOString().split('T')[0];
+		// Default payment date to today on the Jakarta calendar
+		const paymentDate = body.paymentDate || jakartaToday().date;
 		const billingCode = body.billingCode || null;
 
 		const context = await getTaxYearContext(db, userId, year, month);

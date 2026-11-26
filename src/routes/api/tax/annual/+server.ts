@@ -9,6 +9,7 @@ import {
 } from '$lib/tax/service';
 import { REVENUE_THRESHOLD_WP_OP, TAX_STATUS, TAXPAYER_TYPE } from '$lib/tax/config';
 import { INDONESIAN_MONTHS } from '$lib/tax/config';
+import { jakartaToday } from '$lib/tax/period';
 
 /**
  * GET /api/tax/annual?year=2024
@@ -31,7 +32,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	// Get year from query param, default to current year
 	const year = url.searchParams.get('year')
 		? parseInt(url.searchParams.get('year')!)
-		: new Date().getFullYear();
+		: jakartaToday().year;
 
 	if (isNaN(year) || year < 2000 || year > 2100) {
 		return json({ error: 'Invalid year parameter' }, { status: 400 });

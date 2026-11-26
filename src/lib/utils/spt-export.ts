@@ -8,6 +8,7 @@
 import type { TaxpayerType } from '$lib/tax/types';
 import { getTaxStatusLabel, getTaxpayerTypeLabel, TAXPAYER_TYPE } from '$lib/tax/config';
 import { formatRupiah, formatDateLong } from '$lib/utils';
+import { todayInJakarta } from '$lib/shared/dates';
 
 export type SPTExportFormat = 'xlsx' | 'pdf';
 
@@ -70,7 +71,7 @@ const getStatusLabel = getTaxStatusLabel;
  * Generate SPT Tahunan filename
  */
 export function generateSPTFilename(year: number, format: SPTExportFormat): string {
-	const timestamp = new Date().toISOString().split('T')[0];
+	const timestamp = todayInJakarta();
 	const ext = format === 'xlsx' ? 'xlsx' : 'pdf';
 	return `Draft_Pendukung_SPT_${year}_${timestamp}.${ext}`;
 }

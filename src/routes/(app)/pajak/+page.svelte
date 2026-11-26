@@ -29,6 +29,7 @@
 		AlertDialogCancel
 	} from '$lib/components/ui/alert-dialog';
 	import type { TaxEligibilityDecision, TaxpayerType } from '$lib/tax/types';
+	import { jakartaToday } from '$lib/tax/period';
 
 	interface TaxSummary {
 		year: number;
@@ -175,7 +176,7 @@
 			<p class="text-sm text-muted-foreground">Estimasi PPh Final UMKM 0,5%</p>
 		</div>
 		<a
-			href="/pajak/profil?year={data.summary?.year ?? new Date().getFullYear()}"
+			href="/pajak/profil?year={data.summary?.year ?? jakartaToday().year}"
 			class="inline-flex h-10 items-center justify-center gap-2 rounded-md border bg-background px-4 font-medium transition-colors hover:bg-muted"
 		>
 			<Settings2 class="h-4 w-4" />

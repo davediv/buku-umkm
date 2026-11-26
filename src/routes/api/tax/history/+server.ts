@@ -4,6 +4,7 @@ import { getDb } from '$lib/server/db';
 import { calculateAnnualTax, getThresholdInfo } from '$lib/tax/engine';
 import { getTaxRecordsForYear, getTaxYearContext } from '$lib/tax/service';
 import { TAX_STATUS } from '$lib/tax/config';
+import { jakartaToday } from '$lib/tax/period';
 
 /**
  * GET /api/tax/history
@@ -25,7 +26,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	try {
 		// Parse year from query params, default to current year
 		const yearParam = url.searchParams.get('year');
-		const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();
+		const year = yearParam ? parseInt(yearParam, 10) : jakartaToday().year;
 
 		// Validate year
 		if (isNaN(year) || year < 2000 || year > 2100) {

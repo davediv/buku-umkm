@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { jakartaToday } from '$lib/tax/period';
 
 interface TaxApiResponse<T> {
 	data?: T;
@@ -17,7 +18,7 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
 
 	try {
 		// Fetch tax summary and history in parallel for better performance
-		const currentYear = new Date().getFullYear();
+		const currentYear = jakartaToday().year;
 		const [summaryRes, historyRes] = await Promise.all([
 			fetch('/api/tax/summary'),
 			fetch(`/api/tax/history?year=${currentYear}`)
