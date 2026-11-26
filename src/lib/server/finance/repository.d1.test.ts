@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import {
 	chartOfAccount,
 	debt,
@@ -484,6 +484,130 @@ describe('financial writes on D1', () => {
 				service.recordDebtPayment(userId, receivable.id, 'rev-pay-0001', input)
 			).rejects.toMatchObject({ code: 'PAYMENT_REVERSED', status: 409 });
 			expect(await balanceOf(kas)).toBe(0);
+		});
+	});
+
+	describe('reversing a transfer', () => {
+		async function transfer(
+			service: Awaited<ReturnType<typeof setup>>['service'],
+			userId: string,
+			from: string,
+			to: string,
+			amount: number,
+			key: string = crypto.randomUUID()
+		) {
+			const { entity } = await service.createTransfer(userId, key, {
+				amount,
+				sourceAccountId: from,
+				destinationAccountId: to,
+				date: '2026-11-20',
+				description: null
+			});
+			return entity;
+		}
+
+		async function legsActive(...ids: string[]) {
+			const rows = await harness.db
+				.select({ id: transaction.id, isActive: transaction.isActive })
+				.from(transaction)
+				.where(inArray(transaction.id, ids));
+			return ids.map((id) => rows.find((row) => row.id === id)?.isActive);
+		}
+
+		it('soft-deletes both legs and moves the money back', async () => {
+			const { userId, kas, bank, service } = await setup(100_000);
+			const made = await transfer(service, userId, kas, bank, 60_000);
+			expect([await balanceOf(kas), await balanceOf(bank)]).toEqual([40_000, 60_000]);
+
+			await service.reverseTransfer(userId, made.id);
+			expect([await balanceOf(kas), await balanceOf(bank)]).toEqual([100_000, 0]);
+			expect(await legsActive(made.sourceTransaction.id, made.destinationTransaction.id)).toEqual([
+				false,
+				false
+			]);
+		});
+
+		it('refuses when the destination no longer holds the amount, writing nothing', async () => {
+			const { userId, kas, bank, service } = await setup(100_000);
+			const made = await transfer(service, userId, kas, bank, 60_000);
+			await service.createTransaction(userId, crypto.randomUUID(), {
+				type: 'expense',
+				amount: 30_000,
+				accountId: bank,
+				categoryId: null,
+				date: '2026-11-21',
+				description: 'Biaya admin'
+			});
+
+			const refusal = service.reverseTransfer(userId, made.id);
+			await expect(refusal).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE', status: 400 });
+			await expect(refusal).rejects.toThrow(/Saldo Bank tinggal Rp30\.000/);
+			expect([await balanceOf(kas), await balanceOf(bank)]).toEqual([40_000, 30_000]);
+			expect(await legsActive(made.sourceTransaction.id, made.destinationTransaction.id)).toEqual([
+				true,
+				true
+			]);
+		});
+
+		it('refuses while the destination account is deactivated', async () => {
+			const { userId, kas, bank, service } = await setup(100_000);
+			const made = await transfer(service, userId, kas, bank, 60_000);
+			// Only possible for an account deactivated under the old rule, with money in it.
+			await harness.db
+				.update(chartOfAccount)
+				.set({ isActive: false })
+				.where(eq(chartOfAccount.id, bank));
+
+			await expect(service.reverseTransfer(userId, made.id)).rejects.toMatchObject({
+				code: 'ACCOUNT_INACTIVE'
+			});
+			expect([await balanceOf(kas), await balanceOf(bank)]).toEqual([40_000, 60_000]);
+		});
+
+		it('never reverses the same transfer twice', async () => {
+			const { userId, kas, bank, repository, service } = await setup(100_000);
+			const made = await transfer(service, userId, kas, bank, 60_000);
+			const reversal = {
+				userId,
+				amount: 60_000,
+				source: { transactionId: made.sourceTransaction.id, accountId: kas },
+				destination: { transactionId: made.destinationTransaction.id, accountId: bank }
+			};
+
+			// Two requests passed the service's pre-check; only the first may commit.
+			await repository.reverseTransferAtomic(reversal);
+			await expect(repository.reverseTransferAtomic(reversal)).rejects.toMatchObject({
+				code: 'TRANSFER_ALREADY_REVERSED'
+			});
+			await expect(service.reverseTransfer(userId, made.id)).rejects.toMatchObject({
+				code: 'TRANSFER_ALREADY_REVERSED',
+				status: 409
+			});
+			expect([await balanceOf(kas), await balanceOf(bank)]).toEqual([100_000, 0]);
+		});
+
+		it("refuses another user's transfer and answers a replay of a reversed one", async () => {
+			const owner = await setup(100_000);
+			const other = await setup(100_000);
+			const made = await transfer(
+				owner.service,
+				owner.userId,
+				owner.kas,
+				owner.bank,
+				60_000,
+				'rev-tf-0001'
+			);
+
+			await expect(other.service.reverseTransfer(other.userId, made.id)).rejects.toMatchObject({
+				code: 'NOT_FOUND'
+			});
+			expect([await balanceOf(owner.kas), await balanceOf(owner.bank)]).toEqual([40_000, 60_000]);
+
+			await owner.service.reverseTransfer(owner.userId, made.id);
+			await expect(
+				transfer(owner.service, owner.userId, owner.kas, owner.bank, 60_000, 'rev-tf-0001')
+			).rejects.toMatchObject({ code: 'TRANSFER_REVERSED', status: 409 });
+			expect([await balanceOf(owner.kas), await balanceOf(owner.bank)]).toEqual([100_000, 0]);
 		});
 	});
 });

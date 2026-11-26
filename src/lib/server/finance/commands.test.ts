@@ -82,6 +82,7 @@ function createRepository() {
 			const item = debts.get(id);
 			return item?.userId === userId && item.isActive ? item : undefined;
 		}),
+		findTransferLegs: vi.fn(async (): Promise<TransactionRecord[]> => []),
 		createTransactionAtomic: vi.fn(async (command, entry, balanceDelta) => {
 			commands.set(`${command.userId}:${command.idempotencyKey}`, { ...command, createdAt: now });
 			transactions.set(entry.id!, persistedTransaction(entry));
@@ -126,7 +127,8 @@ function createRepository() {
 		updateDebt: vi.fn(),
 		deleteDebtAtomic: vi.fn(),
 		recordDebtPaymentAtomic: vi.fn(),
-		reverseDebtPaymentAtomic: vi.fn()
+		reverseDebtPaymentAtomic: vi.fn(),
+		reverseTransferAtomic: vi.fn()
 	} satisfies FinanceRepository;
 
 	return { repository, accounts, transactions, debts };

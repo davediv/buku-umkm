@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import { ArrowLeft, Camera, Image, Trash2, X } from '@lucide/svelte';
+	import { ArrowLeft, Camera, Image, Trash2, Undo2, X } from '@lucide/svelte';
 	import ContextBackLink from '$lib/components/context-back-link.svelte';
+	import OperationStatus from '$lib/components/operation-status.svelte';
 	import TransactionForm from '$lib/components/transactions/transaction-form.svelte';
 	import { Dialog } from '$lib/components/ui/dialog';
 	import { validateTransactionForm } from '$lib/client/transaction-form';
@@ -14,7 +15,7 @@
 		AlertDialogTitle
 	} from '$lib/components/ui/alert-dialog';
 	import { toast } from '$lib/components/ui/toast';
-	import { compressImage } from '$lib/utils';
+	import { compressImage, formatDate, formatRupiah } from '$lib/utils';
 	import { getSafeTransactionListHref, getTransactionOutcomeHref } from '$lib/transactions/query';
 	import type { PageData } from './$types';
 
@@ -58,6 +59,54 @@
 		getSafeTransactionListHref(page.url.searchParams.get('return_to')) ?? '/transaksi'
 	);
 	let currentDetailHref = $derived(`${page.url.pathname}${page.url.search}`);
+
+	// Transfer legs and debt movements are written together with their counterpart, so
+	// they are corrected as a whole: a transfer is reversed, a debt payment from its debt.
+	let transfer = $derived.by(() => {
+		const item = data.transaction;
+		if (!item.toAccountId) return null;
+		const outgoing = item.type === 'expense';
+		return {
+			id: item.referenceNumber,
+			from: (outgoing ? item.account?.name : item.toAccount?.name) ?? 'akun sumber',
+			to: (outgoing ? item.toAccount?.name : item.account?.name) ?? 'akun tujuan'
+		};
+	});
+	let debtId = $derived(transfer ? null : data.transaction.debtId);
+	let linked = $derived(transfer !== null || debtId !== null);
+	let showReverseConfirm = $state(false);
+	let reversing = $state(false);
+	let reversalStatus = $state<{ kind: 'success' | 'error'; message: string } | null>(null);
+
+	async function handleReverseTransfer() {
+		if (!transfer?.id) return;
+		reversing = true;
+		reversalStatus = null;
+		try {
+			const response = await fetch(`/api/transfers/${encodeURIComponent(transfer.id)}`, {
+				method: 'DELETE'
+			});
+			const result = (await response.json()) as { error?: string; message?: string };
+			if (!response.ok) {
+				reversalStatus = {
+					kind: 'error',
+					message: result.error || 'Transfer belum dapat dibatalkan.'
+				};
+				return;
+			}
+			reversalStatus = { kind: 'success', message: result.message ?? 'Transfer dibatalkan.' };
+			await invalidateAll();
+		} catch (reverseError) {
+			console.error('Error reversing transfer:', reverseError);
+			reversalStatus = {
+				kind: 'error',
+				message: 'Tidak dapat terhubung ke server. Transfer belum dibatalkan.'
+			};
+		} finally {
+			reversing = false;
+			showReverseConfirm = false;
+		}
+	}
 
 	async function handleFileSelect(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
@@ -198,7 +247,9 @@
 </script>
 
 <svelte:head>
-	<title>Edit Transaksi - Buku UMKM</title>
+	<title
+		>{transfer ? 'Detail Transfer' : linked ? 'Detail Transaksi' : 'Edit Transaksi'} - Buku UMKM</title
+	>
 </svelte:head>
 
 <div class="flex min-h-screen flex-col bg-background">
@@ -212,14 +263,18 @@
 				compact
 				class="-ml-2 h-11 w-11 justify-center gap-0 rounded-full text-foreground [&_svg]:h-5 [&_svg]:w-5"
 			/>
-			<h1 class="text-lg font-semibold">Edit Transaksi</h1>
+			<h1 class="text-lg font-semibold">
+				{transfer ? 'Detail Transfer' : linked ? 'Detail Transaksi' : 'Edit Transaksi'}
+			</h1>
 		</div>
-		<button
-			type="button"
-			onclick={() => (showDeleteConfirm = true)}
-			class="flex h-11 w-11 items-center justify-center rounded-full text-destructive hover:bg-destructive/10"
-			aria-label="Hapus transaksi"><Trash2 class="h-5 w-5" /></button
-		>
+		{#if !linked}
+			<button
+				type="button"
+				onclick={() => (showDeleteConfirm = true)}
+				class="flex h-11 w-11 items-center justify-center rounded-full text-destructive hover:bg-destructive/10"
+				aria-label="Hapus transaksi"><Trash2 class="h-5 w-5" /></button
+			>
+		{/if}
 	</header>
 
 	{#snippet receiptFields()}
@@ -286,25 +341,110 @@
 		</section>
 	{/snippet}
 
-	<TransactionForm
-		formId="edit-transaction"
-		mode="edit"
-		bind:type
-		bind:amount
-		bind:categoryId
-		bind:accountId
-		bind:date
-		bind:description
-		bind:referenceNumber
-		bind:notes
-		categoriesByType={categories}
-		{accounts}
-		returnTo={currentDetailHref}
-		busy={loading}
-		submitLabel="Simpan perubahan"
-		onsubmit={handleSubmit}
-		attachments={receiptFields}
-	/>
+	{#if linked}
+		<div class="flex flex-1 flex-col gap-5 p-4">
+			{#if reversalStatus}
+				<OperationStatus
+					kind={reversalStatus.kind}
+					message={reversalStatus.message}
+					ondismiss={() => (reversalStatus = null)}
+				/>
+			{/if}
+			{#if !data.transaction.isActive && reversalStatus?.kind !== 'success'}
+				<OperationStatus
+					kind="info"
+					message={transfer
+						? 'Transfer ini sudah dibatalkan. Saldo kedua akun sudah dikembalikan.'
+						: 'Transaksi ini sudah dibatalkan dan tidak lagi dihitung di saldo.'}
+				/>
+			{/if}
+
+			<section class="rounded-xl border bg-card p-4" aria-labelledby="linked-amount-label">
+				<p id="linked-amount-label" class="text-sm text-muted-foreground">Jumlah</p>
+				<p class="text-3xl font-bold">{formatRupiah(data.transaction.amount)}</p>
+				<dl class="mt-4 grid gap-3 text-sm">
+					<div class="flex gap-3">
+						<dt class="w-28 shrink-0 text-muted-foreground">Tanggal</dt>
+						<dd>{formatDate(data.transaction.date)}</dd>
+					</div>
+					{#if transfer}
+						<div class="flex gap-3">
+							<dt class="w-28 shrink-0 text-muted-foreground">Dari</dt>
+							<dd class="min-w-0 break-words">{transfer.from}</dd>
+						</div>
+						<div class="flex gap-3">
+							<dt class="w-28 shrink-0 text-muted-foreground">Ke</dt>
+							<dd class="min-w-0 break-words">{transfer.to}</dd>
+						</div>
+					{:else}
+						<div class="flex gap-3">
+							<dt class="w-28 shrink-0 text-muted-foreground">Kas/rekening</dt>
+							<dd class="min-w-0 break-words">{data.transaction.account?.name ?? '-'}</dd>
+						</div>
+					{/if}
+					<div class="flex gap-3">
+						<dt class="w-28 shrink-0 text-muted-foreground">Keterangan</dt>
+						<dd class="min-w-0 break-words">{data.transaction.description || '-'}</dd>
+					</div>
+					{#if data.transaction.notes}
+						<div class="flex gap-3">
+							<dt class="w-28 shrink-0 text-muted-foreground">Catatan</dt>
+							<dd class="min-w-0 break-words">{data.transaction.notes}</dd>
+						</div>
+					{/if}
+				</dl>
+			</section>
+
+			{#if transfer && data.transaction.isActive}
+				<p class="text-sm text-muted-foreground">
+					Transfer tidak dapat diubah. Bila jumlah, tanggal, atau akunnya salah, batalkan transfer
+					ini lalu catat ulang yang benar dari Kas & Rekening.
+				</p>
+				{#if transfer.id}
+					<button
+						type="button"
+						onclick={() => {
+							reversalStatus = null;
+							showReverseConfirm = true;
+						}}
+						class="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-destructive px-4 text-base font-medium text-destructive transition-colors hover:bg-destructive/10"
+					>
+						<Undo2 class="h-4 w-4" aria-hidden="true" />Batalkan transfer
+					</button>
+				{/if}
+			{:else if debtId}
+				<p class="text-sm text-muted-foreground">
+					Transaksi ini tercatat dari catatan utang/piutang. Untuk mengoreksinya, buka catatan
+					tersebut.
+				</p>
+				<a
+					href="/hutang-piutang/{debtId}"
+					class="inline-flex min-h-12 w-full items-center justify-center rounded-xl border px-4 text-base font-medium transition-colors hover:bg-secondary"
+					>Buka catatan utang/piutang</a
+				>
+			{/if}
+		</div>
+	{:else}
+		<TransactionForm
+			formId="edit-transaction"
+			mode="edit"
+			bind:type
+			bind:amount
+			bind:categoryId
+			bind:accountId
+			bind:date
+			bind:description
+			bind:referenceNumber
+			bind:notes
+			categoriesByType={categories}
+			{accounts}
+			returnTo={currentDetailHref}
+			busy={loading}
+			submitLabel="Simpan perubahan"
+			onsubmit={handleSubmit}
+			attachments={receiptFields}
+		/>
+	{/if}
 </div>
 
 <Dialog
@@ -408,5 +548,31 @@
 		<AlertDialogAction onclick={handleDelete} loading={deleting}
 			>{deleting ? 'Menghapus…' : 'Hapus'}</AlertDialogAction
 		>
+	</div>
+</AlertDialog>
+
+<AlertDialog
+	open={showReverseConfirm}
+	closeOnExternalClick={!reversing}
+	onopenchange={(open) => !open && !reversing && (showReverseConfirm = false)}
+>
+	<AlertDialogTitle>Batalkan transfer?</AlertDialogTitle>
+	{#if transfer}
+		<AlertDialogDescription>
+			Transfer {formatRupiah(data.transaction.amount)} dari {transfer.from} ke {transfer.to} tanggal
+			{formatDate(data.transaction.date)} akan dibatalkan. Saldo {transfer.to} berkurang
+			{formatRupiah(data.transaction.amount)} dan saldo {transfer.from} bertambah
+			{formatRupiah(data.transaction.amount)}.
+		</AlertDialogDescription>
+		<p class="mt-3 text-sm text-muted-foreground">
+			Uangnya harus masih ada di {transfer.to}. Transfer tidak dihitung sebagai pemasukan atau
+			pengeluaran, jadi laporan laba rugi tidak berubah.
+		</p>
+	{/if}
+	<div class="mt-6 flex gap-3">
+		<AlertDialogCancel disabled={reversing}>Kembali</AlertDialogCancel>
+		<AlertDialogAction onclick={handleReverseTransfer} loading={reversing}>
+			{reversing ? 'Membatalkan…' : 'Ya, batalkan'}
+		</AlertDialogAction>
 	</div>
 </AlertDialog>

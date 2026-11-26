@@ -1,4 +1,4 @@
-import { and, eq, gte, ne, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNotNull, ne, sql } from 'drizzle-orm';
 import type { SQLiteDb } from '$lib/server/db';
 import { batchGuard, isGuardFailure, runBatch } from '$lib/server/db/batch';
 import {
@@ -53,12 +53,25 @@ export type PaymentReversal = {
 	movement: MovementReversal | null;
 };
 
+/** One side of a transfer: the transaction (leg) and the account it moved money through. */
+export type TransferLeg = { transactionId: string; accountId: string };
+
+/** Takes back a transfer: the money returns from the destination to the source. */
+export type TransferReversal = {
+	userId: string;
+	amount: number;
+	source: TransferLeg;
+	destination: TransferLeg;
+};
+
 export interface FinanceRepository {
 	findCommand(userId: string, idempotencyKey: string): Promise<CommandRecord | undefined>;
 	findAccount(userId: string, accountId: string): Promise<AccountRecord | undefined>;
 	findCategory(userId: string, categoryId: string): Promise<CategoryRecord | undefined>;
 	findTransaction(userId: string, transactionId: string): Promise<TransactionRecord | undefined>;
 	findDebt(userId: string, debtId: string): Promise<DebtRecord | undefined>;
+	/** Both legs of a transfer, reversed ones included. */
+	findTransferLegs(userId: string, transferId: string): Promise<TransactionRecord[]>;
 	createTransactionAtomic(
 		command: StoredCommand,
 		entry: NewTransaction,
@@ -101,6 +114,7 @@ export interface FinanceRepository {
 		balanceDelta: number;
 	}): Promise<void>;
 	reverseDebtPaymentAtomic(input: PaymentReversal): Promise<void>;
+	reverseTransferAtomic(input: TransferReversal): Promise<void>;
 }
 
 function adjustBalance(db: SQLiteDb, userId: string, accountId: string, delta: number) {
@@ -159,6 +173,46 @@ async function paymentReversalRejection(
 		'Catatan pembayaran berubah saat dibatalkan. Muat ulang halaman, lalu coba lagi.',
 		409,
 		'PAYMENT_CHANGED'
+	);
+}
+
+/** Explains why a transfer reversal guard failed, from the state after the abort. */
+async function transferReversalRejection(
+	db: SQLiteDb,
+	{ userId, amount, source, destination }: TransferReversal
+) {
+	const legs = await db
+		.select({ isActive: transaction.isActive })
+		.from(transaction)
+		.where(
+			and(
+				eq(transaction.userId, userId),
+				inArray(transaction.id, [source.transactionId, destination.transactionId])
+			)
+		);
+	if (legs.length < 2 || legs.some((leg) => !leg.isActive)) {
+		return new FinanceError('Transfer ini sudah dibatalkan', 409, 'TRANSFER_ALREADY_REVERSED');
+	}
+	const [account] = await db
+		.select({
+			name: chartOfAccount.name,
+			balance: chartOfAccount.balance,
+			isActive: chartOfAccount.isActive
+		})
+		.from(chartOfAccount)
+		.where(and(eq(chartOfAccount.userId, userId), eq(chartOfAccount.id, destination.accountId)));
+	if (!account) return new FinanceError('Akun tujuan tidak ditemukan', 404, 'ACCOUNT_NOT_FOUND');
+	if (!account.isActive) {
+		return new FinanceError(
+			`${account.name} sudah dinonaktifkan. Aktifkan kembali akun tersebut di Kas & Rekening sebelum membatalkan transfer.`,
+			409,
+			'ACCOUNT_INACTIVE'
+		);
+	}
+	return new FinanceError(
+		`Saldo ${account.name} tinggal Rp${account.balance.toLocaleString('id-ID')}, kurang dari jumlah transfer (Rp${amount.toLocaleString('id-ID')}). Transfer hanya dapat dibatalkan selama uangnya masih ada di akun tujuan.`,
+		400,
+		'INSUFFICIENT_BALANCE'
 	);
 }
 
@@ -225,6 +279,17 @@ export function createD1FinanceRepository(db: SQLiteDb): FinanceRepository {
 				where: (item, { eq, and }) =>
 					and(eq(item.userId, userId), eq(item.id, debtId), eq(item.isActive, true)),
 				with: { payments: { orderBy: (payments, { asc }) => [asc(payments.date)] } }
+			});
+		},
+		findTransferLegs(userId, transferId) {
+			return db.query.transaction.findMany({
+				where: (item, { eq, and }) =>
+					and(
+						eq(item.userId, userId),
+						eq(item.referenceNumber, transferId),
+						isNotNull(item.toAccountId)
+					),
+				with: { account: true, toAccount: true }
 			});
 		},
 		async createTransactionAtomic(commandRecord, entry, balanceDelta) {
@@ -415,6 +480,34 @@ export function createD1FinanceRepository(db: SQLiteDb): FinanceRepository {
 				]);
 			} catch (error) {
 				if (isGuardFailure(error)) throw await paymentReversalRejection(db, reversal);
+				throw error;
+			}
+		},
+		async reverseTransferAtomic(reversal) {
+			const { userId, amount, source, destination } = reversal;
+			try {
+				await runBatch(db, [
+					// Both legs still count (so a transfer is never reversed twice) and, as when
+					// the transfer was made, the account the money now leaves can cover it.
+					batchGuard(
+						db,
+						sql`${transactionIsActive(userId, source.transactionId)} and ${transactionIsActive(
+							userId,
+							destination.transactionId
+						)} and exists (select 1 from ${chartOfAccount} where ${and(
+							eq(chartOfAccount.userId, userId),
+							eq(chartOfAccount.id, destination.accountId),
+							eq(chartOfAccount.isActive, true),
+							gte(chartOfAccount.balance, amount)
+						)})`
+					),
+					softDeleteTransaction(db, userId, source.transactionId),
+					softDeleteTransaction(db, userId, destination.transactionId),
+					adjustBalance(db, userId, destination.accountId, -amount),
+					adjustBalance(db, userId, source.accountId, amount)
+				]);
+			} catch (error) {
+				if (isGuardFailure(error)) throw await transferReversalRejection(db, reversal);
 				throw error;
 			}
 		}

@@ -272,15 +272,17 @@ export function createFinancialMutationService(
 			sourceTransactionId: string;
 			destinationTransactionId: string;
 		}>(stored, 'transfer.create');
-		const [sourceTransaction, destinationTransaction] = await Promise.all([
+		const [source, destination] = await Promise.all([
 			repository.findTransaction(userId, result.sourceTransactionId),
 			repository.findTransaction(userId, result.destinationTransactionId)
 		]);
-		const source = requirePersisted(sourceTransaction, 'Transfer sebelumnya tidak tersedia');
-		const destination = requirePersisted(
-			destinationTransaction,
-			'Transfer sebelumnya tidak tersedia'
-		);
+		if (!source || !destination) {
+			throw new FinanceError(
+				'Transfer dari permintaan ini sudah dibatalkan',
+				409,
+				'TRANSFER_REVERSED'
+			);
+		}
 		const [sourceAccount, destinationAccount] = await Promise.all([
 			repository.findAccount(userId, source.accountId),
 			repository.findAccount(userId, destination.accountId)
@@ -384,6 +386,36 @@ export function createFinancialMutationService(
 			},
 			replayed: false
 		};
+	}
+
+	/**
+	 * Takes back a transfer made by mistake: soft-deletes both legs and moves the money
+	 * from the destination back to the source. Like the transfer itself, it needs the
+	 * account the money leaves (now the destination) to still hold the amount.
+	 */
+	async function reverseTransfer(userId: string, transferId: string): Promise<void> {
+		const legs = await repository.findTransferLegs(userId, transferId);
+		const source = legs.find((leg) => leg.type === 'expense');
+		const destination = legs.find((leg) => leg.type === 'income');
+		if (
+			legs.length !== 2 ||
+			!source ||
+			!destination ||
+			source.toAccountId !== destination.accountId ||
+			destination.toAccountId !== source.accountId ||
+			source.amount !== destination.amount
+		) {
+			throw new FinanceError('Transfer tidak ditemukan', 404, 'NOT_FOUND');
+		}
+		if (!source.isActive || !destination.isActive) {
+			throw new FinanceError('Transfer ini sudah dibatalkan', 409, 'TRANSFER_ALREADY_REVERSED');
+		}
+		await repository.reverseTransferAtomic({
+			userId,
+			amount: source.amount,
+			source: { transactionId: source.id, accountId: source.accountId },
+			destination: { transactionId: destination.id, accountId: destination.accountId }
+		});
 	}
 
 	async function replayDebt(
@@ -719,6 +751,7 @@ export function createFinancialMutationService(
 		updateTransaction,
 		deleteTransaction,
 		createTransfer,
+		reverseTransfer,
 		createDebt,
 		updateDebt,
 		deleteDebt,

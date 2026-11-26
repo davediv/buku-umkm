@@ -7,6 +7,7 @@
 		ChevronLeft,
 		ChevronRight,
 		Download,
+		Eye,
 		FileSpreadsheet,
 		FileText,
 		Pencil,
@@ -113,6 +114,11 @@
 						: 'desc',
 			page: 1
 		});
+	}
+
+	/** Transfer legs and debt movements are corrected from their transfer or debt, not here. */
+	function isLinked(transaction: { toAccountId: string | null; debtId: string | null }): boolean {
+		return transaction.toAccountId !== null || transaction.debtId !== null;
 	}
 
 	function formatAmount(amount: number, type: string): string {
@@ -410,19 +416,28 @@
 							</div>
 						</dl>
 						<div class="mt-3 flex justify-end gap-2 border-t pt-3">
-							<a
-								href={getTransactionDetailHref(transaction.id, query)}
-								class="inline-flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-secondary"
-							>
-								<Pencil class="h-4 w-4" />Edit
-							</a>
-							<button
-								type="button"
-								onclick={() => (showDeleteConfirm = transaction.id)}
-								class="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-medium text-destructive hover:bg-destructive/10"
-							>
-								<Trash2 class="h-4 w-4" />Hapus
-							</button>
+							{#if isLinked(transaction)}
+								<a
+									href={getTransactionDetailHref(transaction.id, query)}
+									class="inline-flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-secondary"
+								>
+									<Eye class="h-4 w-4" />Detail
+								</a>
+							{:else}
+								<a
+									href={getTransactionDetailHref(transaction.id, query)}
+									class="inline-flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-secondary"
+								>
+									<Pencil class="h-4 w-4" />Edit
+								</a>
+								<button
+									type="button"
+									onclick={() => (showDeleteConfirm = transaction.id)}
+									class="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-medium text-destructive hover:bg-destructive/10"
+								>
+									<Trash2 class="h-4 w-4" />Hapus
+								</button>
+							{/if}
 						</div>
 					</article>
 				{/each}
@@ -493,21 +508,31 @@
 								</td>
 								<td class="px-4 py-3 text-right">
 									<div class="flex justify-end gap-1">
-										<a
-											href={getTransactionDetailHref(transaction.id, query)}
-											class="flex h-11 w-11 items-center justify-center rounded hover:bg-secondary"
-											aria-label="Edit transaksi"
-										>
-											<Pencil class="h-4 w-4" />
-										</a>
-										<button
-											type="button"
-											onclick={() => (showDeleteConfirm = transaction.id)}
-											class="flex h-11 w-11 items-center justify-center rounded hover:bg-destructive/10 hover:text-destructive"
-											aria-label="Hapus transaksi"
-										>
-											<Trash2 class="h-4 w-4" />
-										</button>
+										{#if isLinked(transaction)}
+											<a
+												href={getTransactionDetailHref(transaction.id, query)}
+												class="flex h-11 w-11 items-center justify-center rounded hover:bg-secondary"
+												aria-label="Lihat detail transaksi"
+											>
+												<Eye class="h-4 w-4" />
+											</a>
+										{:else}
+											<a
+												href={getTransactionDetailHref(transaction.id, query)}
+												class="flex h-11 w-11 items-center justify-center rounded hover:bg-secondary"
+												aria-label="Edit transaksi"
+											>
+												<Pencil class="h-4 w-4" />
+											</a>
+											<button
+												type="button"
+												onclick={() => (showDeleteConfirm = transaction.id)}
+												class="flex h-11 w-11 items-center justify-center rounded hover:bg-destructive/10 hover:text-destructive"
+												aria-label="Hapus transaksi"
+											>
+												<Trash2 class="h-4 w-4" />
+											</button>
+										{/if}
 									</div>
 								</td>
 							</tr>
