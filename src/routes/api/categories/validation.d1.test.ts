@@ -81,6 +81,17 @@ describe('category API validation', () => {
 		});
 	});
 
+	it('keeps the loan interest codes for the system interest categories', async () => {
+		for (const [type, code] of [
+			['income', '4901'],
+			['expense', '7101']
+		]) {
+			const response = await post({ name: 'Bunga sendiri', type, code });
+			expect(response.status).toBe(400);
+			expect(await response.json()).toMatchObject({ error: expect.stringContaining(code) });
+		}
+	});
+
 	it('caps the name on rename', async () => {
 		expect((await put('own-expense', { name: 'a'.repeat(201) })).status).toBe(400);
 		expect((await put('own-expense', { name: 7 })).status).toBe(400);

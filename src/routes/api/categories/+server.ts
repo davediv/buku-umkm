@@ -1,3 +1,4 @@
+import { LOAN_INTEREST_CATEGORY_CODES } from '$lib/debts/interest';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
@@ -78,6 +79,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const customCode = validateCategoryCode(body.code, type);
 		if (!customCode.ok) {
 			return json({ error: customCode.error }, { status: 400 });
+		}
+		// The loan interest categories are found by these codes; a custom one must not take them.
+		if (customCode.value && LOAN_INTEREST_CATEGORY_CODES.has(customCode.value)) {
+			return json(
+				{
+					error: `Kode ${customCode.value} disediakan untuk kategori bunga pinjaman. Pilih kode lain.`
+				},
+				{ status: 400 }
+			);
 		}
 
 		const icon = validateCategoryIcon(body.icon);
