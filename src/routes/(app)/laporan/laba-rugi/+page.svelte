@@ -37,13 +37,25 @@
 	let profitLoss = $derived(data.profitLoss);
 	let hasError = $derived(!profitLoss && data.error);
 
-	// Get previous period text
+	// The period the figures are compared with, matching reportPeriodRanges' previous range.
+	const PREVIOUS_PERIOD_LABELS: Record<Period, string> = {
+		daily: 'kemarin',
+		weekly: 'minggu lalu',
+		monthly: 'bulan lalu',
+		quarterly: 'triwulan lalu',
+		yearly: 'tahun lalu'
+	};
+
+	// Get previous period text for the period the loaded figures belong to
 	function getPreviousPeriodText(change: number, previousValue: number): string {
+		const previousLabel =
+			PREVIOUS_PERIOD_LABELS[(profitLoss?.period as Period | undefined) ?? selectedPeriod] ??
+			PREVIOUS_PERIOD_LABELS.monthly;
 		const comparison = getComparisonText(change);
 		if (comparison.text === 'Tidak berubah') {
-			return 'Tidak ada perubahan dari bulan lalu';
+			return `Tidak ada perubahan dari ${previousLabel}`;
 		}
-		return `dari bulan lalu (${formatRupiah(previousValue)})`;
+		return `dari ${previousLabel} (${formatRupiah(previousValue)})`;
 	}
 
 	// Handle period change
