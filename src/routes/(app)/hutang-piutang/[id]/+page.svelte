@@ -18,6 +18,7 @@
 	import OperationStatus from '$lib/components/operation-status.svelte';
 	import ContextBackLink from '$lib/components/context-back-link.svelte';
 	import { Dialog } from '$lib/components/ui/dialog';
+	import { MoneyInput } from '$lib/components/ui/money-input';
 	import { debtKindLabel } from '$lib/debts/kind';
 	import { getDebtDueState } from '$lib/debts/list';
 	import { getSafeDebtListHref } from '$lib/debts/query';
@@ -33,7 +34,7 @@
 	let success = $state<string | null>(null);
 
 	// Form state
-	let paymentAmount = $state<number | string>('');
+	let paymentAmount = $state<number | null>(null);
 	let paymentDate = $state(todayInJakarta());
 	let paymentAccount = $state('');
 	let paymentNotes = $state('');
@@ -92,7 +93,7 @@
 		error = null;
 		success = null;
 
-		const amount = Number(paymentAmount);
+		const amount = paymentAmount ?? 0;
 
 		// Validate amount
 		if (amount <= 0) {
@@ -416,15 +417,11 @@
 			<label for="paymentAmount" class="text-sm font-medium">
 				{debt.type === 'piutang' ? 'Jumlah diterima' : 'Jumlah dibayar'} *
 			</label>
-			<input
+			<MoneyInput
 				data-dialog-initial-focus
 				id="paymentAmount"
-				type="number"
 				bind:value={paymentAmount}
-				min="1"
-				max={debt.remainingAmount}
-				placeholder="Contoh: 500000"
-				class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+				placeholder="Contoh: 500.000"
 				required
 			/>
 			<p class="text-xs text-muted-foreground">

@@ -16,6 +16,7 @@
 	import { formatRupiah } from '$lib/utils';
 	import OperationStatus from '$lib/components/operation-status.svelte';
 	import { Dialog } from '$lib/components/ui/dialog';
+	import { MoneyInput } from '$lib/components/ui/money-input';
 	import {
 		AlertDialog,
 		AlertDialogTitle,
@@ -50,15 +51,15 @@
 	// Transfer form data
 	let sourceAccountId = $state('');
 	let destinationAccountId = $state('');
-	let transferAmount = $state(0);
-	let transferDate = $state(new Date().toISOString().split('T')[0]);
+	let transferAmount = $state<number | null>(null);
+	let transferDate = $state(todayInJakarta());
 	let transferDescription = $state('');
 	let transferCommandId = $state('');
 
 	// Form data
 	let name = $state('');
 	let type = $state<'cash' | 'bank' | 'ewallet'>('cash');
-	let openingBalance = $state(0);
+	let openingBalance = $state<number | null>(null);
 	let openingDate = $state(todayInJakarta());
 
 	// Local mutable accounts state — syncs from load data, allows optimistic updates
@@ -95,7 +96,7 @@
 		editingAccount = null;
 		name = '';
 		type = 'cash';
-		openingBalance = 0;
+		openingBalance = null;
 		openingDate = todayInJakarta();
 		showModal = true;
 	}
@@ -106,7 +107,7 @@
 		editingAccount = account;
 		name = account.name;
 		type = account.type as 'cash' | 'bank' | 'ewallet';
-		openingBalance = 0;
+		openingBalance = null;
 		openingDate = todayInJakarta();
 		showModal = true;
 	}
@@ -117,7 +118,7 @@
 		editingAccount = null;
 		name = '';
 		type = 'cash';
-		openingBalance = 0;
+		openingBalance = null;
 		openingDate = todayInJakarta();
 	}
 
@@ -128,8 +129,8 @@
 		sourceAccountId = accounts.length > 0 ? accounts[0].id : '';
 		destinationAccountId =
 			accounts.length > 1 ? accounts[1].id : accounts.length > 0 ? accounts[0].id : '';
-		transferAmount = 0;
-		transferDate = new Date().toISOString().split('T')[0];
+		transferAmount = null;
+		transferDate = todayInJakarta();
 		transferDescription = '';
 		transferCommandId = crypto.randomUUID();
 		showTransferModal = true;
@@ -142,8 +143,8 @@
 		transferSuccess = null;
 		sourceAccountId = '';
 		destinationAccountId = '';
-		transferAmount = 0;
-		transferDate = new Date().toISOString().split('T')[0];
+		transferAmount = null;
+		transferDate = todayInJakarta();
 		transferDescription = '';
 	}
 
@@ -158,7 +159,7 @@
 		if (sourceAccountId === destinationAccountId) {
 			return 'Akun sumber dan tujuan tidak boleh sama';
 		}
-		if (transferAmount <= 0) {
+		if (!transferAmount || transferAmount <= 0) {
 			return 'Jumlah harus lebih dari 0';
 		}
 		if (!transferDate) {
@@ -476,15 +477,7 @@
 		<!-- Amount -->
 		<div class="space-y-2">
 			<label for="transfer_amount" class="text-sm font-medium">Jumlah (Rp)</label>
-			<input
-				id="transfer_amount"
-				type="number"
-				bind:value={transferAmount}
-				min="1"
-				step="100"
-				placeholder="0"
-				class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-			/>
+			<MoneyInput id="transfer_amount" bind:value={transferAmount} placeholder="0" />
 		</div>
 
 		<!-- Date -->
@@ -494,7 +487,7 @@
 				id="transfer_date"
 				type="date"
 				bind:value={transferDate}
-				max={new Date().toISOString().split('T')[0]}
+				max={todayInJakarta()}
 				class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 			/>
 		</div>
@@ -526,7 +519,7 @@
 					sourceAccountId === destinationAccountId ||
 					!sourceAccountId ||
 					!destinationAccountId ||
-					transferAmount <= 0}
+					!transferAmount}
 				class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 			>
 				{transferLoading ? 'Mengirim...' : 'Transfer'}
@@ -595,15 +588,11 @@
 		{#if !editingAccount}
 			<div class="space-y-2">
 				<label for="opening_balance" class="text-sm font-medium">Saldo Awal (Rp)</label>
-				<input
+				<MoneyInput
 					id="opening_balance"
 					name="opening_balance"
-					type="number"
 					bind:value={openingBalance}
-					min="0"
-					step="100"
 					placeholder="0"
-					class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 				/>
 				<p class="text-xs text-muted-foreground">Saldo awal opsional. Kosongkan jika 0.</p>
 			</div>

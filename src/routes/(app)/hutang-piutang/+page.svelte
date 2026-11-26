@@ -12,6 +12,7 @@
 	} from '@lucide/svelte';
 	import OperationStatus from '$lib/components/operation-status.svelte';
 	import { Dialog } from '$lib/components/ui/dialog';
+	import { MoneyInput } from '$lib/components/ui/money-input';
 	import { debtKindLabel, type DebtKind } from '$lib/debts/kind';
 	import { getDebtDueState } from '$lib/debts/list';
 	import { getDebtDetailHref, getDebtHref } from '$lib/debts/query';
@@ -32,7 +33,7 @@
 	let contactName = $state('');
 	let contactPhone = $state('');
 	let contactAddress = $state('');
-	let amount = $state<number | string>('');
+	let amount = $state<number | null>(null);
 	let date = $state(todayInJakarta());
 	let dueDate = $state('');
 	let description = $state('');
@@ -91,7 +92,7 @@
 		contactName = '';
 		contactPhone = '';
 		contactAddress = '';
-		amount = '';
+		amount = null;
 		date = todayInJakarta();
 		dueDate = '';
 		description = '';
@@ -122,7 +123,7 @@
 					contact_name: contactName,
 					contact_phone: contactPhone || undefined,
 					contact_address: contactAddress || undefined,
-					amount: Number(amount),
+					amount,
 					date,
 					due_date: dueDate || undefined,
 					description: description || undefined
@@ -591,17 +592,7 @@
 		<div class="space-y-2">
 			<label for="debt-amount" class="text-sm font-medium"
 				>Jumlah <span class="text-destructive">*</span></label
-			><input
-				id="debt-amount"
-				type="number"
-				bind:value={amount}
-				min="1"
-				step="1"
-				inputmode="numeric"
-				placeholder="1000000"
-				class="min-h-11 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				required
-			/>
+			><MoneyInput id="debt-amount" bind:value={amount} placeholder="1.000.000" required />
 		</div>
 		{#if createKind === 'loan'}
 			<div class="space-y-2">
