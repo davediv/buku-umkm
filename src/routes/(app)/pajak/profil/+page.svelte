@@ -8,6 +8,7 @@
 	import {
 		asksExpertServiceQuestion,
 		asksFounderGroupQuestion,
+		defaultFinalRegimeStartYear,
 		isBodyLegalForm
 	} from '$lib/tax/eligibility';
 	import type { TaxLegalForm } from '$lib/tax/types';
@@ -44,6 +45,22 @@
 	// Initial editable copy; navigation leaves this route after a successful save.
 	// svelte-ignore state_referenced_locally
 	let form = $state(createForm(data));
+
+	// The PP 55/2022 term start year follows from the legal form and registration date
+	// (Pasal 59 ayat (2) and Pasal 69). A saved profile keeps its stored year, and once the
+	// user types a year it is no longer recalculated.
+	// svelte-ignore state_referenced_locally
+	let startYearEdited = $state(data.profile !== null);
+	const suggestedStartYear = $derived(
+		form.legalForm === ''
+			? null
+			: defaultFinalRegimeStartYear(form.legalForm as TaxLegalForm, form.registeredAt)
+	);
+	$effect(() => {
+		if (!startYearEdited && suggestedStartYear !== null) {
+			form.finalRegimeStartYear = suggestedStartYear;
+		}
+	});
 
 	const externalRevenueTotal = $derived(
 		form.externalMonthlyRevenue.reduce<number>((sum, value) => sum + (value ?? 0), 0)
@@ -176,6 +193,7 @@
 						min="2018"
 						max={data.taxYear}
 						bind:value={form.finalRegimeStartYear}
+						oninput={() => (startYearEdited = true)}
 						required
 						class="h-11 w-full rounded-md border bg-background px-3 font-normal"
 					/>
@@ -183,6 +201,10 @@
 						Jangka waktunya 7 tahun (orang pribadi), 4 tahun (perseroan perorangan, koperasi, CV,
 						firma, BUM Desa), atau 3 tahun (PT). Ketentuan peralihan PP 20/2026 bergantung pada
 						tahun berakhirnya.
+						{#if suggestedStartYear !== null}
+							Berdasarkan bentuk dan tanggal terdaftar: {suggestedStartYear} (Pasal 59 ayat (2) dan Pasal
+							69 PP 55/2022).
+						{/if}
 					</span>
 				</label>
 

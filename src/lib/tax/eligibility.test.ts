@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TAX_LEGAL_FORM, TAX_REGIME_CHOICE, TAXPAYER_TYPE } from './config';
 import {
+	defaultFinalRegimeStartYear,
 	evaluateTaxEligibility,
 	FINAL_REGIME_ANNUAL_LIMIT,
 	getTaxRuleForYear
@@ -397,5 +398,25 @@ describe('chose the Pasal 17 rates vs. turnover that passed Rp4,8 miliar', () =>
 		const result = evaluate({ ...individual, turnoverLimitExceeded: true }, 2026);
 		expect(result.status).toBe('ineligible');
 		expect(result.reasons[0]).toContain('Pasal 61');
+	});
+});
+
+describe('PP 55/2022 term start year', () => {
+	it('follows Pasal 69 and Pasal 59 ayat (2)', () => {
+		const start = (legalForm: TaxProfileData['legalForm'], registeredAt: string) =>
+			defaultFinalRegimeStartYear(legalForm, registeredAt);
+		// Registered before PP 23/2018 (1 July 2018): from 2018.
+		expect(start(TAX_LEGAL_FORM.INDIVIDUAL, '2015-04-01')).toBe(2018);
+		expect(start(TAX_LEGAL_FORM.CV, '2018-06-30')).toBe(2018);
+		// Between PP 23/2018 and PP 55/2022: from the year registered.
+		expect(start(TAX_LEGAL_FORM.COOPERATIVE, '2019-02-01')).toBe(2019);
+		// BUM Desa and perseroan perorangan registered before PP 55/2022: from 2022.
+		expect(start(TAX_LEGAL_FORM.SINGLE_MEMBER_COMPANY, '2021-09-01')).toBe(2022);
+		expect(start(TAX_LEGAL_FORM.VILLAGE_ENTERPRISE, '2016-01-01')).toBe(2022);
+		// After PP 55/2022 (20 December 2022): from the year registered.
+		expect(start(TAX_LEGAL_FORM.SINGLE_MEMBER_COMPANY, '2024-05-01')).toBe(2024);
+		// No PP 55 term, or no date yet.
+		expect(start(TAX_LEGAL_FORM.PERMANENT_ESTABLISHMENT, '2024-05-01')).toBeNull();
+		expect(start(TAX_LEGAL_FORM.INDIVIDUAL, '')).toBeNull();
 	});
 });

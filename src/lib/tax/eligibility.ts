@@ -19,6 +19,10 @@ import type {
 export const FINAL_REGIME_ANNUAL_LIMIT = 4_800_000_000;
 /** PP 20/2026 was enacted, promulgated (LN 2026 No. 43) and took effect on 22 April 2026. */
 export const PP20_EFFECTIVE_DATE = '2026-04-22';
+/** PP 23/2018 took effect on 1 July 2018 (its Pasal 12). */
+const PP23_EFFECTIVE_DATE = '2018-07-01';
+/** PP 55/2022 was promulgated and took effect on 20 December 2022. */
+const PP55_EFFECTIVE_DATE = '2022-12-20';
 /** First tax year assessed under PP 55/2022 as amended by PP 20/2026. */
 const PP20_FIRST_TAX_YEAR = 2026;
 
@@ -193,6 +197,30 @@ const registeredBeforePp20 = (profile: TaxProfileData) =>
 	profile.registeredAt < PP20_EFFECTIVE_DATE;
 
 const registrationYear = (profile: TaxProfileData) => Number(profile.registeredAt.slice(0, 4));
+
+/**
+ * The first tax year of a taxpayer's PP 55/2022 final-rate term, from its legal form and
+ * registration date (an ISO date). Null for forms without a PP 55 term.
+ * - Pasal 69 ayat (1) huruf a: orang pribadi, koperasi, CV, firma and PT registered before
+ *   PP 23/2018 count from tax year 2018; huruf b: registered after it, from the year registered.
+ * - Pasal 59 ayat (2) huruf b: BUM Desa and perseroan perorangan registered before PP 55/2022
+ *   count from 2022; huruf a: anyone registered after PP 55/2022, from the year registered.
+ */
+export function defaultFinalRegimeStartYear(
+	legalForm: TaxLegalForm,
+	registeredAt: string
+): number | null {
+	if (!PP55_TERM_YEARS[legalForm] || !/^\d{4}-\d{2}-\d{2}$/.test(registeredAt)) return null;
+	const year = Number(registeredAt.slice(0, 4));
+	if (registeredAt >= PP55_EFFECTIVE_DATE) return year;
+	if (
+		legalForm === TAX_LEGAL_FORM.VILLAGE_ENTERPRISE ||
+		legalForm === TAX_LEGAL_FORM.SINGLE_MEMBER_COMPANY
+	) {
+		return 2022;
+	}
+	return registeredAt < PP23_EFFECTIVE_DATE ? 2018 : year;
+}
 
 /**
  * The PP 55/2022 rules for tax years 2022–2025, plus the PP 20/2026 transition rules that
