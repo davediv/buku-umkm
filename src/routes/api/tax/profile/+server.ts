@@ -6,51 +6,72 @@ import { getTaxProfile, upsertTaxProfile } from '$lib/tax/service';
 import type { TaxProfileData } from '$lib/tax/types';
 import { isIsoCalendarDate } from '$lib/shared/dates';
 import { jakartaToday } from '$lib/tax/period';
+import { isWholeRupiah, MAX_RUPIAH_INPUT } from '$lib/tax/payments';
 
 const LEGAL_FORMS = new Set<string>(Object.values(TAX_LEGAL_FORM));
 const REGIME_CHOICES = new Set<string>(Object.values(TAX_REGIME_CHOICE));
 
 function parseYear(value: string | null): number | null {
+	if (!value || !/^\d{4}$/.test(value)) return null;
 	const year = Number(value);
-	return Number.isInteger(year) && year >= 2018 && year <= 2100 ? year : null;
+	return year >= 2018 && year <= 2100 ? year : null;
 }
 
-function parseProfile(value: unknown): { data?: TaxProfileData; error?: string } {
-	if (!value || typeof value !== 'object') return { error: 'Data profil pajak tidak valid.' };
-	const body = value as Record<string, unknown>;
-	const taxYear = Number(body.taxYear);
-	const finalRegimeStartYear = Number(body.finalRegimeStartYear);
-	const priorYearAggregatedRevenue = Number(body.priorYearAggregatedRevenue);
-	const externalMonthlyRevenue = body.externalMonthlyRevenue;
+/** A JSON number that is a whole year in range. Strings such as "2026" are rejected. */
+const isYear = (value: unknown, min: number, max: number): value is number =>
+	typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
 
-	if (!Number.isInteger(taxYear) || taxYear < 2018 || taxYear > 2100) {
-		return { error: 'Tahun pajak tidak valid.' };
+const MAX_RUPIAH_LABEL = `Rp${MAX_RUPIAH_INPUT.toLocaleString('id-ID')}`;
+
+/**
+ * Validates a tax profile body. Amounts must be JSON numbers in whole Rupiah from 0 to
+ * MAX_RUPIAH_INPUT: Number() would read "750.000" as 750 and "" as 0.
+ */
+function parseProfile(value: unknown): { data?: TaxProfileData; error?: string } {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		return { error: 'Data profil pajak tidak valid.' };
 	}
-	if (!LEGAL_FORMS.has(String(body.legalForm))) return { error: 'Bentuk wajib pajak tidak valid.' };
-	if (!isIsoCalendarDate(String(body.registeredAt))) {
-		return { error: 'Tanggal pendaftaran wajib pajak tidak valid.' };
+	const body = value as Record<string, unknown>;
+	const {
+		taxYear,
+		legalForm,
+		registeredAt,
+		finalRegimeStartYear,
+		regimeChoice,
+		priorYearAggregatedRevenue,
+		externalMonthlyRevenue
+	} = body;
+
+	if (!isYear(taxYear, 2018, 2100)) return { error: 'Tahun pajak tidak valid.' };
+	if (typeof legalForm !== 'string' || !LEGAL_FORMS.has(legalForm)) {
+		return { error: 'Bentuk wajib pajak tidak valid.' };
 	}
 	if (
-		!Number.isInteger(finalRegimeStartYear) ||
-		finalRegimeStartYear < 2018 ||
-		finalRegimeStartYear > taxYear
+		typeof registeredAt !== 'string' ||
+		!isIsoCalendarDate(registeredAt) ||
+		registeredAt > jakartaToday().date
 	) {
+		return { error: 'Tanggal pendaftaran wajib pajak tidak valid.' };
+	}
+	if (!isYear(finalRegimeStartYear, 2018, taxYear)) {
 		return { error: 'Tahun awal penggunaan tarif final tidak valid.' };
 	}
-	if (!REGIME_CHOICES.has(String(body.regimeChoice))) {
+	if (typeof regimeChoice !== 'string' || !REGIME_CHOICES.has(regimeChoice)) {
 		return { error: 'Pilihan rezim pajak tidak valid.' };
 	}
-	if (!Number.isSafeInteger(priorYearAggregatedRevenue) || priorYearAggregatedRevenue < 0) {
-		return { error: 'Omzet agregat tahun sebelumnya harus berupa Rupiah utuh.' };
+	if (!isWholeRupiah(priorYearAggregatedRevenue)) {
+		return {
+			error: `Omzet agregat tahun sebelumnya harus berupa angka Rupiah utuh dari 0 sampai ${MAX_RUPIAH_LABEL}.`
+		};
 	}
 	if (
 		!Array.isArray(externalMonthlyRevenue) ||
 		externalMonthlyRevenue.length !== 12 ||
-		externalMonthlyRevenue.some(
-			(amount) => !Number.isSafeInteger(Number(amount)) || Number(amount) < 0
-		)
+		!externalMonthlyRevenue.every((amount) => isWholeRupiah(amount))
 	) {
-		return { error: 'Isi omzet di luar Buku UMKM untuk seluruh 12 bulan.' };
+		return {
+			error: `Isi omzet di luar Buku UMKM untuk seluruh 12 bulan sebagai angka Rupiah utuh dari 0 sampai ${MAX_RUPIAH_LABEL}.`
+		};
 	}
 
 	const booleanFields = [
@@ -74,13 +95,13 @@ function parseProfile(value: unknown): { data?: TaxProfileData; error?: string }
 	return {
 		data: {
 			taxYear,
-			legalForm: String(body.legalForm) as TaxProfileData['legalForm'],
-			registeredAt: String(body.registeredAt),
+			legalForm: legalForm as TaxProfileData['legalForm'],
+			registeredAt,
 			finalRegimeStartYear,
-			regimeChoice: String(body.regimeChoice) as TaxProfileData['regimeChoice'],
+			regimeChoice: regimeChoice as TaxProfileData['regimeChoice'],
 			everUsedGeneralRegime: body.everUsedGeneralRegime as boolean,
 			priorYearAggregatedRevenue,
-			externalMonthlyRevenue: externalMonthlyRevenue.map(Number),
+			externalMonthlyRevenue: externalMonthlyRevenue as number[],
 			revenueDataComplete: body.revenueDataComplete as boolean,
 			aggregationConfirmed: body.aggregationConfirmed as boolean,
 			hasProfessionalServiceIncome: body.hasProfessionalServiceIncome as boolean,
