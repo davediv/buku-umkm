@@ -121,7 +121,8 @@ describe('dashboardQueries.getOverview', () => {
 		expect(batch).toHaveBeenCalledOnce();
 		expect(batch).toHaveBeenCalledWith(queries);
 		expect(result.summary).toMatchObject({
-			netWorth: 10_000_000,
+			// 12jt assets + 4jt piutang - 1,5jt hutang - 2jt liability accounts
+			netWorth: 12_500_000,
 			monthlyProfit: 5_000_000,
 			yearToDateProfit: 35_000_000,
 			activeDebtsCount: 3,

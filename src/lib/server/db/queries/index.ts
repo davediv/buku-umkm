@@ -948,16 +948,17 @@ export const dashboardQueries = {
 		});
 		const debtQuery = db
 			.select({
+				// Outstanding means a remaining amount, as on the balance sheet.
 				piutang:
-					sql<number>`COALESCE(SUM(CASE WHEN ${debt.type} = 'piutang' AND ${debt.status} = 'active' THEN ${debt.remainingAmount} ELSE 0 END), 0)`.as(
+					sql<number>`COALESCE(SUM(CASE WHEN ${debt.type} = 'piutang' AND ${debt.remainingAmount} > 0 THEN ${debt.remainingAmount} ELSE 0 END), 0)`.as(
 						'piutang'
 					),
 				hutang:
-					sql<number>`COALESCE(SUM(CASE WHEN ${debt.type} = 'hutang' AND ${debt.status} = 'active' THEN ${debt.remainingAmount} ELSE 0 END), 0)`.as(
+					sql<number>`COALESCE(SUM(CASE WHEN ${debt.type} = 'hutang' AND ${debt.remainingAmount} > 0 THEN ${debt.remainingAmount} ELSE 0 END), 0)`.as(
 						'hutang'
 					),
 				activeCount:
-					sql<number>`COALESCE(SUM(CASE WHEN ${debt.status} = 'active' THEN 1 ELSE 0 END), 0)`.as(
+					sql<number>`COALESCE(SUM(CASE WHEN ${debt.remainingAmount} > 0 THEN 1 ELSE 0 END), 0)`.as(
 						'active_count'
 					)
 			})
@@ -985,13 +986,17 @@ export const dashboardQueries = {
 		const totalAssets = Number(accounts?.assets ?? 0);
 		const totalLiabilities = Number(accounts?.liabilities ?? 0);
 		const totalEquity = Number(accounts?.equity ?? 0);
+		const piutang = Number(debts?.piutang ?? 0);
+		const hutang = Number(debts?.hutang ?? 0);
 
 		return {
 			summary: {
 				totalAssets,
 				totalLiabilities,
 				totalEquity,
-				netWorth: totalAssets - totalLiabilities,
+				// Receivables and payables live in the debt table, not in accounts. Counted the
+				// balance sheet's way, net worth equals its equity.
+				netWorth: totalAssets + piutang - hutang - totalLiabilities,
 				monthlyIncome: totals.month.income,
 				monthlyExpense: totals.month.expense,
 				monthlyProfit: totals.month.profit,
@@ -1008,10 +1013,7 @@ export const dashboardQueries = {
 				...totals.period
 			},
 			todayStats: totals.today,
-			debtSummary: {
-				piutang: Number(debts?.piutang ?? 0),
-				hutang: Number(debts?.hutang ?? 0)
-			}
+			debtSummary: { piutang, hutang }
 		};
 	},
 
