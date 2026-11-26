@@ -25,6 +25,14 @@
 			"bucket_name": "buku-umkm-receipts"
 		}
 	],
+	// Cloudflare Email Service (src/lib/server/email/) for password reset and email verification
+	// mail. The sender is EMAIL_FROM, an address on a domain onboarded to Email Sending.
+	// `wrangler dev` simulates this binding: it logs each message and saves its content to files.
+	"send_email": [
+		{
+			"name": "EMAIL"
+		}
+	],
 	// Workers Rate Limiting (src/lib/server/security/rate-limit.ts). namespace_id is any positive
 	// integer, as a string, that no other rate limiter in your Cloudflare account uses. period
 	// must be 10 or 60 seconds; counts are kept per Cloudflare location.
