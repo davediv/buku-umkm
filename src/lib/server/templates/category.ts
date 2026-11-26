@@ -1,7 +1,8 @@
 import type { SQLiteDb } from '$lib/server/db';
 import { categoryQueries } from '$lib/server/db/queries';
+import type { CategoryType } from '$lib/shared/validation/category';
 
-export type TemplateType = 'income' | 'expense';
+export type TemplateType = CategoryType;
 
 export type TemplateCategoryResult =
 	{ ok: true; category: { id: string; name: string } | null } | { ok: false; error: string };

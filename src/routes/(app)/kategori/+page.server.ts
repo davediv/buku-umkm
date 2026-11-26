@@ -2,6 +2,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
 import { categoryQueries, transactionQueries } from '$lib/server/db/queries';
 import { error as httpError, redirect, fail } from '@sveltejs/kit';
+import { isCategoryType, validateCategoryName } from '$lib/shared/validation/category';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Check authentication
@@ -61,19 +62,15 @@ export const actions: Actions = {
 
 		try {
 			const formData = await request.formData();
-			const name = formData.get('name') as string;
-			const type = formData.get('type') as 'income' | 'expense';
+			const name = validateCategoryName(formData.get('name'));
+			const type = formData.get('type');
 
 			// Validate required fields
-			if (!name || name.trim() === '') {
-				return fail(400, { error: 'Nama kategori wajib diisi', success: false });
+			if (!name.ok) {
+				return fail(400, { error: name.error, success: false });
 			}
 
-			if (name.length > 200) {
-				return fail(400, { error: 'Nama kategori maksimal 200 karakter', success: false });
-			}
-
-			if (!type || (type !== 'income' && type !== 'expense')) {
+			if (!isCategoryType(type)) {
 				return fail(400, { error: 'Tipe kategori wajib dipilih', success: false });
 			}
 
@@ -84,7 +81,7 @@ export const actions: Actions = {
 			const createdCategory = await categoryQueries.create(db, {
 				userId,
 				code: newCode,
-				name: name.trim(),
+				name: name.value,
 				type
 			});
 
@@ -110,19 +107,15 @@ export const actions: Actions = {
 		try {
 			const formData = await request.formData();
 			const id = formData.get('id') as string;
-			const name = formData.get('name') as string;
+			const name = validateCategoryName(formData.get('name'));
 
 			// Validate required fields
 			if (!id) {
 				return fail(400, { error: 'ID kategori diperlukan', success: false });
 			}
 
-			if (!name || name.trim() === '') {
-				return fail(400, { error: 'Nama kategori wajib diisi', success: false });
-			}
-
-			if (name.length > 200) {
-				return fail(400, { error: 'Nama kategori maksimal 200 karakter', success: false });
+			if (!name.ok) {
+				return fail(400, { error: name.error, success: false });
 			}
 
 			// Check if category exists
@@ -137,7 +130,7 @@ export const actions: Actions = {
 			}
 
 			// Update the category
-			await categoryQueries.update(db, userId, id, { name: name.trim() });
+			await categoryQueries.update(db, userId, id, { name: name.value });
 
 			return {
 				success: true,

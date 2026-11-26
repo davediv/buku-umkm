@@ -3,13 +3,18 @@ import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { transactionTemplateQueries } from '$lib/server/db/queries';
 import { resolveTemplateCategory } from '$lib/server/templates/category';
+import {
+	isCategoryType,
+	validateTemplateDescription,
+	validateTemplateName
+} from '$lib/shared/validation/category';
 
 interface UpdateTemplateBody {
-	name?: string;
-	type?: 'income' | 'expense';
-	categoryId?: string | null;
-	description?: string | null;
-	isActive?: boolean;
+	name?: unknown;
+	type?: unknown;
+	categoryId?: unknown;
+	description?: unknown;
+	isActive?: unknown;
 }
 
 // GET /api/templates/[id] - Get a single template
@@ -84,12 +89,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			return json({ error: 'Template sistem tidak dapat diubah' }, { status: 400 });
 		}
 
-		// Validate name
-		if (body.name !== undefined && body.name.trim() === '') {
-			return json({ error: 'Nama template tidak boleh kosong' }, { status: 400 });
-		}
-
-		// Build update data
+		// Validate and build update data
 		const updateData: {
 			name?: string;
 			type?: 'income' | 'expense';
@@ -99,18 +99,35 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		} = {};
 
 		if (body.name !== undefined) {
-			updateData.name = body.name.trim();
+			const name = validateTemplateName(body.name);
+			if (!name.ok) {
+				return json({ error: name.error }, { status: 400 });
+			}
+			updateData.name = name.value;
 		}
 		if (body.type !== undefined) {
+			if (!isCategoryType(body.type)) {
+				return json({ error: 'Tipe transaksi wajib dipilih (income/expense)' }, { status: 400 });
+			}
 			updateData.type = body.type;
 		}
 		if (body.categoryId !== undefined) {
+			if (body.categoryId !== null && typeof body.categoryId !== 'string') {
+				return json({ error: 'Kategori tidak ditemukan' }, { status: 400 });
+			}
 			updateData.categoryId = body.categoryId || null;
 		}
-		if (body.description !== undefined) {
-			updateData.description = body.description;
+		const description = validateTemplateDescription(body.description);
+		if (!description.ok) {
+			return json({ error: description.error }, { status: 400 });
+		}
+		if (description.value !== undefined) {
+			updateData.description = description.value;
 		}
 		if (body.isActive !== undefined) {
+			if (typeof body.isActive !== 'boolean') {
+				return json({ error: 'Status isActive harus true atau false' }, { status: 400 });
+			}
 			updateData.isActive = body.isActive;
 		}
 
@@ -136,7 +153,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				name: updateData.name ?? existingTemplate.name,
 				type: updateData.type ?? existingTemplate.type,
 				categoryId: nextCategoryId,
-				description: updateData.description ?? existingTemplate.description,
+				description:
+					updateData.description !== undefined
+						? updateData.description
+						: existingTemplate.description,
 				isSystem: existingTemplate.isSystem,
 				isActive: updateData.isActive ?? existingTemplate.isActive,
 				createdAt: existingTemplate.createdAt,

@@ -2,13 +2,20 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { categoryQueries } from '$lib/server/db/queries';
+import {
+	isCategoryType,
+	validateCategoryCode,
+	validateCategoryColor,
+	validateCategoryIcon,
+	validateCategoryName
+} from '$lib/shared/validation/category';
 
 interface CreateCategoryBody {
-	name: string;
-	type: 'income' | 'expense';
-	code?: string;
-	icon?: string;
-	color?: string;
+	name?: unknown;
+	type?: unknown;
+	code?: unknown;
+	icon?: unknown;
+	color?: unknown;
 }
 
 // GET /api/categories - Returns all categories for authenticated user (system + custom)
@@ -57,24 +64,40 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const body = (await request.json()) as CreateCategoryBody;
 
-		// Validate required fields
-		if (!body.name || body.name.trim() === '') {
-			return json({ error: 'Nama kategori wajib diisi' }, { status: 400 });
+		// Validate fields
+		const name = validateCategoryName(body.name);
+		if (!name.ok) {
+			return json({ error: name.error }, { status: 400 });
 		}
 
-		if (!body.type || (body.type !== 'income' && body.type !== 'expense')) {
+		if (!isCategoryType(body.type)) {
 			return json({ error: 'Tipe kategori wajib dipilih (income/expense)' }, { status: 400 });
+		}
+		const type = body.type;
+
+		const customCode = validateCategoryCode(body.code, type);
+		if (!customCode.ok) {
+			return json({ error: customCode.error }, { status: 400 });
+		}
+
+		const icon = validateCategoryIcon(body.icon);
+		if (!icon.ok) {
+			return json({ error: icon.error }, { status: 400 });
+		}
+
+		const color = validateCategoryColor(body.color);
+		if (!color.ok) {
+			return json({ error: color.error }, { status: 400 });
 		}
 
 		const db = getDb();
 
 		// Generate code if not provided
-		let code = body.code;
+		let code = customCode.value;
 		if (!code) {
 			// Generate a unique code for the category
-			code = await categoryQueries.generateNextCode(db, userId, body.type);
+			code = await categoryQueries.generateNextCode(db, userId, type);
 		} else {
-			// Validate custom code format
 			const existing = await categoryQueries.findByCode(db, userId, code);
 			if (existing) {
 				return json({ error: 'Kode kategori sudah digunakan' }, { status: 400 });
@@ -85,10 +108,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const createdCategory = await categoryQueries.create(db, {
 			userId,
 			code,
-			name: body.name.trim(),
-			type: body.type,
-			icon: body.icon,
-			color: body.color
+			name: name.value,
+			type,
+			icon: icon.value,
+			color: color.value
 		});
 
 		return json(

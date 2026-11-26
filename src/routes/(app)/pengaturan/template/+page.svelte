@@ -25,6 +25,10 @@
 	} from '$lib/components/ui/alert-dialog';
 	import { getSafeTransactionReturn } from '$lib/client/transaction-return';
 	import { getIncomeExpenseViewHref, resolveIncomeExpenseView } from '$lib/navigation/view-state';
+	import {
+		TEMPLATE_DESCRIPTION_MAX_LENGTH,
+		TEMPLATE_NAME_MAX_LENGTH
+	} from '$lib/shared/validation/category';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -442,6 +446,7 @@
 				name="name"
 				type="text"
 				bind:value={name}
+				maxlength={TEMPLATE_NAME_MAX_LENGTH}
 				placeholder="Contoh: Penjualan Tunai"
 				class="w-full p-3 bg-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
 				required
@@ -485,6 +490,7 @@
 				name="description"
 				type="text"
 				bind:value={description}
+				maxlength={TEMPLATE_DESCRIPTION_MAX_LENGTH}
 				placeholder="Contoh: Penjualan makanan secara tunai"
 				class="w-full p-3 bg-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
 			/>

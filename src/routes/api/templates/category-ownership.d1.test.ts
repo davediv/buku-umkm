@@ -99,6 +99,17 @@ describe('template category ownership', () => {
 		expect(response.status).toBe(400);
 	});
 
+	it('rejects an unknown type, an overlong name or a non-boolean status', async () => {
+		expect((await put('tmpl-1', { type: 'transfer' })).status).toBe(400);
+		expect((await put('tmpl-1', { name: 'a'.repeat(201) })).status).toBe(400);
+		expect((await put('tmpl-1', { isActive: 'yes' })).status).toBe(400);
+		const [row] = await db
+			.select()
+			.from(transactionTemplate)
+			.where(eq(transactionTemplate.id, 'tmpl-1'));
+		expect(row).toMatchObject({ type: 'expense', name: 'Belanja', isActive: true });
+	});
+
 	it('accepts a type change together with a matching category', async () => {
 		const response = await put('tmpl-1', { type: 'income', categoryId: 'own-income' });
 

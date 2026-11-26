@@ -3,12 +3,17 @@ import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { transactionTemplateQueries } from '$lib/server/db/queries';
 import { resolveTemplateCategory } from '$lib/server/templates/category';
+import {
+	isCategoryType,
+	validateTemplateDescription,
+	validateTemplateName
+} from '$lib/shared/validation/category';
 
 interface CreateTemplateBody {
-	name: string;
-	type: 'income' | 'expense';
-	categoryId?: string;
-	description?: string;
+	name?: unknown;
+	type?: unknown;
+	categoryId?: unknown;
+	description?: unknown;
 }
 
 // GET /api/templates - Returns all templates for authenticated user (system + custom)
@@ -56,18 +61,25 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const body = (await request.json()) as CreateTemplateBody;
 
-		// Validate required fields
-		if (!body.name || body.name.trim() === '') {
-			return json({ error: 'Nama template wajib diisi' }, { status: 400 });
+		// Validate fields
+		const name = validateTemplateName(body.name);
+		if (!name.ok) {
+			return json({ error: name.error }, { status: 400 });
 		}
 
-		if (!body.type || (body.type !== 'income' && body.type !== 'expense')) {
+		if (!isCategoryType(body.type)) {
 			return json({ error: 'Tipe transaksi wajib dipilih (income/expense)' }, { status: 400 });
+		}
+		const type = body.type;
+
+		const description = validateTemplateDescription(body.description);
+		if (!description.ok) {
+			return json({ error: description.error }, { status: 400 });
 		}
 
 		const db = getDb();
 
-		const categoryCheck = await resolveTemplateCategory(db, userId, body.categoryId, body.type);
+		const categoryCheck = await resolveTemplateCategory(db, userId, body.categoryId, type);
 		if (!categoryCheck.ok) {
 			return json({ error: categoryCheck.error }, { status: 400 });
 		}
@@ -75,10 +87,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Create the template
 		const createdTemplate = await transactionTemplateQueries.create(db, {
 			userId,
-			name: body.name.trim(),
-			type: body.type,
+			name: name.value,
+			type,
 			categoryId: categoryCheck.category?.id,
-			description: body.description,
+			description: description.value ?? undefined,
 			isSystem: false
 		});
 

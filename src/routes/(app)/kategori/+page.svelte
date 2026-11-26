@@ -27,6 +27,10 @@
 	} from '$lib/components/ui/alert-dialog';
 	import { getSafeTransactionReturn } from '$lib/client/transaction-return';
 	import { getIncomeExpenseViewHref, resolveIncomeExpenseView } from '$lib/navigation/view-state';
+	import {
+		CATEGORY_NAME_MAX_LENGTH,
+		categoryColorOrDefault
+	} from '$lib/shared/validation/category';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -313,7 +317,7 @@
 									<div class="flex items-center gap-3">
 										<div
 											class="w-3 h-3 rounded-full"
-											style="background-color: {category.color || '#6b7280'}"
+											style="background-color: {categoryColorOrDefault(category.color)}"
 										></div>
 										<div>
 											<div class="flex items-center gap-2">
@@ -432,6 +436,7 @@
 				name="name"
 				type="text"
 				bind:value={name}
+				maxlength={CATEGORY_NAME_MAX_LENGTH}
 				placeholder="Contoh: Penjualan Makanan, Beban Listrik"
 				class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 				required

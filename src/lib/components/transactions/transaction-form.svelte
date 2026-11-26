@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import { Check, Link, X } from '@lucide/svelte';
 	import { todayInJakarta } from '$lib/shared/dates';
+	import { categoryColorOrDefault } from '$lib/shared/validation/category';
 	import { formatIdr } from '$lib/utils';
 	import { Dialog } from '$lib/components/ui/dialog';
 
@@ -228,7 +229,7 @@
 			{#if selectedCategory}
 				<span
 					class="flex h-8 w-8 items-center justify-center rounded-full text-lg text-white"
-					style="background-color: {selectedCategory.color || '#6b7280'}"
+					style="background-color: {categoryColorOrDefault(selectedCategory.color)}"
 					>{selectedCategory.icon || '📁'}</span
 				>
 				<span class="flex-1 font-medium">{selectedCategory.name}</span>
@@ -386,7 +387,8 @@
 					>
 						<span
 							class="flex h-12 w-12 items-center justify-center rounded-full text-xl"
-							style="background-color: {category.color || '#6b7280'}">{category.icon || '📁'}</span
+							style="background-color: {categoryColorOrDefault(category.color)}"
+							>{category.icon || '📁'}</span
 						>
 						<span class="line-clamp-2 text-xs font-medium">{category.name}</span>
 						{#if categoryId === category.id}<Check class="h-4 w-4 text-primary" />{/if}

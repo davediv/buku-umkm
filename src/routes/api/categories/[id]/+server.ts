@@ -2,9 +2,10 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { categoryQueries, transactionQueries } from '$lib/server/db/queries';
+import { validateCategoryName } from '$lib/shared/validation/category';
 
 interface UpdateCategoryBody {
-	name?: string;
+	name?: unknown;
 }
 
 // GET /api/categories/[id] - Get a single category
@@ -80,18 +81,17 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			return json({ error: 'Kategori sistem tidak dapat diubah' }, { status: 400 });
 		}
 
-		// Validate name
-		if (body.name !== undefined && body.name.trim() === '') {
-			return json({ error: 'Nama kategori tidak boleh kosong' }, { status: 400 });
-		}
-
 		// Build update data
 		const updateData: {
 			name?: string;
 		} = {};
 
 		if (body.name !== undefined) {
-			updateData.name = body.name.trim();
+			const name = validateCategoryName(body.name);
+			if (!name.ok) {
+				return json({ error: name.error }, { status: 400 });
+			}
+			updateData.name = name.value;
 		}
 
 		// Update the category
@@ -133,7 +133,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	try {
-		const body = (await request.json()) as { isActive?: boolean };
+		const body = (await request.json()) as { isActive?: unknown };
 		const db = getDb();
 
 		// Check if category exists
@@ -144,7 +144,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Validate isActive
-		if (body.isActive === undefined) {
+		if (typeof body.isActive !== 'boolean') {
 			return json({ error: 'Status isActive diperlukan' }, { status: 400 });
 		}
 
