@@ -3,6 +3,10 @@ import type { Actions, PageServerLoad } from './$types';
 import { getAuth } from '$lib/server/auth';
 import { APIError } from 'better-auth/api';
 import {
+	CREDENTIAL_RATE_LIMIT_MESSAGE,
+	isCredentialAttemptAllowed
+} from '$lib/server/security/rate-limit';
+import {
 	DEFAULT_APP_RETURN_TO,
 	getLoginHref,
 	getOnboardingHref,
@@ -59,6 +63,10 @@ export const actions: Actions = {
 
 		if (Object.keys(errors).length > 0) {
 			return fail(400, { errors, values: { name, email } });
+		}
+
+		if (!(await isCredentialAttemptAllowed(event, email))) {
+			return fail(429, { message: CREDENTIAL_RATE_LIMIT_MESSAGE, values: { name, email } });
 		}
 
 		const auth = getAuth();

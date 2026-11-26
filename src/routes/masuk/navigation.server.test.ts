@@ -64,3 +64,28 @@ describe('login navigation continuity', () => {
 		).rejects.toMatchObject({ status: 302, location: '/beranda' });
 	});
 });
+
+describe('login rate limiting', () => {
+	beforeEach(() => signInEmail.mockReset());
+
+	it('answers with 429 and keeps the email once the account limit is reached', async () => {
+		const blocked = { limit: vi.fn(async () => ({ success: false })) };
+		const allowed = { limit: vi.fn(async () => ({ success: true })) };
+		const action = actions.signInEmail!;
+
+		const result = await action({
+			request: signInRequest('/beranda'),
+			platform: { env: { AUTH_EMAIL_RATE_LIMITER: blocked, AUTH_IP_RATE_LIMITER: allowed } }
+		} as unknown as Parameters<typeof action>[0]);
+
+		expect(result).toMatchObject({
+			status: 429,
+			data: {
+				message: 'Terlalu banyak percobaan. Coba lagi dalam 1 menit.',
+				values: { email: 'ayu@example.com' }
+			}
+		});
+		expect(blocked.limit).toHaveBeenCalledWith({ key: 'ayu@example.com' });
+		expect(signInEmail).not.toHaveBeenCalled();
+	});
+});
