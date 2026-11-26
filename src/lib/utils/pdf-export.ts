@@ -218,7 +218,9 @@ export async function exportLabaRugiPDF(
 	filename: string
 ): Promise<void> {
 	const { default: jsPDF } = await import('jspdf');
-	await import('jspdf-autotable');
+	// jspdf-autotable 5 no longer patches jsPDF on import; doc.autoTable needs applyPlugin.
+	const { applyPlugin } = await import('jspdf-autotable');
+	applyPlugin(jsPDF);
 
 	const doc = new jsPDF({
 		orientation: 'portrait',
@@ -347,7 +349,9 @@ export async function exportNeracaPDF(
 	filename: string
 ): Promise<void> {
 	const { default: jsPDF } = await import('jspdf');
-	await import('jspdf-autotable');
+	// jspdf-autotable 5 no longer patches jsPDF on import; doc.autoTable needs applyPlugin.
+	const { applyPlugin } = await import('jspdf-autotable');
+	applyPlugin(jsPDF);
 
 	const doc = new jsPDF({
 		orientation: 'portrait',
@@ -538,7 +542,9 @@ export async function exportCatatanPDF(
 	filename: string
 ): Promise<void> {
 	const { default: jsPDF } = await import('jspdf');
-	await import('jspdf-autotable');
+	// jspdf-autotable 5 no longer patches jsPDF on import; doc.autoTable needs applyPlugin.
+	const { applyPlugin } = await import('jspdf-autotable');
+	applyPlugin(jsPDF);
 
 	const doc = new jsPDF({
 		orientation: 'portrait',
