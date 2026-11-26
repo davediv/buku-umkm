@@ -329,6 +329,10 @@
 					Hasil ini adalah estimasi berdasarkan data yang Anda konfirmasi, bukan ketetapan pajak
 					atau kode billing resmi.
 				</p>
+				<!-- The first reason names the rule, which the link below already shows. -->
+				{#each data.summary.eligibility.reasons.slice(1) as reason (reason)}
+					<p class="mt-2">{reason}</p>
+				{/each}
 				<a
 					href={data.summary.eligibility.rule.sourceUrl}
 					target="_blank"

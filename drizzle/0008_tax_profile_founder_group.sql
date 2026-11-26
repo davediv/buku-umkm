@@ -1,0 +1,1 @@
+ALTER TABLE `tax_profile` ADD `group_turnover_exceeded` integer;

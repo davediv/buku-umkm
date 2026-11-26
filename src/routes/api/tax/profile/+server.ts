@@ -64,6 +64,12 @@ function parseProfile(value: unknown): { data?: TaxProfileData; error?: string }
 	if (booleanFields.some((field) => typeof body[field] !== 'boolean')) {
 		return { error: 'Konfirmasi profil pajak belum lengkap.' };
 	}
+	// Optional: null (or absent) leaves Pasal 57 ayat (2) huruf e unanswered, and eligibility
+	// then fails closed where the answer matters.
+	const groupTurnoverExceeded = body.groupTurnoverExceeded ?? null;
+	if (groupTurnoverExceeded !== null && typeof groupTurnoverExceeded !== 'boolean') {
+		return { error: 'Jawaban omzet gabungan perseroan perorangan tidak valid.' };
+	}
 
 	return {
 		data: {
@@ -79,7 +85,8 @@ function parseProfile(value: unknown): { data?: TaxProfileData; error?: string }
 			aggregationConfirmed: body.aggregationConfirmed as boolean,
 			hasProfessionalServiceIncome: body.hasProfessionalServiceIncome as boolean,
 			soleOwnerProvidesProfessionalServices: body.soleOwnerProvidesProfessionalServices as boolean,
-			usesOtherTaxFacility: body.usesOtherTaxFacility as boolean
+			usesOtherTaxFacility: body.usesOtherTaxFacility as boolean,
+			groupTurnoverExceeded
 		}
 	};
 }

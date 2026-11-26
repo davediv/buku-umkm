@@ -5,6 +5,12 @@
 	import { formatRupiah } from '$lib/utils';
 	import { toast } from '$lib/components/ui/toast';
 	import { MoneyInput } from '$lib/components/ui/money-input';
+	import {
+		asksExpertServiceQuestion,
+		asksFounderGroupQuestion,
+		isBodyLegalForm
+	} from '$lib/tax/eligibility';
+	import type { TaxLegalForm } from '$lib/tax/types';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -29,7 +35,8 @@
 			hasProfessionalServiceIncome: source.profile?.hasProfessionalServiceIncome ?? false,
 			soleOwnerProvidesProfessionalServices:
 				source.profile?.soleOwnerProvidesProfessionalServices ?? false,
-			usesOtherTaxFacility: source.profile?.usesOtherTaxFacility ?? false
+			usesOtherTaxFacility: source.profile?.usesOtherTaxFacility ?? false,
+			groupTurnoverExceeded: (source.profile?.groupTurnoverExceeded ?? null) as boolean | null
 		};
 	}
 
@@ -40,6 +47,13 @@
 	const externalRevenueTotal = $derived(
 		form.externalMonthlyRevenue.reduce<number>((sum, value) => sum + (value ?? 0), 0)
 	);
+
+	// Which questions apply depends on the legal form; the others are not sent as answers.
+	const legalForm = $derived(form.legalForm as TaxLegalForm | '');
+	const isIndividual = $derived(legalForm === TAX_LEGAL_FORM.INDIVIDUAL);
+	const isBody = $derived(legalForm !== '' && isBodyLegalForm(legalForm));
+	const asksExpertService = $derived(legalForm !== '' && asksExpertServiceQuestion(legalForm));
+	const asksFounderGroup = $derived(legalForm !== '' && asksFounderGroupQuestion(legalForm));
 
 	async function saveProfile(event: SubmitEvent) {
 		event.preventDefault();
@@ -54,7 +68,12 @@
 				body: JSON.stringify({
 					...form,
 					priorYearAggregatedRevenue: form.priorYearAggregatedRevenue ?? 0,
-					externalMonthlyRevenue: form.externalMonthlyRevenue.map((amount) => amount ?? 0)
+					externalMonthlyRevenue: form.externalMonthlyRevenue.map((amount) => amount ?? 0),
+					hasProfessionalServiceIncome: isIndividual && form.hasProfessionalServiceIncome,
+					soleOwnerProvidesProfessionalServices:
+						asksExpertService && form.soleOwnerProvidesProfessionalServices,
+					usesOtherTaxFacility: isBody && form.usesOtherTaxFacility,
+					groupTurnoverExceeded: asksFounderGroup ? form.groupTurnoverExceeded : null
 				})
 			});
 			const result = (await response.json()) as { error?: string };
@@ -135,17 +154,21 @@
 				</label>
 
 				<label class="space-y-1.5 text-sm font-medium">
-					<span>Tanggal terdaftar</span>
+					<span>Tanggal terdaftar sebagai wajib pajak</span>
 					<input
 						type="date"
 						bind:value={form.registeredAt}
 						required
 						class="h-11 w-full rounded-md border bg-background px-3 font-normal"
 					/>
+					<span class="block text-xs font-normal text-muted-foreground">
+						Koperasi memakai tarif final paling lama 4 tahun pajak sejak tahun terdaftar (Pasal 57
+						ayat (2) huruf f PP 20/2026).
+					</span>
 				</label>
 
 				<label class="space-y-1.5 text-sm font-medium">
-					<span>Tahun pertama memakai tarif final</span>
+					<span>Tahun awal jangka waktu tarif final menurut PP 55/2022</span>
 					<input
 						type="number"
 						min="2018"
@@ -154,6 +177,11 @@
 						required
 						class="h-11 w-full rounded-md border bg-background px-3 font-normal"
 					/>
+					<span class="block text-xs font-normal text-muted-foreground">
+						Jangka waktunya 7 tahun (orang pribadi), 4 tahun (perseroan perorangan, koperasi, CV,
+						firma, BUM Desa), atau 3 tahun (PT). Ketentuan peralihan PP 20/2026 bergantung pada
+						tahun berakhirnya.
+					</span>
 				</label>
 
 				<label class="space-y-1.5 text-sm font-medium">
@@ -186,6 +214,11 @@
 					placeholder="0"
 					class="md:h-11 px-3 font-normal"
 				/>
+				<span class="block text-xs font-normal text-muted-foreground">
+					Seluruh omzet usaha dan jasa pekerjaan bebas, baik yang dikenai PPh final maupun tidak,
+					termasuk dari luar negeri; orang pribadi menggabungkan omzet suami-istri (Pasal 58 PP
+					20/2026).
+				</span>
 			</label>
 
 			<div>
@@ -221,33 +254,97 @@
 			<div class="space-y-3">
 				<label class="flex items-start gap-3 text-sm">
 					<input type="checkbox" bind:checked={form.everUsedGeneralRegime} class="mt-1 h-4 w-4" />
-					<span>Saya pernah memilih atau wajib memakai tarif umum.</span>
+					<span>
+						Saya pernah memberitahukan kepada DJP bahwa saya memilih tarif umum Pasal 17, atau wajib
+						memakai tarif umum karena omzet melebihi Rp4,8 miliar (Pasal 57 ayat (2) huruf a dan
+						ayat (4)).
+					</span>
 				</label>
-				<label class="flex items-start gap-3 text-sm">
-					<input
-						type="checkbox"
-						bind:checked={form.hasProfessionalServiceIncome}
-						class="mt-1 h-4 w-4"
-					/>
-					<span>Saya memiliki penghasilan pekerjaan bebas/jasa profesi.</span>
-				</label>
-				<label class="flex items-start gap-3 text-sm">
-					<input
-						type="checkbox"
-						bind:checked={form.soleOwnerProvidesProfessionalServices}
-						class="mt-1 h-4 w-4"
-					/>
-					<span
-						>Pemilik perseroan perseorangan memberi jasa keahlian yang sama melalui perseroan.</span
-					>
-				</label>
-				<label class="flex items-start gap-3 text-sm">
-					<input type="checkbox" bind:checked={form.usesOtherTaxFacility} class="mt-1 h-4 w-4" />
-					<span
-						>Saya menggunakan fasilitas PPh lain yang tidak dapat digabung dengan tarif final UMKM.</span
-					>
-				</label>
+				{#if isIndividual}
+					<label class="flex items-start gap-3 text-sm">
+						<input
+							type="checkbox"
+							bind:checked={form.hasProfessionalServiceIncome}
+							class="mt-1 h-4 w-4"
+						/>
+						<span>
+							Saya menerima penghasilan dari jasa sehubungan dengan pekerjaan bebas, misalnya
+							sebagai pengacara, akuntan, arsitek, dokter, konsultan, notaris, PPAT, penilai,
+							aktuaris; pemain musik, pembawa acara, penyanyi, pelawak, bintang film/sinetron/iklan,
+							sutradara, kru film, model, penari, pemahat, pelukis, pembuat konten daring
+							(influencer, selebgram, bloger, vloger) atau seniman lain; olahragawan; penasihat,
+							pengajar, pelatih, penceramah, penyuluh, moderator; pengarang, peneliti, penerjemah;
+							agen iklan; pengawas atau pengelola proyek; perantara; penjaja barang dagangan; agen
+							asuransi; distributor pemasaran berjenjang atau penjualan langsung (Pasal 56 ayat
+							(4)).
+						</span>
+					</label>
+				{/if}
+				{#if asksExpertService}
+					<label class="flex items-start gap-3 text-sm">
+						<input
+							type="checkbox"
+							bind:checked={form.soleOwnerProvidesProfessionalServices}
+							class="mt-1 h-4 w-4"
+						/>
+						<span>
+							{#if legalForm === TAX_LEGAL_FORM.SINGLE_MEMBER_COMPANY}
+								Perseroan perorangan ini didirikan oleh orang pribadi berkeahlian khusus dan
+								menyerahkan jasa sejenis jasa pekerjaan bebas (Pasal 57 ayat (2) huruf b).
+							{:else}
+								Badan ini dibentuk oleh orang pribadi berkeahlian khusus dan menyerahkan jasa
+								sejenis jasa pekerjaan bebas (Pasal 57 ayat (2) huruf b PP 55/2022).
+							{/if}
+						</span>
+					</label>
+				{/if}
+				{#if isBody}
+					<label class="flex items-start gap-3 text-sm">
+						<input type="checkbox" bind:checked={form.usesOtherTaxFacility} class="mt-1 h-4 w-4" />
+						<span>
+							Badan memperoleh fasilitas PPh Pasal 31A UU PPh, PP 94/2010, atau fasilitas Kawasan
+							Ekonomi Khusus (Pasal 57 ayat (2) huruf c).
+						</span>
+					</label>
+				{/if}
 			</div>
+
+			{#if asksFounderGroup}
+				<fieldset class="space-y-2 border-t pt-4 text-sm">
+					<legend class="font-medium">
+						Pernahkah omzet gabungan orang pribadi pendiri (beserta pasangan) dan seluruh perseroan
+						perorangan yang didirikannya melebihi Rp4,8 miliar dalam satu tahun pajak?
+					</legend>
+					<p class="text-muted-foreground">
+						Bila tidak ada perseroan perorangan, jawab berdasarkan omzet orang pribadi dan pasangan.
+						Bila pernah, tarif final tidak dapat dipakai pada tahun-tahun berikutnya (Pasal 57 ayat
+						(2) huruf e dan ayat (4), Pasal 58 ayat (3) PP 20/2026).
+					</p>
+					<div class="flex flex-wrap gap-4">
+						<label class="flex min-h-11 items-center gap-2">
+							<input
+								type="radio"
+								name="groupTurnoverExceeded"
+								value={false}
+								bind:group={form.groupTurnoverExceeded}
+								required
+								class="h-4 w-4"
+							/>
+							<span>Tidak pernah</span>
+						</label>
+						<label class="flex min-h-11 items-center gap-2">
+							<input
+								type="radio"
+								name="groupTurnoverExceeded"
+								value={true}
+								bind:group={form.groupTurnoverExceeded}
+								class="h-4 w-4"
+							/>
+							<span>Pernah</span>
+						</label>
+					</div>
+				</fieldset>
+			{/if}
 
 			<div class="space-y-3 border-t pt-4">
 				<label class="flex items-start gap-3 text-sm font-medium">

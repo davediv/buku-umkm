@@ -529,6 +529,8 @@ export const taxProfile = sqliteTable(
 		usesOtherTaxFacility: integer('uses_other_tax_facility', { mode: 'boolean' })
 			.default(false)
 			.notNull(),
+		// Pasal 57 ayat (2) huruf e PP 20/2026; null = not answered yet.
+		groupTurnoverExceeded: integer('group_turnover_exceeded', { mode: 'boolean' }),
 		...timestampColumns
 	},
 	(table) => [

@@ -57,6 +57,13 @@
       "when": 1795711197773,
       "tag": "0007_debt_kind_and_loans",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1795713720510,
+      "tag": "0008_tax_profile_founder_group",
+      "breakpoints": true
     }
   ]
 }

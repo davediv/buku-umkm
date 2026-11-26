@@ -33,6 +33,12 @@ export interface TaxProfileData {
 	hasProfessionalServiceIncome: boolean;
 	soleOwnerProvidesProfessionalServices: boolean;
 	usesOtherTaxFacility: boolean;
+	/**
+	 * Pasal 57 ayat (2) huruf e PP 20/2026: whether the founding individual (with spouse) and
+	 * every perseroan perorangan they founded together ever passed Rp4.8 billion in one tax
+	 * year. Null until the taxpayer answers.
+	 */
+	groupTurnoverExceeded: boolean | null;
 }
 
 export type TaxEligibilityStatus = 'eligible' | 'ineligible' | 'needs_information';

@@ -74,7 +74,8 @@ export async function getTaxProfile(
 		aggregationConfirmed: row.aggregationConfirmed,
 		hasProfessionalServiceIncome: row.hasProfessionalServiceIncome,
 		soleOwnerProvidesProfessionalServices: row.soleOwnerProvidesProfessionalServices,
-		usesOtherTaxFacility: row.usesOtherTaxFacility
+		usesOtherTaxFacility: row.usesOtherTaxFacility,
+		groupTurnoverExceeded: row.groupTurnoverExceeded ?? null
 	};
 }
 
@@ -99,6 +100,7 @@ export async function upsertTaxProfile(
 		hasProfessionalServiceIncome: data.hasProfessionalServiceIncome,
 		soleOwnerProvidesProfessionalServices: data.soleOwnerProvidesProfessionalServices,
 		usesOtherTaxFacility: data.usesOtherTaxFacility,
+		groupTurnoverExceeded: data.groupTurnoverExceeded,
 		updatedAt: new Date()
 	};
 
