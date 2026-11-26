@@ -6,15 +6,19 @@ import { calculateMonthlyTax } from '$lib/tax/engine';
 import { calculateCumulativeRevenue, getTaxYearContext } from '$lib/tax/service';
 import { TAX_TYPE, TAX_STATUS } from '$lib/tax/config';
 import { jakartaToday } from '$lib/tax/period';
+import { isWholeRupiah, normalizePaymentReference } from '$lib/tax/payments';
+import { isIsoCalendarDate } from '$lib/shared/dates';
 
 /**
  * POST /api/tax/[year]/[month]/mark-paid
  *
- * Body (optional):
- * - paymentDate: ISO date string (default: today)
- * - billingCode: NTPN code (optional)
+ * Body:
+ * - paidAmount: whole Rupiah actually paid (JSON number, required)
+ * - paymentDate: ISO date, not after today in Jakarta (default: today)
+ * - billingCode: kode billing (15 digits) or NTPN (16 letters/digits), optional
  *
- * Marks tax as paid for the specified month
+ * Records the month as paid with the amount actually paid. Marking again replaces the
+ * recorded payment, so enter the total paid for the month.
  */
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	// Check authentication
@@ -38,17 +42,36 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			return json({ error: 'Invalid month parameter' }, { status: 400 });
 		}
 
-		// Parse request body
-		let body: { paymentDate?: string; billingCode?: string } = {};
+		let body: Record<string, unknown>;
 		try {
-			body = await request.json();
+			const parsed: unknown = await request.json();
+			if (!parsed || typeof parsed !== 'object') throw new Error('not an object');
+			body = parsed as Record<string, unknown>;
 		} catch {
-			// Ignore JSON parse errors, use defaults
+			return json({ error: 'JSON tidak valid.' }, { status: 400 });
 		}
 
+		if (!isWholeRupiah(body.paidAmount)) {
+			return json(
+				{ error: 'Jumlah yang dibayar harus berupa angka Rupiah utuh, tidak negatif.' },
+				{ status: 400 }
+			);
+		}
+		const paidAmount = body.paidAmount;
+
 		// Default payment date to today on the Jakarta calendar
-		const paymentDate = body.paymentDate || jakartaToday().date;
-		const billingCode = body.billingCode || null;
+		const today = jakartaToday().date;
+		const paymentDate = body.paymentDate ?? today;
+		if (typeof paymentDate !== 'string' || !isIsoCalendarDate(paymentDate)) {
+			return json({ error: 'Tanggal bayar tidak valid.' }, { status: 400 });
+		}
+		if (paymentDate > today) {
+			return json({ error: 'Tanggal bayar tidak boleh setelah hari ini.' }, { status: 400 });
+		}
+
+		const reference = normalizePaymentReference(body.billingCode);
+		if (!reference.ok) return json({ error: reference.error }, { status: 400 });
+		const billingCode = reference.value;
 
 		const context = await getTaxYearContext(db, userId, year, month);
 		const taxpayerType = context.eligibility.taxpayerType;
@@ -95,6 +118,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 				taxableIncome: taxCalculation.taxableRevenue,
 				taxRate: taxCalculation.taxRate,
 				taxAmount: taxCalculation.taxAmount,
+				paidAmount,
 				status: TAX_STATUS.PAID,
 				paymentDate,
 				billingCode
@@ -108,6 +132,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 					taxableIncome: taxCalculation.taxableRevenue,
 					taxRate: taxCalculation.taxRate,
 					taxAmount: taxCalculation.taxAmount,
+					paidAmount,
 					updatedAt: new Date()
 				}
 			})
@@ -120,6 +145,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 				year,
 				month,
 				taxAmount: taxCalculation.taxAmount,
+				paidAmount,
+				underpaidAmount: Math.max(0, taxCalculation.taxAmount - paidAmount),
 				status: TAX_STATUS.PAID,
 				paymentDate,
 				billingCode

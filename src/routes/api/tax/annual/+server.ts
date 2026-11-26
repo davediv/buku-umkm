@@ -99,7 +99,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				taxableRevenue: taxCalculation.taxableRevenue,
 				taxRate: `${(taxCalculation.taxRate / 100).toLocaleString('id-ID')}%`,
 				taxAmount: taxCalculation.taxAmount,
-				paidAmount: taxRec?.status === TAX_STATUS.PAID ? taxRec.taxAmount : 0,
+				paidAmount:
+					taxRec?.status === TAX_STATUS.PAID ? (taxRec.paidAmount ?? taxRec.taxAmount) : 0,
 				taxStatus: paymentStatus,
 				isBelowThreshold: taxCalculation.isBelowThreshold
 			});

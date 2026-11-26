@@ -9,6 +9,7 @@ import {
 } from '$lib/tax/service';
 import { TAX_STATUS } from '$lib/tax/config';
 import { jakartaToday } from '$lib/tax/period';
+import { reconcilePayment } from '$lib/tax/payments';
 
 /**
  * GET /api/tax/summary
@@ -64,6 +65,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 		// Get tax record status for current month
 		const paymentStatus = calculationAvailable ? taxRec?.status || TAX_STATUS.UNPAID : null;
+		const payment = taxCalculation ? reconcilePayment(taxCalculation.taxAmount, taxRec) : null;
 
 		// Get threshold info
 		const thresholdInfo = getThresholdInfo(cumulativeRevenue);
@@ -80,6 +82,9 @@ export const GET: RequestHandler = async ({ locals }) => {
 			thresholdPercentage: thresholdInfo.percentage,
 			thresholdAmount: thresholdInfo.threshold,
 			paymentStatus,
+			paidAmount: payment?.paidAmount ?? null,
+			underpaidAmount: payment?.status === 'underpaid' ? payment.outstandingAmount : 0,
+			paymentDate: taxRec?.paymentDate ?? null,
 			taxableRevenue: taxCalculation?.taxableRevenue ?? null,
 			isBelowThreshold: taxCalculation?.isBelowThreshold ?? null,
 			taxpayerType,

@@ -1,36 +1,26 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
-import { calculateMonthlyTax } from '$lib/tax/engine';
-import {
-	calculateCumulativeRevenue,
-	getTaxRecordForMonth,
-	getTaxYearContext
-} from '$lib/tax/service';
-import { TAX_STATUS } from '$lib/tax/config';
+import { calculateAnnualTax } from '$lib/tax/engine';
+import { getTaxRecordsForYear, getTaxYearContext } from '$lib/tax/service';
 import { jakartaToday } from '$lib/tax/period';
+import { findOutstandingMonths, reminderPeriod, reminderUrgency } from '$lib/tax/reminder';
 
 /**
  * GET /api/tax/reminder
  *
- * Returns tax reminder data for the previous month if:
- * - Current date is >= 1st of the month
- * - Previous month tax is unpaid
- * - For WP OP: cumulative annual revenue > Rp 500M
- * - For WP Badan: always show if unpaid
+ * Lists every earlier month of the current year (in January: December of the previous
+ * year) whose recomputed PPh Final estimate is unpaid, or higher than the amount recorded
+ * as paid.
  *
  * Response:
  * - showReminder: boolean
- * - previousMonth: number (1-12)
- * - previousMonthYear: number
- * - taxAmount: number
- * - dueDateDay: number (15)
- * - daysUntilDue: number
+ * - items: { year, month, status: 'unpaid' | 'underpaid', taxAmount, paidAmount,
+ *   outstandingAmount, dueDate, daysUntilDue, billingCodeUrl }[], oldest first
+ * - totalOutstanding: number
  * - urgencyLevel: 'low' | 'medium' | 'high'
- * - billingCodeUrl: string
  */
 export const GET: RequestHandler = async ({ locals }) => {
-	// Check authentication
 	if (!locals.user || !locals.session) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
 	}
@@ -39,29 +29,14 @@ export const GET: RequestHandler = async ({ locals }) => {
 	const db = getDb();
 
 	try {
-		// Today on the Jakarta calendar
-		const { year: currentYear, month: currentMonth, day: currentDay } = jakartaToday();
+		const today = jakartaToday();
+		const { year, months } = reminderPeriod(today);
+		const lastMonth = months[months.length - 1];
 
-		// Calculate previous month
-		let previousMonth = currentMonth - 1;
-		let previousMonthYear = currentYear;
-
-		if (previousMonth < 1) {
-			previousMonth = 12;
-			previousMonthYear = currentYear - 1;
-		}
-
-		// Only show reminder starting from day 1 of the month
-		if (currentDay < 1) {
-			return json({
-				data: {
-					showReminder: false,
-					reason: 'before_reminder_period'
-				}
-			});
-		}
-
-		const context = await getTaxYearContext(db, userId, previousMonthYear, previousMonth);
+		const [context, records] = await Promise.all([
+			getTaxYearContext(db, userId, year, lastMonth),
+			getTaxRecordsForYear(db, userId, year)
+		]);
 		const taxpayerType = context.eligibility.taxpayerType;
 		if (context.eligibility.status !== 'eligible' || !taxpayerType) {
 			return json({
@@ -72,85 +47,34 @@ export const GET: RequestHandler = async ({ locals }) => {
 				}
 			});
 		}
-		const monthlyRevenues = context.aggregatedMonthlyRevenue;
 
-		// Calculate cumulative revenue up to previous month
-		const cumulativeRevenue = calculateCumulativeRevenue(monthlyRevenues, previousMonth);
-		const previousCumulativeRevenue = calculateCumulativeRevenue(
-			monthlyRevenues,
-			previousMonth - 1
-		);
-
-		// Get previous month revenue
-		const previousMonthRevenue = monthlyRevenues[previousMonth - 1] || 0;
-
-		// Calculate previous month tax using the engine
-		const taxCalculation = calculateMonthlyTax({
-			userId,
+		const annualTax = calculateAnnualTax(
+			context.aggregatedMonthlyRevenue.map((revenue, index) => ({ month: index + 1, revenue })),
 			taxpayerType,
-			year: previousMonthYear,
-			month: previousMonth,
-			grossRevenue: previousMonthRevenue,
-			previousCumulativeRevenue
+			year
+		);
+		const items = findOutstandingMonths({
+			year,
+			months,
+			monthlyTax: annualTax.months.map((month) => month.taxAmount),
+			records,
+			today: today.date
 		});
 
-		// If tax amount is 0 (below threshold), don't show reminder
-		if (taxCalculation.taxAmount === 0) {
-			return json({
-				data: {
-					showReminder: false,
-					reason: 'below_threshold',
-					taxAmount: 0
-				}
-			});
+		if (items.length === 0) {
+			return json({ data: { showReminder: false, reason: 'nothing_outstanding' } });
 		}
 
-		// Check if tax is already paid for previous month
-		const taxRec = await getTaxRecordForMonth(db, userId, previousMonthYear, previousMonth);
-
-		if (taxRec?.status === TAX_STATUS.PAID) {
-			return json({
-				data: {
-					showReminder: false,
-					reason: 'already_paid',
-					paymentDate: taxRec.paymentDate
-				}
-			});
-		}
-
-		// Calculate urgency level based on days until 15th
-		const dueDay = 15;
-		const daysUntilDue = dueDay - currentDay;
-
-		// Urgency levels:
-		// - high: day 11-15 (approaching due date)
-		// - medium: day 6-10
-		// - low: day 1-5
-		let urgencyLevel: 'low' | 'medium' | 'high' = 'low';
-		if (daysUntilDue <= 0) {
-			urgencyLevel = 'high'; // Overdue
-		} else if (daysUntilDue <= 5) {
-			urgencyLevel = 'high';
-		} else if (daysUntilDue <= 10) {
-			urgencyLevel = 'medium';
-		}
-
-		// Build the reminder response
-		const response = {
-			showReminder: true,
-			previousMonth,
-			previousMonthYear,
-			taxAmount: taxCalculation.taxAmount,
-			dueDateDay: dueDay,
-			daysUntilDue: Math.max(0, daysUntilDue),
-			urgencyLevel,
-			billingCodeUrl: `/pajak/kode-billing/${previousMonthYear}/${previousMonth}`,
-			taxpayerType,
-			cumulativeRevenue,
-			calculationStatus: 'estimate'
-		};
-
-		return json({ data: response });
+		return json({
+			data: {
+				showReminder: true,
+				items,
+				totalOutstanding: items.reduce((sum, item) => sum + item.outstandingAmount, 0),
+				urgencyLevel: reminderUrgency(items),
+				taxpayerType,
+				calculationStatus: 'estimate'
+			}
+		});
 	} catch {
 		console.error('Error in GET /api/tax/reminder:');
 		return json({ error: 'Failed to fetch tax reminder' }, { status: 500 });

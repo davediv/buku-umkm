@@ -29,7 +29,9 @@
 		AlertDialogCancel
 	} from '$lib/components/ui/alert-dialog';
 	import type { TaxEligibilityDecision, TaxpayerType } from '$lib/tax/types';
+	import type { PaymentStatus } from '$lib/tax/payments';
 	import { jakartaToday } from '$lib/tax/period';
+	import { MoneyInput } from '$lib/components/ui/money-input';
 
 	interface TaxSummary {
 		year: number;
@@ -40,6 +42,9 @@
 		thresholdPercentage: number;
 		thresholdAmount: number;
 		paymentStatus: string | null;
+		paidAmount: number | null;
+		underpaidAmount: number;
+		paymentDate: string | null;
 		taxableRevenue: number | null;
 		isBelowThreshold: boolean | null;
 		taxpayerType: TaxpayerType | null;
@@ -56,6 +61,9 @@
 		taxAmount: number | null;
 		taxRate: number | null;
 		status: string | null;
+		paymentStatus: PaymentStatus | null;
+		paidAmount: number | null;
+		underpaidAmount: number;
 		paymentDate: string | null;
 		billingCode: string | null;
 		isBelowThreshold: boolean | null;
@@ -84,6 +92,7 @@
 			monthsWithTax: number;
 			paidMonths: number;
 			unpaidMonths: number;
+			underpaidMonths: number;
 		};
 		months: TaxHistoryMonth[];
 	}
@@ -96,10 +105,34 @@
 
 	let { data }: { data: PageData } = $props();
 
-	// State
-	let showConfirmDialog = $state(false);
+	interface PaymentTarget {
+		year: number;
+		month: number;
+		/** The current estimate, offered as the default amount paid. */
+		taxAmount: number;
+		underpaid: boolean;
+	}
+
+	const today = jakartaToday().date;
+
+	// Payment dialog state
+	let payTarget = $state<PaymentTarget | null>(null);
+	let paidAmount = $state<number | null>(null);
+	let paymentDate = $state(today);
+	let billingCode = $state('');
 	let loading = $state(false);
 	let error = $state<string | null>(null);
+
+	function openPayment(target: PaymentTarget) {
+		payTarget = target;
+		paidAmount = target.taxAmount;
+		paymentDate = today;
+		billingCode = '';
+		error = null;
+	}
+
+	const canRecordPayment = (status: PaymentStatus | null) =>
+		status === 'unpaid' || status === 'underpaid';
 
 	// Get progress bar color class
 	function getProgressBarColor(percentage: number): string {
@@ -109,46 +142,55 @@
 	}
 
 	// Get status badge
-	function getStatusBadge(status: string, hasTax: boolean) {
-		if (!hasTax) {
-			return { label: 'Tidak Kena Pajak', class: 'bg-gray-100 text-gray-600' };
-		}
-		switch (status) {
-			case TAX_STATUS.PAID:
+	function getStatusBadge(record: TaxHistoryMonth) {
+		switch (record.paymentStatus) {
+			case 'paid':
 				return { label: 'Sudah Dibayar', class: 'bg-green-100 text-green-700' };
-			case TAX_STATUS.OVERDUE:
-				return { label: 'Jatuh Tempo', class: 'bg-red-100 text-red-700' };
-			default:
+			case 'underpaid':
+				return {
+					label: `Kurang bayar ${formatRupiah(record.underpaidAmount)}`,
+					class: 'bg-red-100 text-red-700'
+				};
+			case 'unpaid':
 				return { label: 'Belum Dibayar', class: 'bg-yellow-100 text-yellow-700' };
+			default:
+				return { label: 'Tidak Kena Pajak', class: 'bg-gray-100 text-gray-600' };
 		}
 	}
 
 	// Handle mark as paid
 	async function handleMarkAsPaid() {
-		if (!data.summary) return;
+		if (!payTarget) return;
+		if (paidAmount === null) {
+			error = 'Isi jumlah yang dibayar.';
+			return;
+		}
 
 		loading = true;
 		error = null;
 
 		try {
-			const response = await fetch(
-				`/api/tax/${data.summary.year}/${data.summary.month}/mark-paid`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' }
-				}
-			);
+			const response = await fetch(`/api/tax/${payTarget.year}/${payTarget.month}/mark-paid`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					paidAmount,
+					paymentDate,
+					billingCode: billingCode.trim() || null
+				})
+			});
 
 			if (!response.ok) {
 				const errJson = (await response.json()) as { error?: string };
-				throw new Error(errJson.error || 'Failed to mark tax as paid');
+				throw new Error(errJson.error || 'Pembayaran gagal disimpan.');
 			}
 
+			payTarget = null;
 			// Refresh page data - the page will reload with updated payment status
-			goto('/pajak', { invalidateAll: true });
+			await goto('/pajak', { invalidateAll: true });
 		} catch (err) {
 			console.error('Error marking tax as paid:', err);
-			const errorMessage = err instanceof Error ? err.message : 'Failed to mark tax as paid';
+			const errorMessage = err instanceof Error ? err.message : 'Pembayaran gagal disimpan.';
 			error = errorMessage;
 			toast.error('Gagal menandai pajak', errorMessage);
 		} finally {
@@ -291,6 +333,11 @@
 						{#if (data.summary.currentMonthTax ?? 0) <= 0}
 							<Circle class="w-5 h-5 text-gray-400" />
 							<span class="text-lg font-medium text-muted-foreground">Tidak ada pembayaran</span>
+						{:else if data.summary.underpaidAmount > 0}
+							<AlertCircle class="w-5 h-5 text-red-600" />
+							<span class="text-lg font-medium text-red-600">
+								Kurang bayar {formatRupiah(data.summary.underpaidAmount)}
+							</span>
 						{:else if data.summary.paymentStatus === TAX_STATUS.PAID}
 							<CheckCircle2 class="w-5 h-5 text-green-600" />
 							<span class="text-lg font-medium text-green-600">Sudah Dibayar</span>
@@ -299,18 +346,32 @@
 							<span class="text-lg font-medium text-yellow-600">Belum Dibayar</span>
 						{/if}
 					</div>
+					{#if data.summary.paidAmount !== null}
+						<p class="mt-1 text-sm text-muted-foreground">
+							Tercatat dibayar {formatRupiah(data.summary.paidAmount)}{data.summary.paymentDate
+								? ` pada ${data.summary.paymentDate}`
+								: ''}
+						</p>
+					{/if}
 				</div>
 			</div>
 
 			<!-- Mark as Paid Button -->
 			<div class="flex flex-wrap gap-3">
-				{#if data.summary.paymentStatus !== TAX_STATUS.PAID && (data.summary.currentMonthTax ?? 0) > 0}
+				{#if (data.summary.currentMonthTax ?? 0) > 0 && (data.summary.paymentStatus !== TAX_STATUS.PAID || data.summary.underpaidAmount > 0)}
+					{@const summary = data.summary}
 					<button
-						onclick={() => (showConfirmDialog = true)}
+						onclick={() =>
+							openPayment({
+								year: summary.year,
+								month: summary.month,
+								taxAmount: summary.currentMonthTax ?? 0,
+								underpaid: summary.underpaidAmount > 0
+							})}
 						class="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md font-medium transition-colors"
 					>
 						<CheckCircle2 class="w-4 h-4" />
-						Tandai Sudah Dibayar
+						{summary.underpaidAmount > 0 ? 'Perbarui Pembayaran' : 'Tandai Sudah Dibayar'}
 					</button>
 				{/if}
 				{#if (data.summary.currentMonthTax ?? 0) > 0}
@@ -355,10 +416,7 @@
 
 			<div class="divide-y md:hidden">
 				{#each data.history.months as record (record.year + '-' + record.month)}
-					{@const statusBadge = getStatusBadge(
-						record.status ?? '',
-						record.taxAmount !== null && record.taxAmount > 0
-					)}
+					{@const statusBadge = getStatusBadge(record)}
 					<article class="p-4">
 						<div class="flex items-start justify-between gap-3">
 							<a
@@ -385,14 +443,39 @@
 									{record.isBelowThreshold ? '-' : formatRupiah(record.taxAmount ?? 0)}
 								</dd>
 							</div>
+							{#if record.paidAmount !== null}
+								<div class="flex items-center justify-between gap-3">
+									<dt class="text-muted-foreground">Dibayar</dt>
+									<dd class="font-medium">{formatRupiah(record.paidAmount)}</dd>
+								</div>
+							{/if}
 						</dl>
 						{#if (record.taxAmount ?? 0) > 0}
-							<a
-								href="/pajak/kode-billing/{record.year}/{record.month}"
-								class="mt-3 inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium hover:bg-secondary"
-							>
-								Lihat panduan pembayaran
-							</a>
+							<div class="mt-3 flex flex-wrap gap-2">
+								<a
+									href="/pajak/kode-billing/{record.year}/{record.month}"
+									class="inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium hover:bg-secondary"
+								>
+									Lihat panduan pembayaran
+								</a>
+								{#if canRecordPayment(record.paymentStatus)}
+									<button
+										type="button"
+										onclick={() =>
+											openPayment({
+												year: record.year,
+												month: record.month,
+												taxAmount: record.taxAmount ?? 0,
+												underpaid: record.paymentStatus === 'underpaid'
+											})}
+										class="inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium hover:bg-secondary"
+									>
+										{record.paymentStatus === 'underpaid'
+											? 'Perbarui pembayaran'
+											: 'Tandai dibayar'}
+									</button>
+								{/if}
+							</div>
 						{/if}
 					</article>
 				{/each}
@@ -407,19 +490,18 @@
 							<TableHead class="text-right">Pendapatan Kotor</TableHead>
 							<TableHead class="text-right">Pajak</TableHead>
 							<TableHead>Status</TableHead>
-							<TableHead class="w-[100px]"></TableHead>
+							<TableHead class="w-[180px]"></TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
 						{#each data.history.months as record (record.year + '-' + record.month)}
-							{@const statusBadge = getStatusBadge(
-								record.status ?? '',
-								record.taxAmount !== null && record.taxAmount > 0
-							)}
+							{@const statusBadge = getStatusBadge(record)}
 							<TableRow>
 								<TableCell>
-									{#if record.status === TAX_STATUS.PAID}
+									{#if record.paymentStatus === 'paid'}
 										<CheckCircle2 class="w-4 h-4 text-green-600" />
+									{:else if record.paymentStatus === 'underpaid'}
+										<AlertCircle class="w-4 h-4 text-red-600" />
 									{:else if (record.taxAmount ?? 0) > 0}
 										<Circle class="w-4 h-4 text-yellow-600" />
 									{:else}
@@ -451,12 +533,29 @@
 								</TableCell>
 								<TableCell>
 									{#if (record.taxAmount ?? 0) > 0}
-										<a
-											href="/pajak/kode-billing/{record.year}/{record.month}"
-											class="text-primary hover:underline text-sm"
-										>
-											Panduan
-										</a>
+										<div class="flex flex-wrap items-center gap-3">
+											<a
+												href="/pajak/kode-billing/{record.year}/{record.month}"
+												class="text-primary hover:underline text-sm"
+											>
+												Panduan
+											</a>
+											{#if canRecordPayment(record.paymentStatus)}
+												<button
+													type="button"
+													onclick={() =>
+														openPayment({
+															year: record.year,
+															month: record.month,
+															taxAmount: record.taxAmount ?? 0,
+															underpaid: record.paymentStatus === 'underpaid'
+														})}
+													class="text-primary hover:underline text-sm"
+												>
+													{record.paymentStatus === 'underpaid' ? 'Perbarui' : 'Tandai dibayar'}
+												</button>
+											{/if}
+										</div>
 									{/if}
 								</TableCell>
 							</TableRow>
@@ -485,29 +584,57 @@
 		</div>
 	{/if}
 
-	<!-- Confirmation Dialog -->
+	<!-- Payment Dialog -->
 	<AlertDialog
-		open={showConfirmDialog}
+		open={payTarget !== null}
 		closeOnExternalClick={!loading}
 		onopenchange={(open) => {
 			if (!open) {
-				showConfirmDialog = false;
+				payTarget = null;
 				error = null;
 			}
 		}}
 	>
-		<AlertDialogTitle>Konfirmasi Pembayaran Pajak</AlertDialogTitle>
+		<AlertDialogTitle>
+			{payTarget?.underpaid ? 'Perbarui Pembayaran Pajak' : 'Catat Pembayaran Pajak'}
+		</AlertDialogTitle>
 		<AlertDialogDescription>
-			Apakah Anda yakin ingin menandai pajak bulan {data.summary
-				? getIndonesianMonthName(data.summary.month)
-				: ''}
-			{data.summary?.year || ''} sebagai sudah dibayar?
+			Pajak bulan {payTarget ? getIndonesianMonthName(payTarget.month) : ''}
+			{payTarget?.year ?? ''}. Isi jumlah yang benar-benar Anda setor; bila sudah pernah membayar
+			sebagian, isi total yang sudah disetor untuk bulan ini.
 		</AlertDialogDescription>
 
-		{#if data.summary && (data.summary.currentMonthTax ?? 0) > 0}
-			<div class="bg-muted rounded-lg p-4 mt-4 mb-4">
-				<p class="text-sm text-muted-foreground">Jumlah Pajak</p>
-				<p class="text-xl font-bold">{formatRupiah(data.summary.currentMonthTax ?? 0)}</p>
+		{#if payTarget}
+			<div class="mt-4 mb-4 space-y-4">
+				<div class="rounded-lg bg-muted p-4">
+					<p class="text-sm text-muted-foreground">Estimasi pajak saat ini</p>
+					<p class="text-xl font-bold">{formatRupiah(payTarget.taxAmount)}</p>
+				</div>
+				<label class="block space-y-1.5 text-sm font-medium">
+					<span>Jumlah yang dibayar</span>
+					<MoneyInput bind:value={paidAmount} required placeholder="0" />
+				</label>
+				<label class="block space-y-1.5 text-sm font-medium">
+					<span>Tanggal bayar</span>
+					<input
+						type="date"
+						bind:value={paymentDate}
+						max={today}
+						required
+						class="h-11 w-full rounded-md border bg-background px-3 font-normal"
+					/>
+				</label>
+				<label class="block space-y-1.5 text-sm font-medium">
+					<span>Kode billing atau NTPN (opsional)</span>
+					<input
+						type="text"
+						bind:value={billingCode}
+						autocomplete="off"
+						maxlength="24"
+						placeholder="15 digit kode billing atau 16 karakter NTPN"
+						class="h-11 w-full rounded-md border bg-background px-3 font-normal"
+					/>
+				</label>
 			</div>
 		{/if}
 
@@ -520,7 +647,7 @@
 		<div class="flex gap-3 justify-end mt-6">
 			<AlertDialogCancel disabled={loading}>Batal</AlertDialogCancel>
 			<AlertDialogAction variant="default" onclick={handleMarkAsPaid} {loading}>
-				{loading ? 'Menyimpan...' : 'Ya, Tandai Sudah Dibayar'}
+				{loading ? 'Menyimpan...' : 'Simpan Pembayaran'}
 			</AlertDialogAction>
 		</div>
 	</AlertDialog>

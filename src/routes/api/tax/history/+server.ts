@@ -5,6 +5,7 @@ import { calculateAnnualTax, getThresholdInfo } from '$lib/tax/engine';
 import { getTaxRecordsForYear, getTaxYearContext } from '$lib/tax/service';
 import { TAX_STATUS } from '$lib/tax/config';
 import { jakartaToday } from '$lib/tax/period';
+import { reconcilePayment } from '$lib/tax/payments';
 
 /**
  * GET /api/tax/history
@@ -62,6 +63,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		const monthlyRecords = monthlyRevenues.map(({ month, revenue }, index) => {
 			const calc = annualTax?.months[index] ?? null;
 			const existingRecord = recordsByMonth.get(month);
+			const payment = calc ? reconcilePayment(calc.taxAmount, existingRecord) : null;
 
 			return {
 				year,
@@ -73,6 +75,10 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				taxAmount: calc?.taxAmount ?? null,
 				taxRate: calc?.taxRate ?? null,
 				status: calculationAvailable ? existingRecord?.status || TAX_STATUS.UNPAID : null,
+				// 'paid' | 'underpaid' | 'unpaid' | 'none' against the tax recomputed now.
+				paymentStatus: payment?.status ?? null,
+				paidAmount: payment?.paidAmount ?? null,
+				underpaidAmount: payment?.status === 'underpaid' ? payment.outstandingAmount : 0,
 				paymentDate: existingRecord?.paymentDate || null,
 				billingCode: existingRecord?.billingCode || null,
 				isBelowThreshold: calc?.isBelowThreshold ?? null,
@@ -93,10 +99,9 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		const totalTaxAmount = calculationAvailable
 			? monthlyRecords.reduce((sum, r) => sum + (r.taxAmount ?? 0), 0)
 			: null;
-		const paidMonths = monthlyRecords.filter((r) => r.status === TAX_STATUS.PAID).length;
-		const unpaidMonths = monthlyRecords.filter(
-			(r) => r.status === TAX_STATUS.UNPAID && (r.taxAmount ?? 0) > 0
-		).length;
+		const paidMonths = monthlyRecords.filter((r) => r.paymentStatus === 'paid').length;
+		const unpaidMonths = monthlyRecords.filter((r) => r.paymentStatus === 'unpaid').length;
+		const underpaidMonths = monthlyRecords.filter((r) => r.paymentStatus === 'underpaid').length;
 
 		// Get threshold info
 		const finalCumulativeRevenue =
@@ -123,7 +128,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				totalMonths: 12,
 				monthsWithTax: monthlyRecords.filter((r) => (r.taxAmount ?? 0) > 0).length,
 				paidMonths,
-				unpaidMonths
+				unpaidMonths,
+				underpaidMonths
 			},
 			months: monthlyRecords
 		};

@@ -64,8 +64,8 @@ describe('mark-paid on D1', () => {
 		const userId = await eligibleUser();
 
 		const responses = await Promise.all([
-			markPaid(userId, { paymentDate: '2026-11-10' }),
-			markPaid(userId, { paymentDate: '2026-11-11' })
+			markPaid(userId, { paidAmount: 500_000, paymentDate: '2026-11-10' }),
+			markPaid(userId, { paidAmount: 500_000, paymentDate: '2026-11-11' })
 		]);
 
 		expect(responses.map((response) => response.status)).toEqual([200, 200]);
@@ -77,11 +77,15 @@ describe('mark-paid on D1', () => {
 
 	it('updates the existing record on a later submit', async () => {
 		const userId = await eligibleUser();
-		const first = (await (await markPaid(userId, { paymentDate: '2026-11-10' })).json()) as {
+		const first = (await (
+			await markPaid(userId, { paidAmount: 500_000, paymentDate: '2026-11-10' })
+		).json()) as {
 			data: { id: string };
 		};
 
-		const second = (await (await markPaid(userId, { paymentDate: '2026-11-12' })).json()) as {
+		const second = (await (
+			await markPaid(userId, { paidAmount: 500_000, paymentDate: '2026-11-12' })
+		).json()) as {
 			data: { id: string };
 		};
 
@@ -89,6 +93,44 @@ describe('mark-paid on D1', () => {
 		const records = await recordsFor(userId);
 		expect(records).toHaveLength(1);
 		expect(records[0].paymentDate).toBe('2026-11-12');
+	});
+
+	it('records the amount actually paid and reports the shortfall', async () => {
+		const userId = await eligibleUser();
+
+		const response = await markPaid(userId, {
+			paidAmount: 350_000,
+			paymentDate: '2026-11-10',
+			billingCode: '1234 5678 9012 345'
+		});
+
+		expect(response.status).toBe(200);
+		const body = (await response.json()) as { data: { underpaidAmount: number } };
+		expect(body.data.underpaidAmount).toBe(150_000);
+		const [record] = await recordsFor(userId);
+		expect(record.paidAmount).toBe(350_000);
+		expect(record.taxAmount).toBe(500_000);
+		expect(record.billingCode).toBe('123456789012345');
+	});
+
+	it.each([
+		['no paid amount', { paymentDate: '2026-11-10' }],
+		['a formatted string amount', { paidAmount: '500.000' }],
+		['a negative amount', { paidAmount: -1 }],
+		['a fractional amount', { paidAmount: 1.5 }],
+		['a payment date in the future', { paidAmount: 500_000, paymentDate: '2999-01-01' }],
+		[
+			'a payment date that is not a calendar date',
+			{ paidAmount: 500_000, paymentDate: '2026-02-30' }
+		],
+		['a malformed billing code', { paidAmount: 500_000, billingCode: '12345' }]
+	])('rejects %s without writing', async (_label, body) => {
+		const userId = await eligibleUser();
+
+		const response = await markPaid(userId, body);
+
+		expect(response.status).toBe(400);
+		expect(await recordsFor(userId)).toHaveLength(0);
 	});
 });
 

@@ -1,19 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { AlertTriangle, Bell, Calendar, Receipt, X } from '@lucide/svelte';
-	import { formatRupiah } from '$lib/utils';
+	import { formatDateLong, formatRupiah } from '$lib/utils';
 	import { getIndonesianMonthName } from '$lib/tax/config';
+	import type { OutstandingMonth } from '$lib/tax/reminder';
 
 	interface TaxReminderData {
 		showReminder: boolean;
 		reason?: string;
-		previousMonth?: number;
-		previousMonthYear?: number;
-		taxAmount?: number;
-		dueDateDay?: number;
-		daysUntilDue?: number;
+		items?: OutstandingMonth[];
+		totalOutstanding?: number;
 		urgencyLevel?: 'low' | 'medium' | 'high';
-		billingCodeUrl?: string;
 	}
 
 	let reminderData = $state<TaxReminderData | null>(null);
@@ -95,9 +92,17 @@
 			? getUrgencyStyles(reminderData.urgencyLevel)
 			: getUrgencyStyles('low')
 	);
+	let items = $derived(reminderData?.items ?? []);
+	let anyOverdue = $derived(items.some((item) => item.daysUntilDue < 0));
+
+	function dueText(item: OutstandingMonth): string {
+		if (item.daysUntilDue < 0) return `lewat batas ${formatDateLong(item.dueDate)}`;
+		if (item.daysUntilDue === 0) return `batas hari ini, ${formatDateLong(item.dueDate)}`;
+		return `batas ${formatDateLong(item.dueDate)} (${item.daysUntilDue} hari lagi)`;
+	}
 </script>
 
-{#if !dismissed && reminderData?.showReminder}
+{#if !dismissed && reminderData?.showReminder && items.length > 0}
 	<div class="border-b {styles.border} {styles.bg} transition-all duration-300">
 		<div class="max-w-4xl mx-auto px-4 {styles.size}">
 			<div class="flex items-start gap-3">
@@ -115,29 +120,34 @@
 					<div class="flex items-start justify-between gap-2">
 						<div class={styles.text}>
 							<p class="font-semibold">
-								{#if reminderData.urgencyLevel === 'high' && reminderData.daysUntilDue === 0}
-									Periksa Estimasi Pajak
-								{:else}
-									Pengingat Estimasi Pajak
-								{/if}
+								{anyOverdue ? 'Periksa Estimasi Pajak' : 'Pengingat Estimasi Pajak'}
 							</p>
 							<p class="text-sm mt-1">
-								Estimasi {getIndonesianMonthName(reminderData.previousMonth || 0)}
-								{reminderData.previousMonthYear}
-								sebesar <span class="font-bold">{formatRupiah(reminderData.taxAmount || 0)}</span>
-								perlu diverifikasi sebelum batas penyetoran tanggal {reminderData.dueDateDay}.
+								{items.length === 1
+									? 'Estimasi berikut belum lunas menurut catatan Anda:'
+									: `${items.length} bulan belum lunas menurut catatan Anda, total`}
+								{#if items.length > 1}
+									<span class="font-bold">{formatRupiah(reminderData.totalOutstanding ?? 0)}</span>:
+								{/if}
 							</p>
-							{#if reminderData.daysUntilDue !== undefined && reminderData.daysUntilDue > 0}
-								<p class="text-sm mt-1 opacity-75">
-									{#if reminderData.daysUntilDue <= 5}
-										Tinggal {reminderData.daysUntilDue} hari lagi!
-									{:else}
-										Tersisa {reminderData.daysUntilDue} hari
-									{/if}
-								</p>
-							{:else if reminderData.daysUntilDue === 0}
-								<p class="text-sm mt-1 font-medium">Tinjau kewajiban dan status pembayaran Anda.</p>
-							{/if}
+							<ul class="mt-1 space-y-1 text-sm">
+								{#each items as item (item.year + '-' + item.month)}
+									<li>
+										<a href={item.billingCodeUrl} class="font-medium underline">
+											{getIndonesianMonthName(item.month)}
+											{item.year}</a
+										>:
+										{#if item.status === 'underpaid'}
+											kurang bayar <span class="font-bold"
+												>{formatRupiah(item.outstandingAmount)}</span
+											>
+										{:else}
+											<span class="font-bold">{formatRupiah(item.outstandingAmount)}</span>
+										{/if}
+										— {dueText(item)}
+									</li>
+								{/each}
+							</ul>
 						</div>
 
 						<!-- Close button -->
@@ -153,7 +163,7 @@
 					<!-- Actions -->
 					<div class="flex flex-wrap gap-2 mt-3">
 						<a
-							href={reminderData.billingCodeUrl}
+							href={items[0].billingCodeUrl}
 							class="inline-flex items-center gap-2 {styles.buttonBg} text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
 						>
 							<Receipt class="w-4 h-4" />

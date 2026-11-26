@@ -71,6 +71,13 @@
       "when": 1795713882355,
       "tag": "0009_tax_record_unique_period",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1795714017592,
+      "tag": "0010_tax_record_paid_amount",
+      "breakpoints": true
     }
   ]
 }

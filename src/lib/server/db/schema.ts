@@ -566,6 +566,8 @@ export const taxRecord = sqliteTable(
 		taxableIncome: integer('taxable_income').notNull(), // Bruto income subject to tax
 		taxRate: integer('tax_rate').notNull(), // Rate in basis points (50 = 0.5%)
 		taxAmount: integer('tax_amount').notNull(), // Calculated tax in Rupiah
+		// Amount the taxpayer says was actually paid, in Rupiah; null when not recorded.
+		paidAmount: integer('paid_amount'),
 		status: text('status').notNull().default('unpaid'), // 'unpaid' | 'paid' | 'overdue'
 		billingCode: text('billing_code'), // Optional official billing/payment reference supplied by user
 		paymentDate: text('payment_date'), // ISO 8601 date when paid
