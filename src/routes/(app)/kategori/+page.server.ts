@@ -2,6 +2,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
 import { categoryQueries, transactionQueries } from '$lib/server/db/queries';
 import { error as httpError, redirect, fail } from '@sveltejs/kit';
+import { summarizeError } from '$lib/server/error-summary';
 import { isCategoryType, validateCategoryName } from '$lib/shared/validation/category';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -46,7 +47,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			}
 		};
 	} catch (cause) {
-		console.error('Error fetching categories:', cause);
+		console.error('Error fetching categories:', summarizeError(cause));
 		throw httpError(500, 'Kategori tidak dapat dimuat. Data Anda tidak diubah.');
 	}
 };

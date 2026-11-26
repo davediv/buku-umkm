@@ -13,6 +13,7 @@ import {
 	getOnboardingHref,
 	getSafeAppReturnTo
 } from '$lib/navigation/return-to';
+import { summarizeError } from '$lib/server/error-summary';
 
 export const load: PageServerLoad = async (event) => {
 	const returnTo =
@@ -46,7 +47,7 @@ export const actions: Actions = {
 				return fail(409, { message: 'Onboarding sebelumnya telah dilewati.' });
 			}
 		} catch (error) {
-			console.error('Failed to complete onboarding:', error);
+			console.error('Failed to complete onboarding:', summarizeError(error));
 			return fail(500, { message: 'Gagal menyimpan data. Silakan coba lagi.' });
 		}
 
@@ -64,7 +65,7 @@ export const actions: Actions = {
 		try {
 			await skipOnboarding(getDb(), event.locals.user.id);
 		} catch (error) {
-			console.error('Failed to skip onboarding:', error);
+			console.error('Failed to skip onboarding:', summarizeError(error));
 			return fail(500, { message: 'Gagal menyimpan pilihan. Silakan coba lagi.' });
 		}
 

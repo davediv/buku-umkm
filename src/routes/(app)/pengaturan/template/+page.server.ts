@@ -2,6 +2,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
 import { categoryQueries, transactionTemplateQueries } from '$lib/server/db/queries';
 import { error as httpError, redirect, fail } from '@sveltejs/kit';
+import { summarizeError } from '$lib/server/error-summary';
 import { resolveTemplateCategory } from '$lib/server/templates/category';
 import {
 	isCategoryType,
@@ -47,7 +48,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			templates: mappedTemplates
 		};
 	} catch (cause) {
-		console.error('Error fetching templates:', cause);
+		console.error('Error fetching templates:', summarizeError(cause));
 		throw httpError(500, 'Template transaksi tidak dapat dimuat. Data Anda tidak diubah.');
 	}
 };
