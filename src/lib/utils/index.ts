@@ -45,23 +45,29 @@ export function formatTransactionAmount(amount: number, type: 'income' | 'expens
 /**
  * Format date string to short format: "5 Mar 2025"
  */
+/**
+ * Formats a stored date. A date-only "YYYY-MM-DD" is a calendar day: JavaScript parses it
+ * as UTC midnight, so it is also formatted in UTC; otherwise a viewer west of UTC would
+ * see the previous day. Timestamps keep the viewer's time zone.
+ */
+function formatStoredDate(dateStr: string, options: Intl.DateTimeFormatOptions): string {
+	const calendarDay = /^\d{4}-\d{2}-\d{2}$/.test(dateStr);
+	return new Date(dateStr).toLocaleDateString('id-ID', {
+		...options,
+		...(calendarDay ? { timeZone: 'UTC' } : {})
+	});
+}
+
 export function formatDate(dateStr: string | null): string {
 	if (!dateStr) return '-';
-	return new Date(dateStr).toLocaleDateString('id-ID', {
-		day: 'numeric',
-		month: 'short',
-		year: 'numeric'
-	});
+	return formatStoredDate(dateStr, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 /**
  * Format date string to short format without year: "5 Mar"
  */
 export function formatDateShort(dateStr: string): string {
-	return new Date(dateStr).toLocaleDateString('id-ID', {
-		day: 'numeric',
-		month: 'short'
-	});
+	return formatStoredDate(dateStr, { day: 'numeric', month: 'short' });
 }
 
 /**
@@ -92,11 +98,7 @@ export function formatDateTime(dateString: string | null): string {
  * Format date string to DD/MM/YYYY: "05/03/2025"
  */
 export function formatDateSlash(dateStr: string): string {
-	return new Date(dateStr).toLocaleDateString('id-ID', {
-		day: '2-digit',
-		month: '2-digit',
-		year: 'numeric'
-	});
+	return formatStoredDate(dateStr, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 // ============================================================================
