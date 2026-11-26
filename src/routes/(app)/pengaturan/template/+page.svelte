@@ -454,6 +454,7 @@
 				id="type"
 				name="type"
 				bind:value={type}
+				onchange={() => (categoryId = '')}
 				class="w-full p-3 bg-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
 				required
 			>

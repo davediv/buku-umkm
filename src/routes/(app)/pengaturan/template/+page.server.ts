@@ -2,6 +2,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
 import { categoryQueries, transactionTemplateQueries } from '$lib/server/db/queries';
 import { error as httpError, redirect, fail } from '@sveltejs/kit';
+import { resolveTemplateCategory } from '$lib/server/templates/category';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Check authentication
@@ -71,29 +72,27 @@ export const actions: Actions = {
 				return fail(400, { error: 'Tipe transaksi wajib dipilih', success: false });
 			}
 
+			const categoryCheck = await resolveTemplateCategory(db, userId, categoryId, type);
+			if (!categoryCheck.ok) {
+				return fail(400, { error: categoryCheck.error, success: false });
+			}
+
 			// Create the template
 			const createdTemplate = await transactionTemplateQueries.create(db, {
 				userId,
 				name: name.trim(),
 				type,
-				categoryId: categoryId || undefined,
+				categoryId: categoryCheck.category?.id,
 				description: description || undefined,
 				isSystem: false
 			});
-
-			// Resolve category name for optimistic update
-			let categoryName: string | null = null;
-			if (categoryId) {
-				const cat = await categoryQueries.findById(db, userId, categoryId);
-				categoryName = cat?.name ?? null;
-			}
 
 			return {
 				success: true,
 				message: 'Template berhasil dibuat',
 				template: {
 					...createdTemplate,
-					categoryName
+					categoryName: categoryCheck.category?.name ?? null
 				}
 			};
 		} catch {
@@ -114,7 +113,9 @@ export const actions: Actions = {
 			const formData = await request.formData();
 			const id = formData.get('id') as string;
 			const name = formData.get('name') as string;
-			const categoryId = formData.get('categoryId') as string;
+			const type = formData.get('type') as 'income' | 'expense' | null;
+			// Absent means "unchanged"; an empty selection clears the category.
+			const categoryId = formData.get('categoryId') as string | null;
 			const description = formData.get('description') as string;
 
 			// Validate required fields
@@ -124,6 +125,10 @@ export const actions: Actions = {
 
 			if (!name || name.trim() === '') {
 				return fail(400, { error: 'Nama template wajib diisi', success: false });
+			}
+
+			if (type !== null && type !== 'income' && type !== 'expense') {
+				return fail(400, { error: 'Tipe transaksi wajib dipilih', success: false });
 			}
 
 			// Check if template exists
@@ -137,10 +142,22 @@ export const actions: Actions = {
 				return fail(400, { error: 'Template sistem tidak dapat diubah', success: false });
 			}
 
+			// A new category, or a new type for the current one, must be the user's own
+			// active category of the template's type.
+			const nextType = type ?? (existingTemplate.type as 'income' | 'expense');
+			const nextCategoryId = categoryId === null ? existingTemplate.categoryId : categoryId || null;
+			if (nextType !== existingTemplate.type || nextCategoryId !== existingTemplate.categoryId) {
+				const categoryCheck = await resolveTemplateCategory(db, userId, nextCategoryId, nextType);
+				if (!categoryCheck.ok) {
+					return fail(400, { error: categoryCheck.error, success: false });
+				}
+			}
+
 			// Update the template
 			await transactionTemplateQueries.update(db, userId, id, {
 				name: name.trim(),
-				categoryId: categoryId || undefined,
+				type: nextType,
+				categoryId: nextCategoryId,
 				description: description || undefined
 			});
 

@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { transactionTemplateQueries } from '$lib/server/db/queries';
+import { resolveTemplateCategory } from '$lib/server/templates/category';
 
 interface CreateTemplateBody {
 	name: string;
@@ -66,12 +67,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const db = getDb();
 
+		const categoryCheck = await resolveTemplateCategory(db, userId, body.categoryId, body.type);
+		if (!categoryCheck.ok) {
+			return json({ error: categoryCheck.error }, { status: 400 });
+		}
+
 		// Create the template
 		const createdTemplate = await transactionTemplateQueries.create(db, {
 			userId,
 			name: body.name.trim(),
 			type: body.type,
-			categoryId: body.categoryId,
+			categoryId: categoryCheck.category?.id,
 			description: body.description,
 			isSystem: false
 		});

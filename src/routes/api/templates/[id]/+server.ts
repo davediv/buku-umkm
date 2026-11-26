@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { transactionTemplateQueries } from '$lib/server/db/queries';
+import { resolveTemplateCategory } from '$lib/server/templates/category';
 
 interface UpdateTemplateBody {
 	name?: string;
@@ -104,13 +105,25 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			updateData.type = body.type;
 		}
 		if (body.categoryId !== undefined) {
-			updateData.categoryId = body.categoryId;
+			updateData.categoryId = body.categoryId || null;
 		}
 		if (body.description !== undefined) {
 			updateData.description = body.description;
 		}
 		if (body.isActive !== undefined) {
 			updateData.isActive = body.isActive;
+		}
+
+		// A new category, or a new type for the current one, must be the user's own
+		// active category of the template's type.
+		const nextType = updateData.type ?? (existingTemplate.type as 'income' | 'expense');
+		const nextCategoryId =
+			updateData.categoryId !== undefined ? updateData.categoryId : existingTemplate.categoryId;
+		if (nextType !== existingTemplate.type || nextCategoryId !== existingTemplate.categoryId) {
+			const categoryCheck = await resolveTemplateCategory(db, userId, nextCategoryId, nextType);
+			if (!categoryCheck.ok) {
+				return json({ error: categoryCheck.error }, { status: 400 });
+			}
 		}
 
 		// Update the template
@@ -122,7 +135,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				id: templateId,
 				name: updateData.name ?? existingTemplate.name,
 				type: updateData.type ?? existingTemplate.type,
-				categoryId: updateData.categoryId ?? existingTemplate.categoryId,
+				categoryId: nextCategoryId,
 				description: updateData.description ?? existingTemplate.description,
 				isSystem: existingTemplate.isSystem,
 				isActive: updateData.isActive ?? existingTemplate.isActive,
