@@ -7,13 +7,6 @@ import { getLoginHref } from '$lib/navigation/return-to';
 import { limitRequest } from '$lib/server/security/rate-limit';
 
 // ============================================
-// Constants
-// ============================================
-
-const CLOUDFLARE_STORAGE_DOMAINS =
-	'https://*.cloudflarestorage.com https://*.r2.cloudflarestorage.com';
-
-// ============================================
 // Rate Limiting Handler
 // ============================================
 
@@ -24,30 +17,14 @@ const handleRateLimit: Handle = async ({ event, resolve }) => {
 };
 
 // ============================================
-// CSP Handler
+// Security Headers Handler
 // ============================================
 
-const handleCSP: Handle = async ({ event, resolve }) => {
+// The Content-Security-Policy is set by SvelteKit (kit.csp in svelte.config.js) so that pages
+// get a nonce for SvelteKit's inline scripts.
+const handleSecurityHeaders: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);
 
-	// Content Security Policy headers
-	response.headers.set(
-		'Content-Security-Policy',
-		[
-			"default-src 'self'",
-			"script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
-			"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com",
-			`img-src 'self' data: blob: ${CLOUDFLARE_STORAGE_DOMAINS}`,
-			"font-src 'self' data: https://fonts.gstatic.com",
-			`connect-src 'self' ${CLOUDFLARE_STORAGE_DOMAINS}`,
-			"frame-src 'none'",
-			"object-src 'none'",
-			"base-uri 'self'",
-			"form-action 'self'"
-		].join('; ')
-	);
-
-	// Security headers
 	response.headers.set('X-Content-Type-Options', 'nosniff');
 	response.headers.set('X-Frame-Options', 'DENY');
 	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -110,7 +87,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 
 export const handle = sequence(
 	handleCSRF,
-	handleCSP,
+	handleSecurityHeaders,
 	handleSession,
 	handleRateLimit,
 	handleBetterAuth
