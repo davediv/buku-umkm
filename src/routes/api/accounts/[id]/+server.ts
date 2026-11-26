@@ -2,35 +2,24 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { chartOfAccountQueries } from '$lib/server/db/queries';
-import { eq, or, and } from 'drizzle-orm';
-import { transaction } from '$lib/server/db/schema';
+import { deactivateAccount, type AccountDeactivation } from '$lib/server/finance/accounts';
 import {
 	VALID_ACCOUNT_TYPES,
-	type AccountType,
 	isValidAccountType,
 	mapAccountType,
-	mapSchemaToApiType
+	mapSchemaToApiType,
+	parseAccountName
 } from '$lib/shared/account-types';
 
-interface UpdateAccountBody {
-	name?: string;
-	type?: AccountType;
-}
-
-// Helper to check if account has transactions (scoped to user)
-async function hasTransactions(
-	db: ReturnType<typeof getDb>,
-	userId: string,
-	accountId: string
-): Promise<boolean> {
-	const transactions = await db.query.transaction.findFirst({
-		where: and(
-			eq(transaction.userId, userId),
-			or(eq(transaction.accountId, accountId), eq(transaction.toAccountId, accountId))
-		)
-	});
-	return !!transactions;
-}
+const DEACTIVATION_ERRORS: Record<Exclude<AccountDeactivation, 'deactivated'>, [string, number]> = {
+	not_found: ['Akun tidak ditemukan', 404],
+	already_inactive: ['Akun sudah dinonaktifkan', 400],
+	has_balance: [
+		'Akun yang masih memiliki saldo tidak dapat dinonaktifkan, agar saldonya tetap tercatat di laporan.',
+		400
+	],
+	has_transactions: ['Akun yang memiliki transaksi terkait belum dapat dinonaktifkan.', 400]
+};
 
 // GET /api/accounts/[id] - Get a single account (not in original requirements but useful)
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -88,7 +77,11 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	try {
-		const body = (await request.json()) as UpdateAccountBody;
+		const body: unknown = await request.json().catch(() => null);
+		if (!body || typeof body !== 'object' || Array.isArray(body)) {
+			return json({ error: 'Format permintaan tidak valid' }, { status: 400 });
+		}
+		const input = body as Record<string, unknown>;
 		const db = getDb();
 
 		// Check if account exists
@@ -99,16 +92,14 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Validate name (if provided)
-		if (body.name !== undefined && body.name.trim() === '') {
-			return json({ error: 'Nama akun tidak boleh kosong' }, { status: 400 });
-		}
-
-		if (body.name !== undefined && body.name.length > 200) {
-			return json({ error: 'Nama akun maksimal 200 karakter' }, { status: 400 });
-		}
+		const name = input.name === undefined ? undefined : parseAccountName(input.name);
+		if (name && !name.ok) return json({ error: name.error }, { status: 400 });
 
 		// Validate account type (if provided)
-		if (body.type !== undefined && !isValidAccountType(body.type)) {
+		if (
+			input.type !== undefined &&
+			(typeof input.type !== 'string' || !isValidAccountType(input.type))
+		) {
 			return json(
 				{
 					error: `Tipe akun tidak valid. Jenis yang diperbolehkan: ${VALID_ACCOUNT_TYPES.join(', ')}`
@@ -124,14 +115,18 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			subType?: string;
 		} = {};
 
-		if (body.name !== undefined) {
-			updateData.name = body.name.trim();
+		if (name?.ok) {
+			updateData.name = name.name;
 		}
 
-		if (body.type !== undefined) {
-			const { type: schemaType, subType } = mapAccountType(body.type);
+		if (typeof input.type === 'string' && isValidAccountType(input.type)) {
+			const { type: schemaType, subType } = mapAccountType(input.type);
 			updateData.type = schemaType;
 			updateData.subType = subType;
+		}
+
+		if (Object.keys(updateData).length === 0) {
+			return json({ error: 'Tidak ada perubahan untuk disimpan' }, { status: 400 });
 		}
 
 		// Update the account
@@ -155,7 +150,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	}
 };
 
-// DELETE /api/accounts/[id] - Deactivate an account (soft delete) if no transactions exist
+// DELETE /api/accounts/[id] - Deactivate an account (soft delete) holding Rp0 with no transactions
 export const DELETE: RequestHandler = async ({ params, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
@@ -172,32 +167,11 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 	const db = getDb();
 
 	try {
-		// Check if account exists
-		const existingAccount = await chartOfAccountQueries.findById(db, userId, accountId);
-
-		if (!existingAccount) {
-			return json({ error: 'Akun tidak ditemukan' }, { status: 404 });
+		const outcome = await deactivateAccount(db, userId, accountId);
+		if (outcome !== 'deactivated') {
+			const [error, status] = DEACTIVATION_ERRORS[outcome];
+			return json({ error }, { status });
 		}
-
-		// Check if account already inactive
-		if (!existingAccount.isActive) {
-			return json({ error: 'Akun sudah dinonaktifkan' }, { status: 400 });
-		}
-
-		// Check if account has transactions
-		const hasTxns = await hasTransactions(db, userId, accountId);
-
-		if (hasTxns) {
-			return json(
-				{
-					error: 'Akun yang memiliki transaksi terkait belum dapat dinonaktifkan.'
-				},
-				{ status: 400 }
-			);
-		}
-
-		// Deactivate (soft delete) the account
-		await chartOfAccountQueries.update(db, userId, accountId, { isActive: false });
 
 		return json({
 			message: 'Akun berhasil dinonaktifkan'

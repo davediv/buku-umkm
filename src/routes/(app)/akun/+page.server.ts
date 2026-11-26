@@ -7,7 +7,8 @@ import {
 	ACCOUNT_TYPE_MAP,
 	filterActiveAccounts,
 	mapSchemaToApiType,
-	isValidAccountType
+	isValidAccountType,
+	parseAccountName
 } from '$lib/shared/account-types';
 import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
 import { MAX_TRANSACTION_AMOUNT } from '$lib/constants';
@@ -58,19 +59,12 @@ export const actions: Actions = {
 
 		try {
 			const formData = await request.formData();
-			const name = formData.get('name') as string;
+			const name = parseAccountName(formData.get('name'));
 			const type = formData.get('type') as 'cash' | 'bank' | 'ewallet';
 			const openingBalance = Number(formData.get('opening_balance')?.toString() || 0);
 			const openingDate = formData.get('opening_date')?.toString() || todayInJakarta();
 
-			// Validate required fields
-			if (!name || name.trim() === '') {
-				return fail(400, { error: 'Nama akun wajib diisi', success: false });
-			}
-
-			if (name.length > 200) {
-				return fail(400, { error: 'Nama akun maksimal 200 karakter', success: false });
-			}
+			if (!name.ok) return fail(400, { error: name.error, success: false });
 
 			// Validate type
 			if (!type || !isValidAccountType(type)) {
@@ -109,7 +103,7 @@ export const actions: Actions = {
 					id: accountId,
 					userId,
 					code: newCode,
-					name: name.trim(),
+					name: name.name,
 					type: schemaType,
 					subType,
 					isSystem: false,
@@ -144,7 +138,7 @@ export const actions: Actions = {
 		try {
 			const formData = await request.formData();
 			const id = formData.get('id') as string;
-			const name = formData.get('name') as string;
+			const name = parseAccountName(formData.get('name'));
 			const type = formData.get('type') as string;
 
 			// Validate required fields
@@ -152,13 +146,7 @@ export const actions: Actions = {
 				return fail(400, { error: 'ID akun diperlukan', success: false });
 			}
 
-			if (!name || name.trim() === '') {
-				return fail(400, { error: 'Nama akun wajib diisi', success: false });
-			}
-
-			if (name.length > 200) {
-				return fail(400, { error: 'Nama akun maksimal 200 karakter', success: false });
-			}
+			if (!name.ok) return fail(400, { error: name.error, success: false });
 
 			// Validate type
 			if (!type || !isValidAccountType(type)) {
@@ -176,7 +164,7 @@ export const actions: Actions = {
 
 			// Update the account
 			await chartOfAccountQueries.update(db, userId, id, {
-				name: name.trim(),
+				name: name.name,
 				type: schemaType,
 				subType
 			});

@@ -41,3 +41,19 @@ export function filterActiveAccounts<
 		(account) => account.isActive && account.type === 'asset' && account.subType
 	);
 }
+
+export const ACCOUNT_NAME_MAX_LENGTH = 100;
+
+/** Validates an account name from a form or JSON body: required, trimmed, at most 100 characters. */
+export function parseAccountName(
+	value: unknown
+): { ok: true; name: string } | { ok: false; error: string } {
+	if (typeof value !== 'string' || !value.trim()) {
+		return { ok: false, error: 'Nama akun wajib diisi' };
+	}
+	const name = value.trim();
+	if (name.length > ACCOUNT_NAME_MAX_LENGTH) {
+		return { ok: false, error: `Nama akun maksimal ${ACCOUNT_NAME_MAX_LENGTH} karakter` };
+	}
+	return { ok: true, name };
+}

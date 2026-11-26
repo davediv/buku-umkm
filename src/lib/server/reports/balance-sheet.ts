@@ -86,7 +86,9 @@ export function calculateBalanceSheetAsOf(
 	transactions: HistoricalTransaction[],
 	debts: HistoricalDebt[]
 ) {
-	const assetAccounts = accounts.filter((account) => account.isActive && account.type === 'asset');
+	// Deactivating an account only hides it from new entries: it may be deactivated only
+	// at Rp0, and its history (or a balance left by older versions) stays in the books.
+	const assetAccounts = accounts.filter((account) => account.type === 'asset');
 	const assetAccountIds = new Set(assetAccounts.map((account) => account.id));
 	const movements = transactions.filter(
 		(item) => item.date <= selectedDate && assetAccountIds.has(item.accountId)
@@ -108,7 +110,12 @@ export function calculateBalanceSheetAsOf(
 		const balance = movements
 			.filter((item) => item.accountId === account.id)
 			.reduce((sum, item) => sum + movementEffect(item), openingBalance);
-		const assetItem = { id: account.id, name: account.name, code: account.code, balance };
+		const assetItem = {
+			id: account.id,
+			name: account.isActive ? account.name : `${account.name} (nonaktif)`,
+			code: account.code,
+			balance
+		};
 
 		if (account.subType === 'kas') groups.kas.items.push(assetItem);
 		else if (account.subType === 'bank') groups.bank.items.push(assetItem);

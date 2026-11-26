@@ -166,4 +166,20 @@ describe('historical balance sheet', () => {
 		expect(report.isBalanced).toBe(false);
 		expect(report.equation.result - report.equation.expected).toBe(-400_000);
 	});
+
+	it('keeps a deactivated account in the books, as the dashboard does', () => {
+		const report = calculateBalanceSheetAsOf(
+			'2026-01-31',
+			[account(), account({ id: 'old-bank', name: 'Bank Lama', subType: 'bank', isActive: false })],
+			[],
+			[]
+		);
+
+		expect(report.assets.breakdown.bank.items).toEqual([
+			{ id: 'old-bank', name: 'Bank Lama (nonaktif)', code: '1101', balance: 1_000_000 }
+		]);
+		expect(report.assets.total).toBe(2_000_000);
+		expect(report.equity.total).toBe(2_000_000);
+		expect(report.isBalanced).toBe(true);
+	});
 });

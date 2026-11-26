@@ -939,6 +939,8 @@ export const dashboardQueries = {
 					)
 			})
 			.from(chartOfAccount)
+			// Inactive accounts count too, as on the balance sheet: deactivation hides an
+			// account from new entries but never takes its balance out of the books.
 			.where(eq(chartOfAccount.userId, userId));
 		const profitAndLoss = profitAndLossTotals(db, userId, {
 			month,

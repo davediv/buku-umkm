@@ -5,21 +5,14 @@ import { chartOfAccount } from '$lib/server/db/schema';
 import { chartOfAccountQueries } from '$lib/server/db/queries';
 import {
 	VALID_ACCOUNT_TYPES,
-	type AccountType,
 	isValidAccountType,
 	mapAccountType,
 	mapSchemaToApiType,
-	filterActiveAccounts
+	filterActiveAccounts,
+	parseAccountName
 } from '$lib/shared/account-types';
 import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
 import { MAX_TRANSACTION_AMOUNT } from '$lib/constants';
-
-interface CreateAccountBody {
-	name: string;
-	type: AccountType;
-	opening_balance?: number;
-	opening_date?: string;
-}
 
 // GET /api/accounts - Returns all accounts for authenticated user
 export const GET: RequestHandler = async ({ locals }) => {
@@ -65,15 +58,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const userId = locals.user.id;
 
 	try {
-		const body = (await request.json()) as CreateAccountBody;
-
-		// Validate required fields
-		if (!body.name || body.name.trim() === '') {
-			return json({ error: 'Nama akun wajib diisi' }, { status: 400 });
+		const body: unknown = await request.json().catch(() => null);
+		if (!body || typeof body !== 'object' || Array.isArray(body)) {
+			return json({ error: 'Format permintaan tidak valid' }, { status: 400 });
 		}
+		const input = body as Record<string, unknown>;
+
+		const name = parseAccountName(input.name);
+		if (!name.ok) return json({ error: name.error }, { status: 400 });
 
 		// Validate account type
-		if (!body.type || !isValidAccountType(body.type)) {
+		if (typeof input.type !== 'string' || !isValidAccountType(input.type)) {
 			return json(
 				{
 					error: `Tipe akun tidak valid. Jenis yang diperbolehkan: ${VALID_ACCOUNT_TYPES.join(', ')}`
@@ -83,16 +78,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Validate opening balance (if provided)
-		const openingBalance = body.opening_balance ?? 0;
+		const openingBalance = input.opening_balance ?? 0;
 		if (
+			typeof openingBalance !== 'number' ||
 			!Number.isSafeInteger(openingBalance) ||
 			openingBalance < 0 ||
 			openingBalance > MAX_TRANSACTION_AMOUNT
 		) {
 			return json({ error: 'Saldo awal tidak valid' }, { status: 400 });
 		}
-		const openingDate = body.opening_date ?? todayInJakarta();
-		if (!isIsoCalendarDate(openingDate) || openingDate > todayInJakarta()) {
+		const openingDate = input.opening_date ?? todayInJakarta();
+		if (
+			typeof openingDate !== 'string' ||
+			!isIsoCalendarDate(openingDate) ||
+			openingDate > todayInJakarta()
+		) {
 			return json({ error: 'Tanggal saldo awal tidak valid' }, { status: 400 });
 		}
 
@@ -107,7 +107,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const newCode = String(maxCode + 1);
 
 		// Map account type to schema values
-		const { type: schemaType, subType } = mapAccountType(body.type);
+		const { type: schemaType, subType } = mapAccountType(input.type);
 
 		// Generate ID first
 		const accountId = crypto.randomUUID();
@@ -119,7 +119,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				id: accountId,
 				userId,
 				code: newCode,
-				name: body.name.trim(),
+				name: name.name,
 				type: schemaType,
 				subType,
 				isSystem: false,
