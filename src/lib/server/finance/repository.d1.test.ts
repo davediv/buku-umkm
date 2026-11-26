@@ -317,4 +317,173 @@ describe('financial writes on D1', () => {
 			expect(await balanceOf(kas)).toBe(1_300_000);
 		});
 	});
+
+	describe('reversing a debt payment', () => {
+		const tradeDebt = (type: 'piutang' | 'hutang', originalAmount: number) => ({
+			type,
+			kind: 'trade' as const,
+			accountId: null,
+			contactName: 'Budi',
+			contactPhone: null,
+			contactAddress: null,
+			originalAmount,
+			date: '2026-11-01',
+			dueDate: null,
+			description: null
+		});
+
+		async function pay(
+			service: Awaited<ReturnType<typeof setup>>['service'],
+			userId: string,
+			debtId: string,
+			accountId: string,
+			amount: number
+		) {
+			const { entity } = await service.recordDebtPayment(userId, debtId, crypto.randomUUID(), {
+				amount,
+				date: '2026-11-10',
+				accountId,
+				notes: null
+			});
+			return entity;
+		}
+
+		async function transactionIsActive(transactionId: string) {
+			const [row] = await harness.db
+				.select({ isActive: transaction.isActive })
+				.from(transaction)
+				.where(eq(transaction.id, transactionId));
+			return row.isActive;
+		}
+
+		it('reopens a settled debt and takes the money back out of the account', async () => {
+			const { userId, kas, service } = await setup(0);
+			const { entity: receivable } = await service.createDebt(
+				userId,
+				'rev-debt-0001',
+				tradeDebt('piutang', 200_000)
+			);
+			await pay(service, userId, receivable.id, kas, 50_000);
+			const settled = await pay(service, userId, receivable.id, kas, 150_000);
+			expect(settled.debt.status).toBe('paid');
+			expect(await balanceOf(kas)).toBe(200_000);
+
+			const reopened = await service.reverseDebtPayment(userId, receivable.id, settled.payment.id);
+			expect(reopened).toMatchObject({
+				status: 'active',
+				paidAmount: 50_000,
+				remainingAmount: 150_000
+			});
+			expect(reopened.payments.map((item) => item.id)).not.toContain(settled.payment.id);
+			expect(await balanceOf(kas)).toBe(50_000);
+			expect(await transactionIsActive(settled.transaction.id)).toBe(false);
+
+			// The reopened debt takes payments again, up to what it still owes.
+			const repaid = await pay(service, userId, receivable.id, kas, 150_000);
+			expect(repaid.debt).toMatchObject({ status: 'paid', remainingAmount: 0 });
+			expect(await balanceOf(kas)).toBe(200_000);
+		});
+
+		it('returns a hutang payment to the account it was paid from', async () => {
+			const { userId, kas, service } = await setup(500_000);
+			const { entity: payable } = await service.createDebt(
+				userId,
+				'rev-debt-0002',
+				tradeDebt('hutang', 300_000)
+			);
+			const paid = await pay(service, userId, payable.id, kas, 120_000);
+			expect(await balanceOf(kas)).toBe(380_000);
+
+			const reopened = await service.reverseDebtPayment(userId, payable.id, paid.payment.id);
+			expect(reopened).toMatchObject({ status: 'active', paidAmount: 0, remainingAmount: 300_000 });
+			expect(await balanceOf(kas)).toBe(500_000);
+		});
+
+		it('never reverses the same payment twice', async () => {
+			const { userId, kas, repository, service } = await setup(0);
+			const { entity: receivable } = await service.createDebt(
+				userId,
+				'rev-debt-0003',
+				tradeDebt('piutang', 100_000)
+			);
+			const paid = await pay(service, userId, receivable.id, kas, 100_000);
+			const reversal = {
+				userId,
+				debtId: receivable.id,
+				paymentId: paid.payment.id,
+				amount: 100_000,
+				movement: { transactionId: paid.transaction.id, accountId: kas, balanceDelta: -100_000 }
+			};
+
+			// Two requests passed the service's pre-check; only the first may commit.
+			await repository.reverseDebtPaymentAtomic(reversal);
+			await expect(repository.reverseDebtPaymentAtomic(reversal)).rejects.toMatchObject({
+				code: 'PAYMENT_NOT_FOUND'
+			});
+			await expect(
+				service.reverseDebtPayment(userId, receivable.id, paid.payment.id)
+			).rejects.toMatchObject({ code: 'PAYMENT_NOT_FOUND', status: 404 });
+
+			expect(await balanceOf(kas)).toBe(0);
+			const [current] = await harness.db.select().from(debt).where(eq(debt.id, receivable.id));
+			expect(current).toMatchObject({ status: 'active', paidAmount: 0, remainingAmount: 100_000 });
+		});
+
+		it("refuses another user's payment and a payment of a different debt", async () => {
+			const owner = await setup(0);
+			const other = await setup(0);
+			const { entity: first } = await owner.service.createDebt(
+				owner.userId,
+				'rev-debt-0004',
+				tradeDebt('piutang', 100_000)
+			);
+			const { entity: second } = await owner.service.createDebt(
+				owner.userId,
+				'rev-debt-0005',
+				tradeDebt('piutang', 100_000)
+			);
+			const paid = await pay(owner.service, owner.userId, first.id, owner.kas, 40_000);
+
+			await expect(
+				other.service.reverseDebtPayment(other.userId, first.id, paid.payment.id)
+			).rejects.toMatchObject({ code: 'NOT_FOUND' });
+			await expect(
+				owner.service.reverseDebtPayment(owner.userId, second.id, paid.payment.id)
+			).rejects.toMatchObject({ code: 'PAYMENT_NOT_FOUND' });
+			// Even a forged batch for another user aborts on the guard.
+			await expect(
+				other.repository.reverseDebtPaymentAtomic({
+					userId: other.userId,
+					debtId: first.id,
+					paymentId: paid.payment.id,
+					amount: 40_000,
+					movement: null
+				})
+			).rejects.toMatchObject({ code: 'PAYMENT_NOT_FOUND' });
+
+			expect(await balanceOf(owner.kas)).toBe(40_000);
+			const payments = await harness.db
+				.select()
+				.from(debtPayment)
+				.where(eq(debtPayment.debtId, first.id));
+			expect(payments).toHaveLength(1);
+		});
+
+		it('answers a replay of a reversed payment request without recording it again', async () => {
+			const { userId, kas, service } = await setup(0);
+			const { entity: receivable } = await service.createDebt(
+				userId,
+				'rev-debt-0006',
+				tradeDebt('piutang', 100_000)
+			);
+			const input = { amount: 60_000, date: '2026-11-10', accountId: kas, notes: null };
+			const paid = await service.recordDebtPayment(userId, receivable.id, 'rev-pay-0001', input);
+			await service.reverseDebtPayment(userId, receivable.id, paid.entity.payment.id);
+
+			await expect(
+				service.recordDebtPayment(userId, receivable.id, 'rev-pay-0001', input)
+			).rejects.toMatchObject({ code: 'PAYMENT_REVERSED', status: 409 });
+			expect(await balanceOf(kas)).toBe(0);
+		});
+	});
 });

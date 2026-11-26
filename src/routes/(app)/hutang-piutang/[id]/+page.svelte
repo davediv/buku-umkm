@@ -13,10 +13,18 @@
 		CheckCircle,
 		AlertCircle,
 		X,
-		Plus
+		Plus,
+		Undo2
 	} from '@lucide/svelte';
 	import OperationStatus from '$lib/components/operation-status.svelte';
 	import ContextBackLink from '$lib/components/context-back-link.svelte';
+	import {
+		AlertDialog,
+		AlertDialogAction,
+		AlertDialogCancel,
+		AlertDialogDescription,
+		AlertDialogTitle
+	} from '$lib/components/ui/alert-dialog';
 	import { Dialog } from '$lib/components/ui/dialog';
 	import { MoneyInput } from '$lib/components/ui/money-input';
 	import { debtKindLabel } from '$lib/debts/kind';
@@ -32,6 +40,9 @@
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 	let success = $state<string | null>(null);
+	let pageError = $state<string | null>(null);
+	let reversalTarget = $state<(typeof data.payments)[number] | null>(null);
+	let reversing = $state(false);
 
 	// Form state
 	let paymentAmount = $state<number | null>(null);
@@ -69,10 +80,55 @@
 		return type === 'piutang' ? 'text-green-600' : 'text-red-600';
 	}
 
+	// What reversing a payment does, spelled out before the user confirms it.
+	function reversalEffect(payment: (typeof data.payments)[number]): string {
+		const account = payment.accountName ?? 'kas/rekening';
+		const direction = debt.type === 'piutang' ? 'berkurang' : 'bertambah';
+		const reopened = dueState.kind === 'paid' ? ', dan statusnya kembali belum lunas' : '';
+		return (
+			`Pembayaran ${formatRupiah(payment.amount)} tanggal ${formatDate(payment.date)} akan dihapus ` +
+			`dari riwayat dan transaksinya dibatalkan. Saldo ${account} ${direction} ` +
+			`${formatRupiah(payment.amount)}. Sisa tagihan kembali menjadi ` +
+			`${formatRupiah(debt.remainingAmount + payment.amount)}${reopened}.`
+		);
+	}
+
+	function promptReversal(payment: (typeof data.payments)[number]) {
+		pageError = null;
+		success = null;
+		reversalTarget = payment;
+	}
+
+	async function handleReversePayment() {
+		if (!reversalTarget) return;
+		reversing = true;
+		pageError = null;
+		success = null;
+		try {
+			const response = await fetch(`/api/debts/${debt.id}/payments/${reversalTarget.id}`, {
+				method: 'DELETE'
+			});
+			const result = (await response.json()) as { error?: string; message?: string };
+			if (!response.ok) {
+				pageError = result.error || 'Pembayaran belum dapat dibatalkan.';
+				return;
+			}
+			success = result.message ?? 'Pembayaran dibatalkan.';
+			await invalidateAll();
+		} catch (err) {
+			console.error(err);
+			pageError = 'Tidak dapat terhubung ke server. Pembayaran belum dibatalkan.';
+		} finally {
+			reversing = false;
+			reversalTarget = null;
+		}
+	}
+
 	// Open payment modal
 	function openPaymentModal() {
 		error = null;
 		success = null;
+		pageError = null;
 		paymentAmount = debt.remainingAmount;
 		paymentDate = todayInJakarta();
 		paymentAccount = '';
@@ -215,6 +271,9 @@
 	{#if success}
 		<OperationStatus kind="success" message={success} ondismiss={() => (success = null)} />
 	{/if}
+	{#if pageError}
+		<OperationStatus kind="error" message={pageError} ondismiss={() => (pageError = null)} />
+	{/if}
 
 	<!-- Amount Cards -->
 	<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -335,10 +394,10 @@
 			{#if payments.length > 0}
 				<div class="space-y-3">
 					{#each payments as payment (payment.id)}
-						<div class="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-							<div class="flex items-center gap-3">
+						<div class="flex items-center justify-between gap-3 p-3 bg-muted/30 rounded-lg">
+							<div class="flex min-w-0 items-center gap-3">
 								<div
-									class="w-8 h-8 rounded-full flex items-center justify-center {debt.type ===
+									class="w-8 h-8 shrink-0 rounded-full flex items-center justify-center {debt.type ===
 									'piutang'
 										? 'bg-green-100'
 										: 'bg-red-100'}"
@@ -347,18 +406,32 @@
 										class="w-4 h-4 {debt.type === 'piutang' ? 'text-green-600' : 'text-red-600'}"
 									/>
 								</div>
-								<div>
+								<div class="min-w-0">
 									<p class="text-sm font-medium">{formatRupiah(payment.amount)}</p>
-									<p class="text-xs text-muted-foreground">{formatDate(payment.date)}</p>
+									<p class="text-xs text-muted-foreground">
+										{formatDate(payment.date)}{payment.accountName
+											? ` · ${payment.accountName}`
+											: ''}
+									</p>
+									{#if payment.notes}
+										<p class="truncate text-xs text-muted-foreground" title={payment.notes}>
+											{payment.notes}
+										</p>
+									{/if}
 								</div>
 							</div>
-							{#if payment.notes}
-								<p
-									class="text-xs text-muted-foreground max-w-[120px] truncate"
-									title={payment.notes}
+							{#if debt.isActive}
+								<button
+									type="button"
+									onclick={() => promptReversal(payment)}
+									disabled={reversing}
+									class="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+									aria-label={`Batalkan pembayaran ${formatRupiah(payment.amount)} tanggal ${formatDate(payment.date)}`}
 								>
-									{payment.notes}
-								</p>
+									<Undo2 class="h-4 w-4" aria-hidden="true" />
+									<span class="sm:hidden">Batalkan</span>
+									<span class="hidden sm:inline">Batalkan pembayaran</span>
+								</button>
 							{/if}
 						</div>
 					{/each}
@@ -507,3 +580,29 @@
 		</div>
 	</form>
 </Dialog>
+
+<!-- Payment Reversal Confirmation -->
+<AlertDialog
+	open={reversalTarget !== null}
+	closeOnExternalClick={!reversing}
+	onopenchange={(open) => !open && !reversing && (reversalTarget = null)}
+>
+	<AlertDialogTitle>Batalkan pembayaran?</AlertDialogTitle>
+	{#if reversalTarget}
+		<AlertDialogDescription>{reversalEffect(reversalTarget)}</AlertDialogDescription>
+		<p class="mt-3 text-sm text-muted-foreground">
+			{debt.kind === 'loan'
+				? 'Pinjamannya tetap tercatat.'
+				: debt.type === 'piutang'
+					? 'Pendapatan yang dicatat saat piutang dibuat tidak berubah.'
+					: 'Beban yang dicatat saat utang dibuat tidak berubah.'}
+			Catat ulang pembayaran yang benar bila perlu.
+		</p>
+	{/if}
+	<div class="mt-6 flex gap-3">
+		<AlertDialogCancel disabled={reversing}>Kembali</AlertDialogCancel>
+		<AlertDialogAction onclick={handleReversePayment} loading={reversing}>
+			{reversing ? 'Membatalkan…' : 'Ya, batalkan'}
+		</AlertDialogAction>
+	</div>
+</AlertDialog>

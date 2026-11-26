@@ -60,6 +60,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			amount: p.amount,
 			date: p.date,
 			accountId: p.accountId,
+			// The account the payment moved through (it may since be deactivated).
+			accountName: accounts.find((account) => account.id === p.accountId)?.name ?? null,
 			notes: p.notes,
 			createdAt: p.createdAt
 		}));

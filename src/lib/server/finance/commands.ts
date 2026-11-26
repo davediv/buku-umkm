@@ -555,10 +555,17 @@ export function createFinancialMutationService(
 		]);
 		const canonicalDebt = requirePersisted(updatedDebt, 'Pembayaran sebelumnya tidak tersedia');
 		const payment = canonicalDebt.payments.find((item) => item.id === result.paymentId);
+		if (!payment) {
+			throw new FinanceError(
+				'Pembayaran dari permintaan ini sudah dibatalkan',
+				409,
+				'PAYMENT_REVERSED'
+			);
+		}
 		return {
 			entity: {
 				debt: canonicalDebt,
-				payment: requirePersisted(payment, 'Pembayaran sebelumnya tidak tersedia'),
+				payment,
 				transaction: requirePersisted(
 					paymentTransaction,
 					'Transaksi pembayaran sebelumnya tidak tersedia'
@@ -664,6 +671,49 @@ export function createFinancialMutationService(
 		};
 	}
 
+	/**
+	 * Takes back a payment recorded by mistake: removes it from the debt's history,
+	 * soft-deletes its transaction, reverses its balance effect and reopens the debt.
+	 * Trade debts keep their revenue or expense, which was recognised on the debt date.
+	 */
+	async function reverseDebtPayment(
+		userId: string,
+		debtId: string,
+		paymentId: string
+	): Promise<DebtRecord> {
+		const existing = await repository.findDebt(userId, debtId);
+		if (!existing) throw new FinanceError('Hutang/piutang tidak ditemukan', 404, 'NOT_FOUND');
+		const payment = existing.payments.find((item) => item.id === paymentId);
+		if (!payment) {
+			throw new FinanceError(
+				'Pembayaran tidak ditemukan atau sudah dibatalkan',
+				404,
+				'PAYMENT_NOT_FOUND'
+			);
+		}
+		// Only a movement that still counts in the books has a balance effect to undo.
+		const movement = payment.transactionId
+			? await repository.findTransaction(userId, payment.transactionId)
+			: undefined;
+		await repository.reverseDebtPaymentAtomic({
+			userId,
+			debtId,
+			paymentId,
+			amount: payment.amount,
+			movement: movement
+				? {
+						transactionId: movement.id,
+						accountId: movement.accountId,
+						balanceDelta: -balanceEffect(movement.type, movement.amount)
+					}
+				: null
+		});
+		return requirePersisted(
+			await repository.findDebt(userId, debtId),
+			'Hutang/piutang gagal dimuat setelah pembayaran dibatalkan'
+		);
+	}
+
 	return {
 		createTransaction,
 		updateTransaction,
@@ -672,6 +722,7 @@ export function createFinancialMutationService(
 		createDebt,
 		updateDebt,
 		deleteDebt,
-		recordDebtPayment
+		recordDebtPayment,
+		reverseDebtPayment
 	};
 }

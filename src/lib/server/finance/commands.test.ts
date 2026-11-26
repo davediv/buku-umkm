@@ -125,7 +125,8 @@ function createRepository() {
 		}),
 		updateDebt: vi.fn(),
 		deleteDebtAtomic: vi.fn(),
-		recordDebtPaymentAtomic: vi.fn()
+		recordDebtPaymentAtomic: vi.fn(),
+		reverseDebtPaymentAtomic: vi.fn()
 	} satisfies FinanceRepository;
 
 	return { repository, accounts, transactions, debts };

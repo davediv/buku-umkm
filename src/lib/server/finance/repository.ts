@@ -37,8 +37,21 @@ export type NewPayment = typeof debtPayment.$inferInsert;
 /** The cash movement that pays out or receives a loan's principal. */
 export type LoanPrincipal = { entry: NewTransaction; balanceDelta: number };
 
-/** Undoes a loan's principal movement when the loan is deleted. */
-export type PrincipalReversal = { transactionId: string; accountId: string; balanceDelta: number };
+/**
+ * Undoes a cash movement: soft-deletes its transaction and applies `balanceDelta` (the
+ * opposite of its original effect) to the account it moved through.
+ */
+export type MovementReversal = { transactionId: string; accountId: string; balanceDelta: number };
+
+/** Takes back one debt payment, restoring what the debt still owes. */
+export type PaymentReversal = {
+	userId: string;
+	debtId: string;
+	paymentId: string;
+	amount: number;
+	/** The payment's cash movement, or null when it no longer counts in the books. */
+	movement: MovementReversal | null;
+};
 
 export interface FinanceRepository {
 	findCommand(userId: string, idempotencyKey: string): Promise<CommandRecord | undefined>;
@@ -79,7 +92,7 @@ export interface FinanceRepository {
 	deleteDebtAtomic(
 		userId: string,
 		debtId: string,
-		principal: PrincipalReversal | null
+		principal: MovementReversal | null
 	): Promise<void>;
 	recordDebtPaymentAtomic(input: {
 		command: StoredCommand;
@@ -87,6 +100,7 @@ export interface FinanceRepository {
 		entry: NewTransaction;
 		balanceDelta: number;
 	}): Promise<void>;
+	reverseDebtPaymentAtomic(input: PaymentReversal): Promise<void>;
 }
 
 function adjustBalance(db: SQLiteDb, userId: string, accountId: string, delta: number) {
@@ -94,6 +108,58 @@ function adjustBalance(db: SQLiteDb, userId: string, accountId: string, delta: n
 		.update(chartOfAccount)
 		.set({ balance: sql`${chartOfAccount.balance} + ${delta}` })
 		.where(and(eq(chartOfAccount.userId, userId), eq(chartOfAccount.id, accountId)));
+}
+
+function softDeleteTransaction(db: SQLiteDb, userId: string, transactionId: string) {
+	return db
+		.update(transaction)
+		.set({ isActive: false })
+		.where(and(eq(transaction.userId, userId), eq(transaction.id, transactionId)));
+}
+
+function reverseMovement(db: SQLiteDb, userId: string, movement: MovementReversal) {
+	return [
+		softDeleteTransaction(db, userId, movement.transactionId),
+		adjustBalance(db, userId, movement.accountId, movement.balanceDelta)
+	];
+}
+
+/** SQL condition: the transaction exists for the user and still counts in the books. */
+function transactionIsActive(userId: string, transactionId: string) {
+	return sql`exists (select 1 from ${transaction} where ${and(
+		eq(transaction.userId, userId),
+		eq(transaction.id, transactionId),
+		eq(transaction.isActive, true)
+	)})`;
+}
+
+/** Explains why a payment reversal guard failed, from the state after the abort. */
+async function paymentReversalRejection(
+	db: SQLiteDb,
+	{ userId, debtId, paymentId }: PaymentReversal
+) {
+	const [current] = await db
+		.select({ id: debtPayment.id })
+		.from(debtPayment)
+		.where(
+			and(
+				eq(debtPayment.userId, userId),
+				eq(debtPayment.debtId, debtId),
+				eq(debtPayment.id, paymentId)
+			)
+		);
+	if (!current) {
+		return new FinanceError(
+			'Pembayaran tidak ditemukan atau sudah dibatalkan',
+			404,
+			'PAYMENT_NOT_FOUND'
+		);
+	}
+	return new FinanceError(
+		'Catatan pembayaran berubah saat dibatalkan. Muat ulang halaman, lalu coba lagi.',
+		409,
+		'PAYMENT_CHANGED'
+	);
 }
 
 /** Explains why a payment batch guard failed, from the debt's state after the abort. */
@@ -178,13 +244,7 @@ export function createD1FinanceRepository(db: SQLiteDb): FinanceRepository {
 			]);
 		},
 		async deleteTransactionAtomic(userId, transactionId, accountId, balanceDelta) {
-			await runBatch(db, [
-				db
-					.update(transaction)
-					.set({ isActive: false })
-					.where(and(eq(transaction.userId, userId), eq(transaction.id, transactionId))),
-				adjustBalance(db, userId, accountId, balanceDelta)
-			]);
+			await runBatch(db, reverseMovement(db, userId, { transactionId, accountId, balanceDelta }));
 		},
 		async createTransferAtomic({ command: commandRecord, source, destination, amount }) {
 			const userId = commandRecord.userId;
@@ -279,17 +339,7 @@ export function createD1FinanceRepository(db: SQLiteDb): FinanceRepository {
 						.update(debt)
 						.set({ isActive: false })
 						.where(and(eq(debt.userId, userId), eq(debt.id, debtId))),
-					...(principal
-						? [
-								db
-									.update(transaction)
-									.set({ isActive: false })
-									.where(
-										and(eq(transaction.userId, userId), eq(transaction.id, principal.transactionId))
-									),
-								adjustBalance(db, userId, principal.accountId, principal.balanceDelta)
-							]
-						: [])
+					...(principal ? reverseMovement(db, userId, principal) : [])
 				]);
 			} catch (error) {
 				if (isGuardFailure(error)) throw await deleteRejection(db, userId, debtId);
@@ -325,6 +375,46 @@ export function createD1FinanceRepository(db: SQLiteDb): FinanceRepository {
 				]);
 			} catch (error) {
 				if (isGuardFailure(error)) throw await paymentRejection(db, userId, payment.debtId);
+				throw error;
+			}
+		},
+		async reverseDebtPaymentAtomic(reversal) {
+			const { userId, debtId, paymentId, amount, movement } = reversal;
+			// The payment still exists (so it is never reversed twice), its debt is still
+			// recorded, and its movement still counts in the books.
+			const conditions = [
+				sql`exists (select 1 from ${debtPayment} where ${and(
+					eq(debtPayment.userId, userId),
+					eq(debtPayment.debtId, debtId),
+					eq(debtPayment.id, paymentId),
+					eq(debtPayment.amount, amount)
+				)})`,
+				sql`exists (select 1 from ${debt} where ${and(
+					eq(debt.userId, userId),
+					eq(debt.id, debtId),
+					eq(debt.isActive, true),
+					gte(debt.paidAmount, amount)
+				)})`,
+				...(movement ? [transactionIsActive(userId, movement.transactionId)] : [])
+			];
+			try {
+				await runBatch(db, [
+					batchGuard(db, sql.join(conditions, sql` and `)),
+					db
+						.delete(debtPayment)
+						.where(and(eq(debtPayment.userId, userId), eq(debtPayment.id, paymentId))),
+					...(movement ? reverseMovement(db, userId, movement) : []),
+					db
+						.update(debt)
+						.set({
+							paidAmount: sql`${debt.paidAmount} - ${amount}`,
+							remainingAmount: sql`${debt.remainingAmount} + ${amount}`,
+							status: sql`CASE WHEN ${debt.status} = 'paid' THEN 'active' ELSE ${debt.status} END`
+						})
+						.where(and(eq(debt.userId, userId), eq(debt.id, debtId)))
+				]);
+			} catch (error) {
+				if (isGuardFailure(error)) throw await paymentReversalRejection(db, reversal);
 				throw error;
 			}
 		}
