@@ -18,7 +18,9 @@ import {
 	cashMovementRows,
 	profitAndLossRows,
 	profitAndLossTotals,
-	tradeDebtRows
+	reportPeriodRanges,
+	tradeDebtRows,
+	type ReportPeriod
 } from './ledger';
 
 // ============================================================================
@@ -911,36 +913,13 @@ export const dashboardQueries = {
 	async getOverview(
 		db: SQLiteDb,
 		userId: string,
-		period: 'daily' | 'weekly' | 'monthly' = 'monthly'
+		period: 'daily' | 'weekly' | 'monthly' = 'monthly',
+		today = todayInJakarta()
 	) {
-		const now = new Date();
-		const today = now.toISOString().split('T')[0];
-		const tomorrow = new Date(now);
-		tomorrow.setDate(tomorrow.getDate() + 1);
-		const tomorrowDate = tomorrow.toISOString().split('T')[0];
-		const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-		const endOfMonth =
-			now.getMonth() === 11
-				? `${now.getFullYear() + 1}-01-01`
-				: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
-		const startOfYear = `${now.getFullYear()}-01-01`;
-
-		let periodStart = startOfMonth;
-		let periodEnd = endOfMonth;
-		if (period === 'daily') {
-			periodStart = today;
-			periodEnd = tomorrowDate;
-		} else if (period === 'weekly') {
-			const dayOfWeek = now.getDay();
-			const monday = new Date(now);
-			monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-			const nextMonday = new Date(monday);
-			nextMonday.setDate(monday.getDate() + 7);
-			periodStart = monday.toISOString().split('T')[0];
-			periodEnd = nextMonday.toISOString().split('T')[0];
-		}
-
-		const startOfNextYear = `${now.getFullYear() + 1}-01-01`;
+		const day = reportPeriodRanges('daily', today).current;
+		const month = reportPeriodRanges('monthly', today).current;
+		const year = reportPeriodRanges('yearly', today).current;
+		const selected = reportPeriodRanges(period, today).current;
 		// Every column needs its own alias: Drizzle maps D1 batch rows by column name, and
 		// unaliased sums with identical SQL text collapse into one key, shifting every later
 		// value into the wrong field.
@@ -962,10 +941,10 @@ export const dashboardQueries = {
 			.from(chartOfAccount)
 			.where(eq(chartOfAccount.userId, userId));
 		const profitAndLoss = profitAndLossTotals(db, userId, {
-			month: { start: startOfMonth, end: endOfMonth },
-			year: { start: startOfYear, end: startOfNextYear },
-			today: { start: today, end: tomorrowDate },
-			period: { start: periodStart, end: periodEnd }
+			month,
+			year,
+			today: day,
+			period: selected
 		});
 		const debtQuery = db
 			.select({
@@ -1023,8 +1002,8 @@ export const dashboardQueries = {
 			},
 			periodStats: {
 				period,
-				startDate: periodStart,
-				endDate: periodEnd,
+				startDate: selected.start,
+				endDate: selected.end,
 				...totals.period
 			},
 			todayStats: totals.today,
@@ -1038,15 +1017,17 @@ export const dashboardQueries = {
 	/**
 	 * Get cash flow data for chart
 	 */
-	async getCashFlow(db: SQLiteDb, userId: string, months = 6) {
+	async getCashFlow(db: SQLiteDb, userId: string, months = 6, today = todayInJakarta()) {
 		const monthCount = Math.max(0, Math.floor(months));
 		if (monthCount === 0) return [];
 
-		const now = new Date();
-		const firstMonth = new Date(now.getFullYear(), now.getMonth() - monthCount + 1, 1);
-		const monthAfterLast = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-		const toDateString = (date: Date) =>
-			`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+		// Month arithmetic in UTC on the Jakarta calendar month, independent of server time.
+		const [currentYear, currentMonth] = today.split('-').map(Number);
+		const monthStart = (offset: number) =>
+			new Date(Date.UTC(currentYear, currentMonth - 1 + offset, 1));
+		const toDateString = (date: Date) => date.toISOString().slice(0, 10);
+		const firstMonth = monthStart(1 - monthCount);
+		const monthAfterLast = monthStart(1);
 		const monthExpression = sql<string>`substr(${transaction.date}, 1, 7)`;
 
 		const rows = await db
@@ -1076,9 +1057,9 @@ export const dashboardQueries = {
 		}
 
 		return Array.from({ length: monthCount }, (_, index) => {
-			const date = new Date(now.getFullYear(), now.getMonth() - monthCount + index + 1, 1);
-			const year = date.getFullYear();
-			const month = date.getMonth() + 1;
+			const date = monthStart(index + 1 - monthCount);
+			const year = date.getUTCFullYear();
+			const month = date.getUTCMonth() + 1;
 			const label = `${year}-${String(month).padStart(2, '0')}`;
 			const total = totals.get(label) ?? { income: 0, expense: 0 };
 
@@ -1094,54 +1075,16 @@ export const dashboardQueries = {
 	},
 
 	/**
-	 * Get profit/loss breakdown by category for a period
-	 * period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'
+	 * Revenue and expense by category for the period containing `today`, plus one line
+	 * each for credit sales and credit purchases.
 	 */
 	getProfitLossByCategory(
 		db: SQLiteDb,
 		userId: string,
-		period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' = 'monthly'
+		period: ReportPeriod = 'monthly',
+		today = todayInJakarta()
 	) {
-		const now = new Date();
-		let startDate: string;
-		let endDate: string;
-
-		if (period === 'daily') {
-			startDate = now.toISOString().split('T')[0];
-			const tomorrow = new Date(now);
-			tomorrow.setDate(tomorrow.getDate() + 1);
-			endDate = tomorrow.toISOString().split('T')[0];
-		} else if (period === 'weekly') {
-			const dayOfWeek = now.getDay();
-			const monday = new Date(now);
-			monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-			startDate = monday.toISOString().split('T')[0];
-			const sunday = new Date(monday);
-			sunday.setDate(sunday.getDate() + 6);
-			const nextDay = new Date(sunday);
-			nextDay.setDate(nextDay.getDate() + 1);
-			endDate = nextDay.toISOString().split('T')[0];
-		} else if (period === 'monthly') {
-			startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-			endDate =
-				now.getMonth() === 11
-					? `${now.getFullYear() + 1}-01-01`
-					: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
-		} else if (period === 'quarterly') {
-			// Calculate current quarter
-			const currentQuarter = Math.floor(now.getMonth() / 3);
-			const quarterStartMonth = currentQuarter * 3 + 1;
-			const quarterEndMonth = quarterStartMonth + 3;
-			startDate = `${now.getFullYear()}-${String(quarterStartMonth).padStart(2, '0')}-01`;
-			endDate =
-				quarterEndMonth > 12
-					? `${now.getFullYear() + 1}-01-01`
-					: `${now.getFullYear()}-${String(quarterEndMonth).padStart(2, '0')}-01`;
-		} else {
-			// yearly
-			startDate = `${now.getFullYear()}-01-01`;
-			endDate = `${now.getFullYear() + 1}-01-01`;
-		}
+		const { start: startDate, end: endDate } = reportPeriodRanges(period, today).current;
 
 		const byCategory = (type: 'income' | 'expense') =>
 			db
@@ -1225,91 +1168,15 @@ export const dashboardQueries = {
 	},
 
 	/**
-	 * Get previous period stats for comparison
-	 * period: 'daily' | 'weekly' | 'monthly' | 'yearly'
+	 * Accrual totals for the period containing `today` and the period before it.
 	 */
 	getPreviousPeriodStats(
 		db: SQLiteDb,
 		userId: string,
-		period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' = 'monthly'
+		period: ReportPeriod = 'monthly',
+		today = todayInJakarta()
 	) {
-		const now = new Date();
-		let startDate: string;
-		let endDate: string;
-		let prevStartDate: string;
-		let prevEndDate: string;
-
-		if (period === 'daily') {
-			// Yesterday
-			const yesterday = new Date(now);
-			yesterday.setDate(yesterday.getDate() - 1);
-			startDate = yesterday.toISOString().split('T')[0];
-			endDate = now.toISOString().split('T')[0];
-
-			const dayBeforeYesterday = new Date(yesterday);
-			dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 1);
-			prevStartDate = dayBeforeYesterday.toISOString().split('T')[0];
-			prevEndDate = startDate;
-		} else if (period === 'weekly') {
-			// Last week
-			const dayOfWeek = now.getDay();
-			const monday = new Date(now);
-			monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-			startDate = monday.toISOString().split('T')[0];
-
-			const lastMonday = new Date(monday);
-			lastMonday.setDate(lastMonday.getDate() - 7);
-			prevStartDate = lastMonday.toISOString().split('T')[0];
-
-			const lastSunday = new Date(lastMonday);
-			lastSunday.setDate(lastSunday.getDate() + 6);
-			prevEndDate = lastSunday.toISOString().split('T')[0];
-
-			// Current week end
-			const sunday = new Date(monday);
-			sunday.setDate(sunday.getDate() + 6);
-			endDate = sunday.toISOString().split('T')[0];
-		} else if (period === 'monthly') {
-			// Last month
-			startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-			endDate =
-				now.getMonth() === 11
-					? `${now.getFullYear() + 1}-01-01`
-					: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
-
-			const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
-			const lastMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-			prevStartDate = `${lastMonthYear}-${String(lastMonth + 1).padStart(2, '0')}-01`;
-			prevEndDate = startDate;
-		} else if (period === 'quarterly') {
-			// Last quarter
-			const currentQuarter = Math.floor(now.getMonth() / 3);
-			const quarterStartMonth = currentQuarter * 3 + 1;
-			const quarterEndMonth = quarterStartMonth + 3;
-			startDate = `${now.getFullYear()}-${String(quarterStartMonth).padStart(2, '0')}-01`;
-			endDate =
-				quarterEndMonth > 12
-					? `${now.getFullYear() + 1}-01-01`
-					: `${now.getFullYear()}-${String(quarterEndMonth).padStart(2, '0')}-01`;
-
-			// Previous quarter
-			const prevQuarter = currentQuarter - 1;
-			const prevQuarterYear = prevQuarter < 0 ? now.getFullYear() - 1 : now.getFullYear();
-			const prevQuarterStartMonth = (prevQuarter < 0 ? 3 : prevQuarter) * 3 + 1;
-			prevStartDate = `${prevQuarterYear}-${String(prevQuarterStartMonth).padStart(2, '0')}-01`;
-			prevEndDate = startDate;
-		} else {
-			// Last year
-			startDate = `${now.getFullYear()}-01-01`;
-			endDate = `${now.getFullYear() + 1}-01-01`;
-			prevStartDate = `${now.getFullYear() - 1}-01-01`;
-			prevEndDate = startDate;
-		}
-
-		const totals = profitAndLossTotals(db, userId, {
-			current: { start: startDate, end: endDate },
-			previous: { start: prevStartDate, end: prevEndDate }
-		});
+		const totals = profitAndLossTotals(db, userId, reportPeriodRanges(period, today));
 		return (async () => {
 			const [transactionRows, tradeDebtTotals] = await db.batch([
 				totals.transactions,

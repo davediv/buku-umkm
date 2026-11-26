@@ -52,6 +52,62 @@ export type DateRange = { start: string; end: string };
 
 export type ProfitAndLoss = { income: number; expense: number; profit: number };
 
+export type ReportPeriod = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+
+function addDays(date: string, days: number): string {
+	const value = new Date(`${date}T00:00:00Z`);
+	value.setUTCDate(value.getUTCDate() + days);
+	return value.toISOString().slice(0, 10);
+}
+
+/** First day of a month; `month` is 1-based and may run past either end of the year. */
+function monthStart(year: number, month: number): string {
+	return new Date(Date.UTC(year, month - 1, 1)).toISOString().slice(0, 10);
+}
+
+/**
+ * The period that contains `today` (an ISO date in Asia/Jakarta, see todayInJakarta)
+ * and the one before it. Weeks run Monday to Sunday.
+ */
+export function reportPeriodRanges(
+	period: ReportPeriod,
+	today: string
+): { current: DateRange; previous: DateRange } {
+	const [year, month] = today.split('-').map(Number);
+	switch (period) {
+		case 'daily':
+			return {
+				current: { start: today, end: addDays(today, 1) },
+				previous: { start: addDays(today, -1), end: today }
+			};
+		case 'weekly': {
+			const daysSinceMonday = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7;
+			const monday = addDays(today, -daysSinceMonday);
+			return {
+				current: { start: monday, end: addDays(monday, 7) },
+				previous: { start: addDays(monday, -7), end: monday }
+			};
+		}
+		case 'monthly':
+			return {
+				current: { start: monthStart(year, month), end: monthStart(year, month + 1) },
+				previous: { start: monthStart(year, month - 1), end: monthStart(year, month) }
+			};
+		case 'quarterly': {
+			const firstMonth = Math.floor((month - 1) / 3) * 3 + 1;
+			return {
+				current: { start: monthStart(year, firstMonth), end: monthStart(year, firstMonth + 3) },
+				previous: { start: monthStart(year, firstMonth - 3), end: monthStart(year, firstMonth) }
+			};
+		}
+		case 'yearly':
+			return {
+				current: { start: monthStart(year, 1), end: monthStart(year + 1, 1) },
+				previous: { start: monthStart(year - 1, 1), end: monthStart(year, 1) }
+			};
+	}
+}
+
 function sumsByRange<K extends string>(
 	ranges: Record<K, DateRange>,
 	columns: { date: SQLiteColumn; amount: SQLiteColumn; type: SQLiteColumn },

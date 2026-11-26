@@ -174,6 +174,12 @@ describe('profit-and-loss totals on D1', () => {
 				current: { income: 700, expense: 200, profit: 500 },
 				previous: { income: 1_850, expense: 1_000, profit: 850 }
 			});
+			// "Hari ini" is today against yesterday, matching the daily category lines.
+			const daily = await dashboardQueries.getPreviousPeriodStats(db, userId, 'daily');
+			expect(daily).toEqual({
+				current: { income: 700, expense: 200, profit: 500 },
+				previous: { income: 600, expense: 100, profit: 500 }
+			});
 		});
 	});
 

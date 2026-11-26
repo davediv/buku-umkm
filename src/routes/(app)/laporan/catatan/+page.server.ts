@@ -3,6 +3,8 @@ import { getDb } from '$lib/server/db';
 import { businessProfileQueries } from '$lib/server/db/queries';
 import { redirect } from '@sveltejs/kit';
 import { getIndonesianMonthName } from '$lib/tax/config';
+import { reportPeriodRanges } from '$lib/server/db/queries/ledger';
+import { todayInJakarta } from '$lib/shared/dates';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Check authentication
@@ -24,49 +26,22 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		// Get business profile
 		const profile = await businessProfileQueries.findByUserId(db, userId);
 
-		// Get current date for reporting period
-		const now = new Date();
-		const currentYear = now.getFullYear();
-		const currentMonth = now.getMonth() + 1;
-
-		// Calculate period label
-		const getPeriodLabel = (p: string) => {
-			const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
-
-			const labels: Record<string, string> = {
-				monthly: `${getIndonesianMonthName(currentMonth)} ${currentYear}`,
-				quarterly: `Triwulan ${currentQuarter} ${currentYear}`,
-				yearly: `Tahun ${currentYear}`
-			};
-			return labels[p] || `${getIndonesianMonthName(currentMonth)} ${currentYear}`;
+		// Reporting period, on the Jakarta calendar like every other report
+		const today = todayInJakarta();
+		const [currentYear, currentMonth] = today.split('-').map(Number);
+		const currentQuarter = Math.floor((currentMonth - 1) / 3) + 1;
+		const labels: Record<PeriodType, string> = {
+			monthly: `${getIndonesianMonthName(currentMonth)} ${currentYear}`,
+			quarterly: `Triwulan ${currentQuarter} ${currentYear}`,
+			yearly: `Tahun ${currentYear}`
 		};
-
-		// Calculate start/end dates based on period
-		let startDate: string;
-		let endDate: string;
-		if (period === 'monthly') {
-			startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
-			const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
-			const nextYear = currentMonth === 12 ? currentYear + 1 : currentYear;
-			endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
-		} else if (period === 'quarterly') {
-			const currentQuarter = Math.floor(now.getMonth() / 3);
-			const quarterStartMonth = currentQuarter * 3 + 1;
-			startDate = `${currentYear}-${String(quarterStartMonth).padStart(2, '0')}-01`;
-			const quarterEndMonth = quarterStartMonth + 3;
-			endDate =
-				quarterEndMonth > 12
-					? `${currentYear + 1}-01-01`
-					: `${currentYear}-${String(quarterEndMonth).padStart(2, '0')}-01`;
-		} else {
-			startDate = `${currentYear}-01-01`;
-			endDate = `${currentYear + 1}-01-01`;
-		}
-
-		// endDate is exclusive; the notes name the period's last day.
-		const lastDay = new Date(`${endDate}T00:00:00Z`);
+		const getPeriodLabel = (p: PeriodType) => labels[p];
+		const range = reportPeriodRanges(period, today).current;
+		const startDate = range.start;
+		// The range end is exclusive; the notes name the period's last day.
+		const lastDay = new Date(`${range.end}T00:00:00Z`);
 		lastDay.setUTCDate(lastDay.getUTCDate() - 1);
-		const lastDate = lastDay.toISOString().slice(0, 10);
+		const endDate = lastDay.toISOString().slice(0, 10);
 
 		// Generate accounting policies in Bahasa Indonesia
 		const accountingPolicies = {
@@ -111,7 +86,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			},
 			{
 				title: '6. Periode Pelaporan',
-				content: `Laporan ini mencakup periode ${accountingPolicies.period}, yaitu ${startDate} sampai ${lastDate}.`
+				content: `Laporan ini mencakup periode ${accountingPolicies.period}, yaitu ${startDate} sampai ${endDate}.`
 			}
 		];
 

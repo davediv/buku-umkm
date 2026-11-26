@@ -1,6 +1,8 @@
 import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { dashboardQueries, chartOfAccountQueries } from '$lib/server/db/queries';
+import { reportPeriodRanges, type ReportPeriod } from '$lib/server/db/queries/ledger';
+import { todayInJakarta } from '$lib/shared/dates';
 import { redirect } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -13,21 +15,22 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const db = getDb();
 
 	// Parse period parameter (default: monthly)
-	type Period = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 	const periodParam = url.searchParams.get('period');
-	const period: Period = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'].includes(
+	const period: ReportPeriod = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'].includes(
 		periodParam ?? ''
 	)
-		? (periodParam as Period)
+		? (periodParam as ReportPeriod)
 		: 'monthly';
+	// One "today" for every number on the page, so they all describe the same period.
+	const today = todayInJakarta();
 
 	try {
 		// Run all queries in parallel for performance
 		// Note: getPreviousPeriodStats returns both current and previous period data,
 		// so we use current from it instead of making a separate getPeriodStats call
 		const [categoryBreakdown, previousPeriod, accounts] = await Promise.all([
-			dashboardQueries.getProfitLossByCategory(db, userId, period),
-			dashboardQueries.getPreviousPeriodStats(db, userId, period),
+			dashboardQueries.getProfitLossByCategory(db, userId, period, today),
+			dashboardQueries.getPreviousPeriodStats(db, userId, period, today),
 			chartOfAccountQueries.findAll(db, userId)
 		]);
 
@@ -65,62 +68,20 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		}));
 
 		// Format period label
-		const getPeriodLabel = (p: string) => {
-			const now = new Date();
-			const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
-
-			const labels: Record<string, string> = {
-				daily: 'Hari Ini',
-				weekly: 'Minggu Ini',
-				monthly: 'Bulan Ini',
-				quarterly: `Q${currentQuarter} ${now.getFullYear()}`,
-				yearly: 'Tahun Ini'
-			};
-			return labels[p] || 'Bulan Ini';
+		const [year, month] = today.split('-').map(Number);
+		const labels: Record<ReportPeriod, string> = {
+			daily: 'Hari Ini',
+			weekly: 'Minggu Ini',
+			monthly: 'Bulan Ini',
+			quarterly: `Q${Math.floor((month - 1) / 3) + 1} ${year}`,
+			yearly: 'Tahun Ini'
 		};
-
-		// Calculate start/end dates based on period
-		const now = new Date();
-		let startDate: string;
-		let endDate: string;
-		if (period === 'daily') {
-			startDate = now.toISOString().split('T')[0];
-			const tomorrow = new Date(now);
-			tomorrow.setDate(tomorrow.getDate() + 1);
-			endDate = tomorrow.toISOString().split('T')[0];
-		} else if (period === 'weekly') {
-			const dayOfWeek = now.getDay();
-			const monday = new Date(now);
-			monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-			startDate = monday.toISOString().split('T')[0];
-			const sunday = new Date(monday);
-			sunday.setDate(sunday.getDate() + 6);
-			endDate = sunday.toISOString().split('T')[0];
-		} else if (period === 'monthly') {
-			startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-			endDate =
-				now.getMonth() === 11
-					? `${now.getFullYear() + 1}-01-01`
-					: `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
-		} else if (period === 'quarterly') {
-			// Calculate current quarter
-			const currentQuarter = Math.floor(now.getMonth() / 3);
-			const quarterStartMonth = currentQuarter * 3 + 1;
-			const quarterEndMonth = quarterStartMonth + 3;
-			startDate = `${now.getFullYear()}-${String(quarterStartMonth).padStart(2, '0')}-01`;
-			endDate =
-				quarterEndMonth > 12
-					? `${now.getFullYear() + 1}-01-01`
-					: `${now.getFullYear()}-${String(quarterEndMonth).padStart(2, '0')}-01`;
-		} else {
-			startDate = `${now.getFullYear()}-01-01`;
-			endDate = `${now.getFullYear() + 1}-01-01`;
-		}
+		const { start: startDate, end: endDate } = reportPeriodRanges(period, today).current;
 
 		return {
 			profitLoss: {
 				period,
-				periodLabel: getPeriodLabel(period),
+				periodLabel: labels[period],
 				startDate,
 				endDate,
 				income: currentPeriod.income,
