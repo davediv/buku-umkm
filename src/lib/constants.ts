@@ -7,6 +7,13 @@ export const APP_VERSION = '0.0.1';
 // The largest backup file restore accepts (checked in the browser and on the server).
 export const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
 
+// The largest .zip backup restore takes in one request, photos included. Cloudflare
+// refuses request bodies over 100 MB on Free and Pro zones before the Worker runs.
+export const MAX_BACKUP_ARCHIVE_BYTES = 95 * 1024 * 1024;
+
+// The first entry of a .zip backup: the backup document itself.
+export const BACKUP_DOCUMENT_ENTRY = 'backup.json';
+
 // Business types
 export const BUSINESS_TYPES = [
 	{ value: 'warung_makan', label: 'Warung Makan/Restoran' },

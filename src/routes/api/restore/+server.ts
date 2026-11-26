@@ -2,12 +2,24 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { summarizeError } from '$lib/server/error-summary';
-import { MAX_BACKUP_BYTES, MULTIPART_OVERHEAD_BYTES } from '$lib/server/backup/format';
+import {
+	MAX_BACKUP_ARCHIVE_BYTES,
+	MAX_BACKUP_BYTES,
+	MULTIPART_OVERHEAD_BYTES
+} from '$lib/server/backup/format';
 import { BackupError } from '$lib/server/backup/parse';
-import { parseMultipart, readBodyWithLimit } from '$lib/server/backup/request-body';
-import { restoreBackup } from '$lib/server/backup/restore';
+import {
+	declaredContentLength,
+	parseMultipart,
+	readBodyWithLimit
+} from '$lib/server/backup/request-body';
+import { restoreBackup, restoreBackupArchive } from '$lib/server/backup/restore';
 
 const TOO_LARGE = `Ukuran file backup terlalu besar (maks ${MAX_BACKUP_BYTES / 1024 / 1024} MB)`;
+const ARCHIVE_TOO_LARGE = `Ukuran file backup .zip terlalu besar untuk dipulihkan sekaligus (maks ${MAX_BACKUP_ARCHIVE_BYTES / 1024 / 1024} MB)`;
+/** What browsers send for a .zip file (Windows reports the second). */
+const ZIP_CONTENT_TYPES = ['application/zip', 'application/x-zip-compressed'];
+const RESTORED = 'Data berhasil dipulihkan dari backup';
 
 function failure(error: string, status: number, code = 'INVALID_BACKUP') {
 	return json({ error, code }, { status });
@@ -18,7 +30,7 @@ async function readBackupText(request: Request): Promise<string | Response> {
 	const contentType = request.headers.get('content-type') ?? '';
 	const multipart = contentType.includes('multipart/form-data');
 	if (!multipart && !contentType.includes('application/json')) {
-		return failure('Format permintaan tidak didukung: unggah file backup .json', 415);
+		return failure('Format permintaan tidak didukung: unggah file backup .zip atau .json', 415);
 	}
 
 	const body = await readBodyWithLimit(
@@ -42,6 +54,22 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	}
 
 	try {
+		const contentType = request.headers.get('content-type')?.toLowerCase() ?? '';
+		if (ZIP_CONTENT_TYPES.some((type) => contentType.startsWith(type))) {
+			// The archive streams in as it is read, so its size is refused up front when declared.
+			const declared = declaredContentLength(request);
+			if (declared !== null && declared > MAX_BACKUP_ARCHIVE_BYTES) {
+				return failure(ARCHIVE_TOO_LARGE, 413, 'BACKUP_TOO_LARGE');
+			}
+			if (!request.body) return failure('File backup kosong', 400);
+			const ctx = platform?.ctx;
+			const summary = await restoreBackupArchive(getDb(), locals.user.id, request.body, {
+				receipts: platform?.env?.R2 ?? null,
+				waitUntil: ctx ? (promise) => ctx.waitUntil(promise) : undefined
+			});
+			return json({ success: true, message: RESTORED, summary });
+		}
+
 		const text = await readBackupText(request);
 		if (text instanceof Response) return text;
 
@@ -55,7 +83,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		const summary = await restoreBackup(getDb(), locals.user.id, file, {
 			receipts: platform?.env?.R2 ?? null
 		});
-		return json({ success: true, message: 'Data berhasil dipulihkan dari backup', summary });
+		return json({ success: true, message: RESTORED, summary });
 	} catch (error) {
 		if (error instanceof BackupError) return failure(error.message, error.status, error.code);
 		console.error('Restore failed', summarizeError(error));

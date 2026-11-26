@@ -1,8 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { chartOfAccount, transaction } from '$lib/server/db/schema';
-import { MAX_BACKUP_BYTES } from '$lib/server/backup/format';
+import { chartOfAccount, transaction, transactionPhoto } from '$lib/server/db/schema';
+import {
+	BACKUP_DOCUMENT_ENTRY,
+	MAX_BACKUP_ARCHIVE_BYTES,
+	MAX_BACKUP_BYTES
+} from '$lib/server/backup/format';
 import { createTestD1 } from '$lib/server/testing/d1';
+import { createTestR2, fakeImage } from '$lib/server/testing/r2';
+import { createZipStream } from '$lib/shared/zip';
 
 const dbRef = vi.hoisted(() => ({ current: undefined as unknown }));
 vi.mock('$lib/server/db', () => ({ getDb: () => dbRef.current }));
@@ -59,10 +65,24 @@ function backupFile(transactions = 3) {
 	};
 }
 
-function call(request: Request, user = locals) {
-	return POST({ request, locals: user, platform: undefined } as unknown as Parameters<
-		typeof POST
-	>[0]);
+function call(request: Request, user = locals, platform?: object) {
+	return POST({ request, locals: user, platform } as unknown as Parameters<typeof POST>[0]);
+}
+
+/** A body that fails the test if anything reads it. */
+function unreadableBody() {
+	const state = { pulled: false };
+	// highWaterMark 0: the stream only pulls when someone reads it.
+	const body = new ReadableStream(
+		{
+			pull() {
+				state.pulled = true;
+				throw new Error('the body must not be read');
+			}
+		},
+		{ highWaterMark: 0 }
+	);
+	return { body, state };
 }
 
 async function accountNames() {
@@ -83,17 +103,7 @@ describe('POST /api/restore', () => {
 	});
 
 	it('refuses a declared oversized body without reading it', async () => {
-		let pulled = false;
-		// highWaterMark 0: the stream only pulls when someone reads it.
-		const body = new ReadableStream(
-			{
-				pull() {
-					pulled = true;
-					throw new Error('the body must not be read');
-				}
-			},
-			{ highWaterMark: 0 }
-		);
+		const { body, state } = unreadableBody();
 		const response = await call(
 			new Request('https://buku.test/api/restore', {
 				method: 'POST',
@@ -108,7 +118,44 @@ describe('POST /api/restore', () => {
 
 		expect(response.status).toBe(413);
 		expect(await response.json()).toMatchObject({ code: 'BACKUP_TOO_LARGE' });
-		expect(pulled).toBe(false);
+		expect(state.pulled).toBe(false);
+		expect(await accountNames()).toEqual(['Kas lama']);
+	});
+
+	it('refuses a declared .zip over the archive cap without reading it', async () => {
+		const { body, state } = unreadableBody();
+		const response = await call(
+			new Request('https://buku.test/api/restore', {
+				method: 'POST',
+				body,
+				duplex: 'half',
+				headers: {
+					'content-type': 'application/zip',
+					'content-length': String(MAX_BACKUP_ARCHIVE_BYTES + 1)
+				}
+			} as RequestInit)
+		);
+
+		expect(response.status).toBe(413);
+		expect(await response.json()).toMatchObject({ code: 'BACKUP_TOO_LARGE' });
+		expect(state.pulled).toBe(false);
+		expect(await accountNames()).toEqual(['Kas lama']);
+	});
+
+	it('answers a damaged .zip with the problem, changing nothing', async () => {
+		const response = await call(
+			new Request('https://buku.test/api/restore', {
+				method: 'POST',
+				body: 'PK\u0003\u0004 not really',
+				headers: { 'content-type': 'application/zip' }
+			})
+		);
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toMatchObject({
+			code: 'INVALID_BACKUP',
+			error: expect.stringContaining('Gunakan file .zip asli yang diunduh dari Buku UMKM')
+		});
 		expect(await accountNames()).toEqual(['Kas lama']);
 	});
 
@@ -187,5 +234,53 @@ describe('POST /api/restore', () => {
 		expect(await accountNames()).toEqual(['Kas']);
 		const rows = await harness.db.select().from(transaction).where(eq(transaction.userId, USER));
 		expect(rows).toHaveLength(3);
+	});
+	it('restores an uploaded .zip with its photos', async () => {
+		const file = backupFile(1);
+		const photos = [
+			{
+				id: 'p1',
+				transactionId: 't0',
+				fileName: 'nota.jpg',
+				fileSize: 1,
+				mimeType: 'image/jpeg',
+				r2Key: 'x',
+				image: 'photos/p1.jpg'
+			}
+		];
+		const image = fakeImage('jpg', 2000);
+		const zip = createZipStream([
+			{
+				name: BACKUP_DOCUMENT_ENTRY,
+				data: new TextEncoder().encode(JSON.stringify({ ...file, schemaVersion: '2.3.0', photos })),
+				compress: true
+			},
+			{ name: 'photos/p1.jpg', data: image }
+		]);
+		const r2 = createTestR2();
+
+		const response = await call(
+			new Request('https://buku.test/api/restore', {
+				method: 'POST',
+				body: zip,
+				duplex: 'half',
+				// What Windows browsers report for a .zip.
+				headers: { 'content-type': 'application/x-zip-compressed' }
+			} as RequestInit),
+			locals,
+			{ env: { R2: r2.bucket } }
+		);
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toMatchObject({
+			success: true,
+			summary: { restored: { accounts: 1, transactions: 1, photos: 1 }, photosDropped: 0 }
+		});
+		const [photo] = await harness.db
+			.select()
+			.from(transactionPhoto)
+			.where(eq(transactionPhoto.userId, USER));
+		expect(r2.keysOf(USER)).toEqual([photo.r2Key]);
+		expect(r2.objects.get(photo.r2Key)).toEqual(image);
 	});
 });

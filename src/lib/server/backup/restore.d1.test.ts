@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { and, asc, eq, getTableName } from 'drizzle-orm';
 import {
 	businessProfile,
@@ -19,11 +19,19 @@ import { createD1FinanceRepository } from '$lib/server/finance/repository';
 import { createFinancialMutationService } from '$lib/server/finance/commands';
 import { getBalanceSheetAsOf } from '$lib/server/reports/balance-sheet';
 import { getRecordedMonthlyRevenue } from '$lib/tax/service';
+import { MAX_RECEIPT_BYTES } from '$lib/server/photos/receipts';
 import { createTestD1 } from '$lib/server/testing/d1';
+import { createTestR2, fakeImage } from '$lib/server/testing/r2';
+import { createZipStream } from '$lib/shared/zip';
 import { buildBackupDocument } from './export';
 import { BackupError } from './parse';
-import { BACKUP_SCHEMA_VERSION, MAX_RESTORE_ROWS } from './format';
-import { restoreBackup, type RestoreOptions } from './restore';
+import { BACKUP_DOCUMENT_ENTRY, BACKUP_SCHEMA_VERSION, MAX_RESTORE_ROWS } from './format';
+import {
+	restoreBackup,
+	restoreBackupArchive,
+	type ArchiveRestoreOptions,
+	type RestoreOptions
+} from './restore';
 
 let harness: Awaited<ReturnType<typeof createTestD1>>;
 
@@ -864,5 +872,334 @@ describe('restoreBackup refuses an invalid file and changes nothing', () => {
 		}));
 		const failure = await expectRejected(userId, { ...file, categories }, /terlalu besar/);
 		expect(failure.status).toBe(413);
+	});
+});
+
+describe('restoreBackupArchive', () => {
+	const encoder = new TextEncoder();
+
+	/** `file` as a .zip backup, with `images` (entry name, bytes) after backup.json. */
+	async function archiveOf(file: unknown, images: Array<[string, Uint8Array<ArrayBuffer>]> = []) {
+		const zip = createZipStream([
+			{ name: BACKUP_DOCUMENT_ENTRY, data: encoder.encode(JSON.stringify(file)), compress: true },
+			...images.map(([name, data]) => ({ name, data }))
+		]);
+		return new Uint8Array(await new Response(zip).arrayBuffer());
+	}
+
+	function restoreArchive(
+		userId: string,
+		zip: Uint8Array<ArrayBuffer>,
+		options: ArchiveRestoreOptions = {}
+	) {
+		return restoreBackupArchive(harness.db, userId, new Response(zip).body!, {
+			decryptNpwp,
+			...options
+		});
+	}
+
+	const failureOf = (work: Promise<unknown>) =>
+		work.then(
+			() => null,
+			(error: unknown) => error as Error
+		);
+
+	/** Two transactions and the given photos: [old id, transaction t0/t1, image entry]. */
+	function photoBook(photos: Array<[string, string, string | null]>) {
+		return {
+			format: 'buku-umkm-backup',
+			schemaVersion: '2.3.0',
+			businessProfiles: [],
+			onboardingState: null,
+			accounts: [
+				{ id: 'a1', code: '1101', name: 'Kas', type: 'asset', balance: 20_000, openingBalance: 0 }
+			],
+			categories: [],
+			transactions: ['t0', 't1'].map((id) => ({
+				id,
+				date: '2026-03-01',
+				type: 'income',
+				amount: 10_000,
+				accountId: 'a1'
+			})),
+			debts: [],
+			debtPayments: [],
+			taxProfiles: [],
+			taxRecords: [],
+			templates: [],
+			photos: photos.map(([id, transactionId, image]) => ({
+				id,
+				transactionId,
+				fileName: `${id}.jpg`,
+				fileSize: 1,
+				mimeType: 'image/jpeg',
+				r2Key: `receipts/someone-else/${transactionId}/${id}.jpg`,
+				image
+			}))
+		};
+	}
+
+	const photosOf = (userId: string) =>
+		harness.db.select().from(transactionPhoto).where(eq(transactionPhoto.userId, userId));
+
+	it('restores a book into another account with its photos and the same reports', async () => {
+		const owner = await harness.createUser();
+		await seedBooks(owner);
+		const file = await snapshot(owner);
+		const before = await reports(owner);
+		const image = fakeImage('jpg', 4000, 3);
+		file.photos[0].image = `photos/${file.photos[0].id}.jpg`;
+		const fresh = await harness.createUser();
+		const r2 = createTestR2();
+
+		const summary = await restoreArchive(
+			fresh,
+			await archiveOf(file, [[file.photos[0].image, image]]),
+			{
+				receipts: r2.bucket
+			}
+		);
+
+		expect(summary.restored).toMatchObject({ transactions: 62, photos: 1 });
+		expect(summary.photosDropped).toBe(0);
+		expect(await reports(fresh)).toEqual(before);
+		const [photo] = await photosOf(fresh);
+		// A fresh key under the new owner's prefix, the image byte for byte.
+		expect(photo.r2Key).toBe(`receipts/${fresh}/${photo.transactionId}/${photo.id}.jpg`);
+		expect(photo).toMatchObject({
+			fileName: 'struk.jpg',
+			fileSize: image.length,
+			mimeType: 'image/jpeg',
+			r2Url: `/api/photos/${photo.r2Key}`
+		});
+		expect(r2.keysOf(fresh)).toEqual([photo.r2Key]);
+		expect(r2.objects.get(photo.r2Key)).toEqual(image);
+	});
+
+	it('checks every image by its bytes and keeps three per transaction', async () => {
+		const zip = await archiveOf(
+			photoBook([
+				['p1', 't0', 'photos/p1.jpg'],
+				['p2', 't0', 'photos/p2.png'],
+				['p3', 't0', 'photos/p3.jpg'],
+				['p4', 't0', 'photos/p4.jpg'],
+				['p5', 't1', 'photos/p5.jpg'],
+				['p6', 't1', 'photos/p6.jpg'],
+				['p7', 't1', 'photos/p7.jpg'],
+				['p8', 't1', null]
+			]),
+			[
+				['photos/p1.jpg', fakeImage('jpg', MAX_RECEIPT_BYTES)],
+				['photos/p2.png', fakeImage('png', 900, 2)],
+				['photos/p3.jpg', fakeImage('jpg', 800, 3)],
+				// A fourth photo of t0: over the cap.
+				['photos/p4.jpg', fakeImage('jpg', 700, 4)],
+				['photos/p5.jpg', encoder.encode('<svg onload="alert(1)"></svg>')],
+				// PNG bytes under a .jpg name.
+				['photos/p6.jpg', fakeImage('png', 600, 6)],
+				// No photo row names it.
+				['photos/unlisted.jpg', fakeImage('jpg')]
+				// p7's image is missing, and p8 never had one in the archive.
+			]
+		);
+		const userId = await harness.createUser();
+		const r2 = createTestR2();
+
+		const summary = await restoreArchive(userId, zip, { receipts: r2.bucket });
+
+		expect(summary.restored.photos).toBe(3);
+		expect(summary.photosDropped).toBe(5);
+		const rows = await photosOf(userId);
+		expect(rows.map((row) => row.fileName).sort()).toEqual(['p1.jpg', 'p2.jpg', 'p3.jpg']);
+		expect(rows.find((row) => row.fileName === 'p2.jpg')).toMatchObject({
+			mimeType: 'image/png',
+			r2Key: expect.stringMatching(/\.png$/)
+		});
+		expect(r2.keysOf(userId)).toEqual(rows.map((row) => row.r2Key).sort());
+	});
+
+	it('refuses an image over the upload limit, deleting what it already stored', async () => {
+		const userId = await harness.createUser();
+		await seedBooks(userId);
+		const before = await rowCounts(userId);
+		const zip = await archiveOf(
+			photoBook([
+				['p1', 't0', 'photos/p1.jpg'],
+				['p2', 't1', 'photos/p2.jpg']
+			]),
+			[
+				['photos/p1.jpg', fakeImage('jpg')],
+				['photos/p2.jpg', fakeImage('jpg', MAX_RECEIPT_BYTES + 1)]
+			]
+		);
+		const r2 = createTestR2();
+
+		const failure = await failureOf(restoreArchive(userId, zip, { receipts: r2.bucket }));
+
+		expect(failure).toBeInstanceOf(BackupError);
+		expect(failure).toMatchObject({ status: 413, code: 'BACKUP_TOO_LARGE' });
+		expect(await rowCounts(userId)).toEqual(before);
+		expect(r2.puts).toBe(1);
+		expect(r2.objects.size).toBe(0);
+	});
+
+	it('changes nothing and keeps no image when the archive is cut short or altered', async () => {
+		const userId = await harness.createUser();
+		await seedBooks(userId);
+		const before = { counts: await rowCounts(userId), reports: await reports(userId) };
+		const zip = await archiveOf(
+			photoBook([
+				['p1', 't0', 'photos/p1.jpg'],
+				['p2', 't1', 'photos/p2.jpg']
+			]),
+			[
+				['photos/p1.jpg', fakeImage('jpg', 3000, 1)],
+				['photos/p2.jpg', fakeImage('jpg', 3000, 2)]
+			]
+		);
+		const centralDirectory = new DataView(zip.buffer).getUint32(zip.length - 22 + 16, true);
+		const flipped = (at: number) => {
+			const copy = zip.slice();
+			copy[at] ^= 0xff;
+			return copy;
+		};
+		// With the images stored before the damage showed, which then had to be deleted.
+		const variants: Array<[string, Uint8Array<ArrayBuffer>, RegExp, number]> = [
+			['cut after its last photo', zip.slice(0, centralDirectory), /tidak lengkap/, 2],
+			['cut inside a photo', zip.slice(0, centralDirectory - 1000), /tidak lengkap/, 1],
+			['a changed byte in a photo', flipped(centralDirectory - 10), /rusak/, 1],
+			['a changed central directory', flipped(centralDirectory + 16), /rusak/, 2]
+		];
+
+		for (const [label, bytes, message, stored] of variants) {
+			const r2 = createTestR2();
+			const failure = await failureOf(restoreArchive(userId, bytes, { receipts: r2.bucket }));
+			expect(failure, label).toBeInstanceOf(BackupError);
+			expect(failure?.message, label).toMatch(message);
+			expect(failure?.message, label).toContain('Gunakan file .zip asli');
+			expect(r2.puts, label).toBe(stored);
+			expect(r2.objects.size, label).toBe(0);
+		}
+		expect(await rowCounts(userId)).toEqual(before.counts);
+		expect(await reports(userId)).toEqual(before.reports);
+	});
+
+	it('deletes the images it stored when the database batch fails', async () => {
+		const zip = await archiveOf(photoBook([['p1', 't0', 'photos/p1.jpg']]), [
+			['photos/p1.jpg', fakeImage('jpg')]
+		]);
+		const r2 = createTestR2();
+		const waitUntil = vi.fn();
+
+		// No such user: every insert breaks its foreign key.
+		const failure = await failureOf(
+			restoreArchive('no-such-user', zip, { receipts: r2.bucket, waitUntil })
+		);
+
+		expect(failure).toBeInstanceOf(Error);
+		expect(failure).not.toBeInstanceOf(BackupError);
+		expect(r2.puts).toBe(1);
+		expect(r2.objects.size).toBe(0);
+		expect(waitUntil).toHaveBeenCalledOnce();
+	});
+
+	it('deletes the images it stored when R2 fails part way', async () => {
+		const userId = await harness.createUser();
+		let puts = 0;
+		const r2 = createTestR2({ failPut: () => ++puts === 2 });
+		const zip = await archiveOf(
+			photoBook([
+				['p1', 't0', 'photos/p1.jpg'],
+				['p2', 't1', 'photos/p2.jpg']
+			]),
+			[
+				['photos/p1.jpg', fakeImage('jpg')],
+				['photos/p2.jpg', fakeImage('jpg', 900, 2)]
+			]
+		);
+
+		expect(await failureOf(restoreArchive(userId, zip, { receipts: r2.bucket }))).toBeInstanceOf(
+			Error
+		);
+		expect(r2.objects.size).toBe(0);
+		expect(await photosOf(userId)).toEqual([]);
+	});
+
+	it('restores the data without R2, dropping the photos', async () => {
+		const userId = await harness.createUser();
+		const zip = await archiveOf(photoBook([['p1', 't0', 'photos/p1.jpg']]), [
+			['photos/p1.jpg', fakeImage('jpg')]
+		]);
+
+		const summary = await restoreArchive(userId, zip, { receipts: null });
+
+		expect(summary.restored).toMatchObject({ transactions: 2, photos: 0 });
+		expect(summary.photosDropped).toBe(1);
+	});
+
+	it('names the original file when the archive was compressed again', async () => {
+		const zip = await archiveOf(photoBook([]));
+		// What macOS and Windows write when re-compressing: sizes in a data descriptor.
+		new DataView(zip.buffer).setUint16(6, 0x0808, true);
+
+		const failure = await failureOf(restoreArchive(await harness.createUser(), zip));
+
+		expect(failure).toBeInstanceOf(BackupError);
+		expect(failure?.message).toBe(
+			'File .zip ini tidak dibuat oleh Buku UMKM atau sudah dikompres ulang. Gunakan file .zip asli yang diunduh dari Buku UMKM.'
+		);
+	});
+
+	it.each([
+		[
+			'an archive that does not start with backup.json',
+			async () =>
+				new Uint8Array(
+					await new Response(
+						createZipStream([{ name: 'photos/p1.jpg', data: fakeImage('jpg') }])
+					).arrayBuffer()
+				),
+			/tidak berisi backup Buku UMKM/
+		],
+		[
+			'other files in the archive',
+			() => archiveOf(photoBook([]), [['catatan.txt' as string, encoder.encode('halo')]]),
+			/file lain selain backup/
+		],
+		[
+			'two photos naming one image',
+			() =>
+				archiveOf(
+					photoBook([
+						['p1', 't0', 'photos/p1.jpg'],
+						['p2', 't1', 'photos/p1.jpg']
+					])
+				),
+			/dipakai lebih dari satu foto/
+		],
+		[
+			'an image name outside photos/',
+			() => archiveOf(photoBook([['p1', 't0', '../p1.jpg']])),
+			/Nama gambar foto/
+		],
+		[
+			'a backup.json that is not JSON',
+			async () =>
+				new Uint8Array(
+					await new Response(
+						createZipStream([{ name: BACKUP_DOCUMENT_ENTRY, data: encoder.encode('{oops') }])
+					).arrayBuffer()
+				),
+			/bukan JSON yang valid/
+		]
+	])('refuses %s', async (_label, build, message) => {
+		const userId = await harness.createUser();
+		const r2 = createTestR2();
+
+		const failure = await failureOf(restoreArchive(userId, await build(), { receipts: r2.bucket }));
+
+		expect(failure).toBeInstanceOf(BackupError);
+		expect(failure?.message).toMatch(message);
+		expect(r2.objects.size).toBe(0);
 	});
 });

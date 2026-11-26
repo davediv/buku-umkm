@@ -16,14 +16,28 @@ import {
 	transactionTemplate
 } from '$lib/server/db/schema';
 import { decryptNPWP, validateNPWP } from '$lib/server/crypto';
+import { summarizeError } from '$lib/server/error-summary';
 import {
 	findReceiptObjects,
+	imageExtension,
 	isOwnReceiptKey,
 	MAX_PHOTOS_PER_TRANSACTION,
+	MAX_RECEIPT_BYTES,
+	receiptKey,
 	receiptMimeType,
 	receiptUrl
 } from '$lib/server/photos/receipts';
-import { parseBackup, type PhotoCandidate } from './parse';
+import { readZip, ZipError, type ZipEntry, type ZipReadLimits } from '$lib/shared/zip';
+import {
+	BACKUP_DOCUMENT_ENTRY,
+	MAX_BACKUP_ARCHIVE_BYTES,
+	MAX_BACKUP_BYTES,
+	MAX_RESTORE_ROWS,
+	PHOTO_ENTRY_PATTERN
+} from './format';
+import { BackupError, parseBackup, type PhotoCandidate, type RestorePlan } from './parse';
+
+type NewPhoto = typeof transactionPhoto.$inferInsert;
 
 export type RestoreSummary = {
 	schemaVersion: string;
@@ -39,7 +53,8 @@ export type RestoreSummary = {
 		templates: number;
 		photos: number;
 	};
-	/** Photo rows not restored: their image is not in this account's storage. */
+	/** Photo rows not restored: their image is not in the archive (or, for a .json file, in
+	 * this account's storage), is not a JPEG or PNG, or is over the 3-per-transaction cap. */
 	photosDropped: number;
 	/** The backup's NPWP could not be decrypted here (another deployment's key) and was left out. */
 	npwpDropped: boolean;
@@ -49,6 +64,14 @@ export type RestoreOptions = {
 	/** The receipts bucket. Without it no photo can be verified, so none is restored. */
 	receipts?: Pick<R2Bucket, 'list'> | null;
 	decryptNpwp?: (ciphertext: string) => Promise<string | null>;
+};
+
+export type ArchiveRestoreOptions = {
+	/** The receipts bucket. Without it no image can be stored, so no photo is restored. */
+	receipts?: Pick<R2Bucket, 'put' | 'delete'> | null;
+	decryptNpwp?: (ciphertext: string) => Promise<string | null>;
+	/** Keeps a failed restore's cleanup running if the client goes away (ctx.waitUntil). */
+	waitUntil?: (promise: Promise<unknown>) => void;
 };
 
 /** Keeps the NPWP ciphertext only if this deployment's key opens it to a valid NPWP. */
@@ -62,18 +85,44 @@ async function resolveNpwp(
 	return { npwp: ciphertext, dropped: false };
 }
 
+/** Admits at most MAX_PHOTOS_PER_TRANSACTION photos per transaction, as the upload route does. */
+function photoCap(): (transactionId: string) => boolean {
+	const counts = new Map<string, number>();
+	return (transactionId) => {
+		const count = counts.get(transactionId) ?? 0;
+		if (count >= MAX_PHOTOS_PER_TRANSACTION) return false;
+		counts.set(transactionId, count + 1);
+		return true;
+	};
+}
+
+function photoRow(item: PhotoCandidate, userId: string, key: string, fileSize: number): NewPhoto {
+	return {
+		id: item.id,
+		userId,
+		transactionId: item.transactionId,
+		fileName: item.fileName,
+		fileSize,
+		mimeType: receiptMimeType(key)!,
+		r2Key: key,
+		r2Url: receiptUrl(key),
+		caption: item.caption,
+		createdAt: item.createdAt
+	};
+}
+
 /**
- * A photo row survives only when the image it names is already in the caller's own R2
- * prefix (a backup restored to the account that made it). Its key, URL, size and type
- * then come from R2, never from the file, so a crafted backup cannot point a row at
- * another user's object and later delete it. The object keeps its key: R2 cannot rename,
- * and copying images around would make the restore non-atomic.
+ * For a .json file, a photo row survives only when the image it names is already in the
+ * caller's own R2 prefix (a backup restored to the account that made it). Its key, URL,
+ * size and type then come from R2, never from the file, so a crafted backup cannot point
+ * a row at another user's object and later delete it. The object keeps its key: R2
+ * cannot rename, and copying images around would make the restore non-atomic.
  */
 async function resolvePhotos(
 	candidates: PhotoCandidate[],
 	userId: string,
 	receipts: Pick<R2Bucket, 'list'> | null | undefined
-): Promise<(typeof transactionPhoto.$inferInsert)[]> {
+): Promise<NewPhoto[]> {
 	const eligible = candidates.filter(
 		(item) => isOwnReceiptKey(userId, item.claimedKey) && receiptMimeType(item.claimedKey)
 	);
@@ -85,48 +134,31 @@ async function resolvePhotos(
 		new Set(eligible.map((item) => item.claimedKey))
 	);
 	const usedKeys = new Set<string>();
-	const perTransaction = new Map<string, number>();
-	const rows: (typeof transactionPhoto.$inferInsert)[] = [];
+	const admit = photoCap();
+	const rows: NewPhoto[] = [];
 	for (const item of eligible) {
 		const size = found.get(item.claimedKey);
-		const count = perTransaction.get(item.transactionId) ?? 0;
-		if (size === undefined || usedKeys.has(item.claimedKey)) continue;
-		if (count >= MAX_PHOTOS_PER_TRANSACTION) continue;
+		if (size === undefined || usedKeys.has(item.claimedKey) || !admit(item.transactionId)) {
+			continue;
+		}
 		usedKeys.add(item.claimedKey);
-		perTransaction.set(item.transactionId, count + 1);
-		rows.push({
-			id: item.id,
-			userId,
-			transactionId: item.transactionId,
-			fileName: item.fileName,
-			fileSize: size,
-			mimeType: receiptMimeType(item.claimedKey)!,
-			r2Key: item.claimedKey,
-			r2Url: receiptUrl(item.claimedKey),
-			caption: item.caption,
-			createdAt: item.createdAt
-		});
+		rows.push(photoRow(item, userId, item.claimedKey, size));
 	}
 	return rows;
 }
 
 /**
- * Replaces everything `userId` owns with the contents of a parsed backup file. The file
- * is validated in full first (BackupError on the first problem), then the deletes and
- * every insert run as one D1 batch, so a restore either lands completely or not at all.
+ * Replaces everything `userId` owns with a validated plan and its photo rows: the deletes
+ * and every insert run as one D1 batch, so a restore lands completely or not at all.
  */
-export async function restoreBackup(
+async function commitRestore(
 	db: SQLiteDb,
 	userId: string,
-	file: unknown,
-	options: RestoreOptions = {}
+	plan: RestorePlan,
+	photos: NewPhoto[],
+	decrypt: (ciphertext: string) => Promise<string | null> = decryptNPWP
 ): Promise<RestoreSummary> {
-	const plan = parseBackup(file, userId);
-
-	const [{ npwp, dropped: npwpDropped }, photos] = await Promise.all([
-		resolveNpwp(plan.businessProfile?.npwp, options.decryptNpwp ?? decryptNPWP),
-		resolvePhotos(plan.photoCandidates, userId, options.receipts)
-	]);
+	const { npwp, dropped: npwpDropped } = await resolveNpwp(plan.businessProfile?.npwp, decrypt);
 	const profile = plan.businessProfile ? { ...plan.businessProfile, npwp } : null;
 	// debt.principalTransactionId and transaction.debtId point at each other: insert the
 	// debts unlinked, then the transactions, then link the loans to their principal.
@@ -199,4 +231,153 @@ export async function restoreBackup(
 		photosDropped: plan.photosWithoutTransaction + plan.photoCandidates.length - photos.length,
 		npwpDropped
 	};
+}
+
+/**
+ * Replaces everything `userId` owns with the contents of a parsed backup file (.json). The
+ * file is validated in full first (BackupError on the first problem); photos come back
+ * only if their images are still in the caller's storage.
+ */
+export async function restoreBackup(
+	db: SQLiteDb,
+	userId: string,
+	file: unknown,
+	options: RestoreOptions = {}
+): Promise<RestoreSummary> {
+	const plan = parseBackup(file, userId);
+	const photos = await resolvePhotos(plan.photoCandidates, userId, options.receipts);
+	return commitRestore(db, userId, plan, photos, options.decryptNpwp);
+}
+
+const USE_ORIGINAL_ARCHIVE = 'Gunakan file .zip asli yang diunduh dari Buku UMKM.';
+
+const ARCHIVE_LIMITS: ZipReadLimits = {
+	maxArchiveBytes: MAX_BACKUP_ARCHIVE_BYTES,
+	maxEntries: 1 + MAX_RESTORE_ROWS,
+	maxEntryBytes(name) {
+		if (name === BACKUP_DOCUMENT_ENTRY) return MAX_BACKUP_BYTES;
+		if (PHOTO_ENTRY_PATTERN.test(name)) return MAX_RECEIPT_BYTES;
+		throw new BackupError(
+			`File .zip berisi file lain selain backup dan foto nota. ${USE_ORIGINAL_ARCHIVE}`
+		);
+	},
+	// Images are stored as is, so the archive bounds them; the document inflates up to its limit.
+	maxTotalBytes: MAX_BACKUP_ARCHIVE_BYTES + MAX_BACKUP_BYTES
+};
+
+/** What the owner is told about an archive the reader refused. */
+function archiveError(error: ZipError): BackupError {
+	switch (error.code) {
+		case 'limit':
+			return new BackupError(
+				`File backup .zip melebihi batas pemulihan: maks ${MAX_BACKUP_ARCHIVE_BYTES / 1024 / 1024} MB, dengan backup.json maks ${MAX_BACKUP_BYTES / 1024 / 1024} MB dan tiap foto maks ${MAX_RECEIPT_BYTES / 1024} KB.`,
+				413,
+				'BACKUP_TOO_LARGE'
+			);
+		case 'truncated':
+			return new BackupError(
+				`File backup .zip tidak lengkap; unduhan atau unggahannya mungkin terputus. ${USE_ORIGINAL_ARCHIVE}`
+			);
+		case 'corrupt':
+			return new BackupError(`File backup .zip rusak. ${USE_ORIGINAL_ARCHIVE}`);
+		default:
+			// Re-compressed archives (data descriptors, other tools' extras) land here.
+			return new BackupError(
+				`File .zip ini tidak dibuat oleh Buku UMKM atau sudah dikompres ulang. ${USE_ORIGINAL_ARCHIVE}`
+			);
+	}
+}
+
+/** The archive's first entry, the backup document, validated in full into a plan. */
+async function readArchivePlan(
+	entries: AsyncGenerator<ZipEntry, void, undefined>,
+	userId: string
+): Promise<RestorePlan> {
+	const first = await entries.next();
+	if (first.done || first.value.name !== BACKUP_DOCUMENT_ENTRY) {
+		throw new BackupError(`File .zip ini tidak berisi backup Buku UMKM. ${USE_ORIGINAL_ARCHIVE}`);
+	}
+	let file: unknown;
+	try {
+		file = JSON.parse(new TextDecoder().decode(first.value.data));
+	} catch {
+		throw new BackupError('File backup bukan JSON yang valid');
+	}
+	return parseBackup(file, userId);
+}
+
+/**
+ * Stores each photo image the plan names, as it streams in, under a fresh key in the
+ * caller's prefix. The bytes decide the type: an entry that is not the JPEG or PNG its
+ * name says is dropped, as is a photo past the per-transaction cap. Every key is added
+ * to `stored` before its put, so a failed restore can delete it again.
+ */
+async function storeArchivePhotos(
+	entries: AsyncGenerator<ZipEntry, void, undefined>,
+	plan: RestorePlan,
+	userId: string,
+	receipts: Pick<R2Bucket, 'put'> | null | undefined,
+	stored: string[]
+): Promise<NewPhoto[]> {
+	const candidates = new Map(
+		plan.photoCandidates.flatMap((item) => (item.image ? [[item.image, item] as const] : []))
+	);
+	const admit = photoCap();
+	const rows: NewPhoto[] = [];
+	for await (const entry of entries) {
+		const candidate = candidates.get(entry.name);
+		const extension = imageExtension(entry.data);
+		if (!receipts || !candidate || !extension || !entry.name.endsWith(`.${extension}`)) continue;
+		if (!admit(candidate.transactionId)) continue;
+
+		const key = receiptKey(userId, candidate.transactionId, candidate.id, extension);
+		stored.push(key);
+		await receipts.put(key, entry.data, { httpMetadata: { contentType: receiptMimeType(key)! } });
+		rows.push(photoRow(candidate, userId, key, entry.data.byteLength));
+	}
+	return rows;
+}
+
+/** Deletes what a failed restore stored, at most 1000 keys per call as R2 allows. */
+async function deleteStored(receipts: Pick<R2Bucket, 'delete'>, keys: string[]): Promise<void> {
+	try {
+		for (let at = 0; at < keys.length; at += 1000) await receipts.delete(keys.slice(at, at + 1000));
+	} catch (error) {
+		console.error(
+			`Orphaned ${keys.length} receipt objects after a failed restore`,
+			summarizeError(error)
+		);
+	}
+}
+
+/**
+ * Replaces everything `userId` owns with a .zip backup read from `body` as it streams in:
+ * backup.json is validated in full before anything is stored, then each image goes to R2
+ * under a fresh key, and the single D1 batch runs only once the archive has been read to
+ * its end and checked. If anything fails (a damaged or truncated archive, R2, the batch),
+ * the images this call stored are deleted again and nothing else has changed.
+ */
+export async function restoreBackupArchive(
+	db: SQLiteDb,
+	userId: string,
+	body: ReadableStream<Uint8Array>,
+	options: ArchiveRestoreOptions = {}
+): Promise<RestoreSummary> {
+	const entries = readZip(body, ARCHIVE_LIMITS);
+	const stored: string[] = [];
+	try {
+		const plan = await readArchivePlan(entries, userId);
+		const photos = await storeArchivePhotos(entries, plan, userId, options.receipts, stored);
+		return await commitRestore(db, userId, plan, photos, options.decryptNpwp);
+	} catch (error) {
+		if (options.receipts && stored.length > 0) {
+			const cleanup = deleteStored(options.receipts, stored);
+			options.waitUntil?.(cleanup);
+			await cleanup;
+		}
+		throw error instanceof ZipError ? archiveError(error) : error;
+	} finally {
+		// Stops reading a body left unread by an early failure.
+		await entries.return(undefined);
+	}
 }

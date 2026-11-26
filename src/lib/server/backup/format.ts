@@ -13,6 +13,8 @@
  * - 2.2: loan interest on debt payments (interestAmount, interestTransactionId).
  */
 
+import type { ReceiptExtension } from '$lib/server/photos/receipts';
+
 /** Identifies a Buku UMKM backup from version 2 on. */
 export const BACKUP_FORMAT = 'buku-umkm-backup';
 
@@ -27,6 +29,22 @@ export const SUPPORTED_BACKUP_MAJOR_VERSIONS = [1, 2] as const;
  * inside a Worker isolate's 128 MB, which concurrent requests share.
  */
 export { MAX_BACKUP_BYTES } from '$lib/constants';
+
+/*
+ * From 2.3 a backup is a .zip archive ($lib/shared/zip.ts): BACKUP_DOCUMENT_ENTRY first,
+ * then one entry per receipt image, named in its photo's `image`. Restore reads it as a
+ * stream and still takes a bare .json document (photos then come back only from storage).
+ */
+export { BACKUP_DOCUMENT_ENTRY, MAX_BACKUP_ARCHIVE_BYTES } from '$lib/constants';
+
+/** The entry name of a photo's image in a backup archive. */
+export const PHOTO_ENTRY_PATTERN = /^photos\/[\w-]{1,128}\.(jpg|png)$/;
+
+/** `photos/<photoId>.<jpg|png>`, or null for an id that cannot be part of an entry name. */
+export function photoEntryName(photoId: string, extension: ReceiptExtension): string | null {
+	const name = `photos/${photoId}.${extension}`;
+	return PHOTO_ENTRY_PATTERN.test(name) ? name : null;
+}
 
 /**
  * The most rows one restore writes, checked before any row is read. A restore is one D1

@@ -24,7 +24,12 @@ import {
 	type FieldResult
 } from '$lib/shared/validation/category';
 import { TAX_LEGAL_FORM, TAX_REGIME_CHOICE, TAX_STATUS, TAX_TYPE } from '$lib/tax/config';
-import { BACKUP_FORMAT, MAX_RESTORE_ROWS, SUPPORTED_BACKUP_MAJOR_VERSIONS } from './format';
+import {
+	BACKUP_FORMAT,
+	MAX_RESTORE_ROWS,
+	PHOTO_ENTRY_PATTERN,
+	SUPPORTED_BACKUP_MAJOR_VERSIONS
+} from './format';
 
 /** A backup the server refuses to restore; the message is shown to the user as is. */
 export class BackupError extends Error {
@@ -49,12 +54,17 @@ type NewTaxProfile = typeof taxProfile.$inferInsert;
 type NewTaxRecord = typeof taxRecord.$inferInsert;
 type NewTemplate = typeof transactionTemplate.$inferInsert;
 
-/** A photo row that is kept only if its image is found in the caller's R2 prefix. */
+/**
+ * A photo row that is kept only if its image is found: in the .zip it came in, or, for a
+ * .json file, in the caller's R2 prefix.
+ */
 export type PhotoCandidate = {
 	id: string;
 	transactionId: string;
 	/** The key the file claims; never stored unless R2 confirms it (see restore.ts). */
 	claimedKey: string;
+	/** The archive entry holding the image (2.3 on), unique within the file. */
+	image: string | null;
 	fileName: string;
 	caption: string | null;
 	createdAt: Date;
@@ -615,10 +625,15 @@ function readPhotoCandidate(
 		row.fail('Transaksi yang dirujuk (transactionId) tidak ada di file backup');
 	}
 	const claimedKey = row.raw('r2Key');
+	const image = row.raw('image') ?? null;
+	if (image !== null && (typeof image !== 'string' || !PHOTO_ENTRY_PATTERN.test(image))) {
+		row.fail('Nama gambar foto (image) tidak valid');
+	}
 	return {
 		id: crypto.randomUUID(),
 		transactionId: mapped,
 		claimedKey: typeof claimedKey === 'string' ? claimedKey : '',
+		image,
 		fileName: sanitizePhotoFileName(row.raw('fileName')),
 		caption: row.text('caption', 'Keterangan foto', 500),
 		createdAt: row.timestamp('createdAt')
@@ -727,9 +742,15 @@ export function parseBackup(value: unknown, userId: string): RestorePlan {
 	});
 
 	const photoCandidates: PhotoCandidate[] = [];
+	const images = new Set<string>();
 	for (const row of photoRows) {
 		const candidate = readPhotoCandidate(row, ids.transactions, legacy);
-		if (candidate) photoCandidates.push(candidate);
+		if (!candidate) continue;
+		if (candidate.image) {
+			if (images.has(candidate.image)) row.fail('Gambar foto (image) dipakai lebih dari satu foto');
+			images.add(candidate.image);
+		}
+		photoCandidates.push(candidate);
 	}
 
 	return {
