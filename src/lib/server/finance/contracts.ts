@@ -14,6 +14,12 @@ export class FinanceError extends Error {
 
 export type TransactionType = 'income' | 'expense';
 export type DebtType = 'piutang' | 'hutang';
+/**
+ * 'trade': a credit sale (piutang) or credit purchase (hutang), revenue or expense on
+ * the debt date. 'loan': money lent (piutang) or borrowed (hutang), never revenue or
+ * expense; its principal moves through a cash/bank account when the debt is created.
+ */
+export type DebtKind = 'trade' | 'loan';
 
 export type CreateTransactionCommand = {
 	type: TransactionType;
@@ -45,6 +51,9 @@ export type CreateTransferCommand = {
 
 export type CreateDebtCommand = {
 	type: DebtType;
+	kind: DebtKind;
+	/** Loans only: the account the principal is paid from (piutang) or into (hutang). */
+	accountId: string | null;
 	contactName: string;
 	contactPhone: string | null;
 	contactAddress: string | null;
@@ -196,6 +205,14 @@ export function parseCreateDebt(value: unknown): CreateDebtCommand {
 	if (body.type !== 'piutang' && body.type !== 'hutang') {
 		throw new FinanceError('Tipe wajib dipilih (piutang/hutang)');
 	}
+	const kind = body.kind ?? 'trade';
+	if (kind !== 'trade' && kind !== 'loan') {
+		throw new FinanceError('Jenis catatan tidak valid (trade/loan)');
+	}
+	const hasAccount = body.account_id !== undefined && body.account_id !== null;
+	if (kind === 'trade' && hasAccount) {
+		throw new FinanceError('Akun hanya diisi untuk pinjaman');
+	}
 	const debtDate = date(body.date, 'Tanggal');
 	const dueDate = body.due_date ? date(body.due_date, 'Tanggal jatuh tempo', true) : null;
 	if (dueDate && dueDate < debtDate) {
@@ -204,6 +221,8 @@ export function parseCreateDebt(value: unknown): CreateDebtCommand {
 
 	return {
 		type: body.type,
+		kind,
+		accountId: kind === 'loan' ? requiredString(body.account_id, 'Akun', 100) : null,
 		contactName: requiredString(body.contact_name, 'Nama kontak', 200),
 		contactPhone: optionalString(body.contact_phone, 'Nomor telepon', 20),
 		contactAddress: optionalString(body.contact_address, 'Alamat', 500),

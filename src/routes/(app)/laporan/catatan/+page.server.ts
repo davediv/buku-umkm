@@ -63,9 +63,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			endDate = `${currentYear + 1}-01-01`;
 		}
 
+		// endDate is exclusive; the notes name the period's last day.
+		const lastDay = new Date(`${endDate}T00:00:00Z`);
+		lastDay.setUTCDate(lastDay.getUTCDate() - 1);
+		const lastDate = lastDay.toISOString().slice(0, 10);
+
 		// Generate accounting policies in Bahasa Indonesia
 		const accountingPolicies = {
-			basisAccounting: 'Akuntansi Basis Kas',
+			basisAccounting: 'Akuntansi Basis Akrual',
 			framework: 'SAK EMKM (Standar Akuntansi Keuangan untuk Entitas Mikro Kecil Menengah)',
 			currency: 'Rupiah Indonesia (IDR)',
 			reportingEntity: profile?.name || 'Nama Usaha',
@@ -83,7 +88,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			},
 			{
 				title: '2. Dasar Penyusunan',
-				content: `Laporan keuangan disusun berdasarkan ${accountingPolicies.framework} yang berlaku di Indonesia. Laporan ini menggunakan ${accountingPolicies.basisAccounting} dimana pendapatan dan beban diakui pada saat kas diterima atau dibayarkan.`
+				content: `Laporan keuangan disusun berdasarkan ${accountingPolicies.framework} yang berlaku di Indonesia. Laporan ini menggunakan ${accountingPolicies.basisAccounting}: pendapatan dan beban diakui pada saat terjadinya, bukan pada saat kas diterima atau dibayarkan.`
 			},
 			{
 				title: '3. Mata Uang Pelaporan',
@@ -92,11 +97,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			{
 				title: '4. Kebijakan Akuntansi Penting',
 				content: `Entitas menggunakan kebijakan akuntansi sebagai berikut:
-- Pendapatan diakui pada saat menerima pembayaran dari pelanggan
-- Beban diakui pada saat melakukan pembayaran kepada pemasok
-- Aset tetap dicatat berdasarkan harga perolehan dan disusutkan dengan metode garis lurus
-- Piutang usaha disajikan setelah dikurangi penyisihan piutang tak tertagih
-- Kewajiban disajikan berdasarkan jumlah yang harus dibayarkan`
+- Penjualan tunai diakui sebagai pendapatan pada tanggal transaksi; penjualan kredit diakui sebagai pendapatan dan piutang usaha pada tanggal piutang dicatat
+- Pembelian dan biaya tunai diakui sebagai beban pada tanggal transaksi; pembelian kredit diakui sebagai beban dan utang usaha pada tanggal utang dicatat
+- Penerimaan piutang dan pembayaran utang hanya mengurangi saldo piutang atau utang, dan tidak diakui lagi sebagai pendapatan atau beban
+- Pinjaman yang diberikan atau diterima dicatat sebagai piutang atau utang beserta perpindahan kasnya, dan tidak diakui sebagai pendapatan atau beban
+- Transfer antar kas dan rekening milik usaha tidak memengaruhi laba/rugi
+- Piutang dan utang disajikan sebesar sisa yang belum dibayar; penyisihan piutang tak tertagih dan penyusutan aset tetap belum dihitung otomatis`
 			},
 			{
 				title: '5. Perpajakan',
@@ -105,7 +111,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			},
 			{
 				title: '6. Periode Pelaporan',
-				content: `Laporan ini mencakup periode pelaporan ${accountingPolicies.basisAccounting} dari ${startDate} sampai ${endDate}.`
+				content: `Laporan ini mencakup periode ${accountingPolicies.period}, yaitu ${startDate} sampai ${lastDate}.`
 			}
 		];
 

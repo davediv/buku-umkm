@@ -3,6 +3,7 @@ import { chartOfAccount } from '$lib/server/db/schema';
 import { createTestD1 } from '$lib/server/testing/d1';
 import { createFinancialMutationService } from '$lib/server/finance/commands';
 import { createD1FinanceRepository } from '$lib/server/finance/repository';
+import { getBalanceSheetAsOf } from '$lib/server/reports/balance-sheet';
 import { getRecordedAnnualExpenseTotal, getRecordedMonthlyRevenue } from '$lib/tax/service';
 import { dashboardQueries, transactionQueries } from './index';
 
@@ -48,6 +49,32 @@ async function setup() {
 		}
 	]);
 	const service = createFinancialMutationService(createD1FinanceRepository(db));
+	const createDebt = (
+		type: 'piutang' | 'hutang',
+		kind: 'trade' | 'loan',
+		amount: number,
+		date: string,
+		contactName = 'Kontak'
+	) =>
+		service.createDebt(userId, nextKey(), {
+			type,
+			kind,
+			accountId: kind === 'loan' ? kas : null,
+			contactName,
+			contactPhone: null,
+			contactAddress: null,
+			originalAmount: amount,
+			date,
+			dueDate: null,
+			description: null
+		});
+	const pay = (debtId: string, amount: number, date: string) =>
+		service.recordDebtPayment(userId, debtId, nextKey(), {
+			amount,
+			date,
+			accountId: kas,
+			notes: null
+		});
 	const record = (type: 'income' | 'expense', amount: number, date: string, accountId = kas) =>
 		service.createTransaction(userId, nextKey(), {
 			type,
@@ -57,7 +84,7 @@ async function setup() {
 			date,
 			description: null
 		});
-	return { userId, kas, bank, service, record };
+	return { userId, kas, bank, service, record, createDebt, pay };
 }
 
 /**
@@ -158,5 +185,99 @@ describe('profit-and-loss totals on D1', () => {
 
 		const recent = await transactionQueries.getRecent(harness.db, userId, 5);
 		expect(recent.map((item) => item.id)).toEqual([kept.entity.id]);
+	});
+
+	describe('on the accrual basis', () => {
+		/**
+		 * March 2025: a cash sale, a credit sale and a credit purchase (both settled later),
+		 * a loan given and a loan received, and a credit sale deleted before any payment.
+		 */
+		async function seedDebts() {
+			const books = await setup();
+			const { userId, record, createDebt, pay, service } = books;
+			await record('income', 100, '2025-03-01');
+			const creditSale = await createDebt('piutang', 'trade', 1_000_000, '2025-03-10', 'Budi');
+			await pay(creditSale.entity.id, 400_000, '2025-04-05');
+			const creditPurchase = await createDebt('hutang', 'trade', 300_000, '2025-03-12');
+			await pay(creditPurchase.entity.id, 300_000, '2025-05-01');
+			const lent = await createDebt('piutang', 'loan', 2_000_000, '2025-03-15', 'Citra');
+			await pay(lent.entity.id, 500_000, '2025-06-01');
+			await createDebt('hutang', 'loan', 5_000_000, '2025-03-20', 'Koperasi');
+			const removed = await createDebt('piutang', 'trade', 777, '2025-03-01');
+			await service.deleteDebt(userId, removed.entity.id);
+			return books;
+		}
+
+		it('counts credit sales as turnover on the debt date and never payments or loans', async () => {
+			const { userId } = await seedDebts();
+
+			const revenue = await getRecordedMonthlyRevenue(harness.db, userId, 2025);
+			expect(revenue.slice(2, 6)).toEqual([1_000_100, 0, 0, 0]);
+			expect(await getRecordedAnnualExpenseTotal(harness.db, userId, 2025)).toBe(300_000);
+		});
+
+		it('keeps the balance sheet balanced with credit sales and loans', async () => {
+			const { userId } = await seedDebts();
+
+			const sheet = await getBalanceSheetAsOf(harness.db, userId, '2025-12-31');
+			// Kas: 50jt + 100 + 400rb - 300rb - 2jt + 500rb + 5jt
+			expect(sheet.assets.breakdown.kas.items[0].balance).toBe(53_600_100);
+			expect(sheet.assets.breakdown.piutangDetail.subtotal).toBe(600_000 + 1_500_000);
+			expect(sheet.liabilities.total).toBe(5_000_000);
+			expect(sheet.equity.components).toEqual([
+				{ name: 'Modal dari saldo awal', amount: 50_000_000 },
+				{ name: 'Akumulasi hasil usaha', amount: 700_100 }
+			]);
+			expect(sheet.isBalanced).toBe(true);
+		});
+
+		describe('in the income statement and dashboard', () => {
+			beforeEach(() => {
+				vi.useFakeTimers({ toFake: ['Date'] });
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			it('show credit sales and purchases as their own lines', async () => {
+				vi.setSystemTime(new Date(2025, 2, 31, 12));
+				const { userId } = await seedDebts();
+				const { db } = harness;
+
+				const lines = await dashboardQueries.getProfitLossByCategory(db, userId, 'monthly');
+				expect(lines.income).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({ categoryName: 'Tanpa Kategori', total: 100 }),
+						expect.objectContaining({ categoryName: 'Penjualan kredit', total: 1_000_000 })
+					])
+				);
+				expect(lines.expense).toEqual([
+					expect.objectContaining({ categoryName: 'Pembelian kredit', total: 300_000 })
+				]);
+
+				const overview = await dashboardQueries.getOverview(db, userId, 'monthly');
+				expect(overview.periodStats).toMatchObject({ income: 1_000_100, expense: 300_000 });
+				const comparison = await dashboardQueries.getPreviousPeriodStats(db, userId, 'monthly');
+				expect(comparison.current).toEqual({
+					income: 1_000_100,
+					expense: 300_000,
+					profit: 700_100
+				});
+			});
+
+			it('chart payments and loan principal as cash flow', async () => {
+				vi.setSystemTime(new Date(2025, 5, 30, 12));
+				const { userId } = await seedDebts();
+
+				const cashFlow = await dashboardQueries.getCashFlow(harness.db, userId, 4);
+				expect(cashFlow).toMatchObject([
+					{ label: '2025-03', income: 100 + 5_000_000, expense: 2_000_000 },
+					{ label: '2025-04', income: 400_000, expense: 0 },
+					{ label: '2025-05', income: 0, expense: 300_000 },
+					{ label: '2025-06', income: 500_000, expense: 0 }
+				]);
+			});
+		});
 	});
 });

@@ -46,9 +46,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			{
 				message: result.replayed
 					? 'Hutang/piutang sudah tersimpan sebelumnya'
-					: input.type === 'piutang'
-						? 'Piutang berhasil dibuat'
-						: 'Hutang berhasil dibuat',
+					: input.kind === 'loan'
+						? input.type === 'piutang'
+							? 'Pinjaman yang diberikan berhasil dicatat'
+							: 'Pinjaman yang diterima berhasil dicatat'
+						: input.type === 'piutang'
+							? 'Piutang berhasil dibuat'
+							: 'Hutang berhasil dibuat',
 				debt: presentDebt(result.entity),
 				replayed: result.replayed
 			},

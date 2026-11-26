@@ -12,7 +12,14 @@ import {
 	transactionPhoto,
 	transactionTemplate
 } from '../schema';
-import { cashMovementRows, profitAndLossRows } from './ledger';
+import {
+	CREDIT_PURCHASES_LABEL,
+	CREDIT_SALES_LABEL,
+	cashMovementRows,
+	profitAndLossRows,
+	profitAndLossTotals,
+	tradeDebtRows
+} from './ledger';
 
 // ============================================================================
 // Account Queries
@@ -933,10 +940,10 @@ export const dashboardQueries = {
 			periodEnd = nextMonday.toISOString().split('T')[0];
 		}
 
-		const earliestTransactionDate = [startOfYear, today, periodStart].sort()[0];
+		const startOfNextYear = `${now.getFullYear() + 1}-01-01`;
 		// Every column needs its own alias: Drizzle maps D1 batch rows by column name, and
-		// unaliased sums with identical SQL text (only their bound dates differ) collapse
-		// into one key, shifting every later value into the wrong field.
+		// unaliased sums with identical SQL text collapse into one key, shifting every later
+		// value into the wrong field.
 		const accountQuery = db
 			.select({
 				assets:
@@ -954,49 +961,12 @@ export const dashboardQueries = {
 			})
 			.from(chartOfAccount)
 			.where(eq(chartOfAccount.userId, userId));
-		const transactionQuery = db
-			.select({
-				monthlyIncome:
-					sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${startOfMonth} AND ${transaction.date} < ${endOfMonth} THEN ${transaction.amount} ELSE 0 END), 0)`.as(
-						'monthly_income'
-					),
-				monthlyExpense:
-					sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${startOfMonth} AND ${transaction.date} < ${endOfMonth} THEN ${transaction.amount} ELSE 0 END), 0)`.as(
-						'monthly_expense'
-					),
-				yearIncome:
-					sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${startOfYear} THEN ${transaction.amount} ELSE 0 END), 0)`.as(
-						'year_income'
-					),
-				yearExpense:
-					sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${startOfYear} THEN ${transaction.amount} ELSE 0 END), 0)`.as(
-						'year_expense'
-					),
-				todayIncome:
-					sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${today} AND ${transaction.date} < ${tomorrowDate} THEN ${transaction.amount} ELSE 0 END), 0)`.as(
-						'today_income'
-					),
-				todayExpense:
-					sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${today} AND ${transaction.date} < ${tomorrowDate} THEN ${transaction.amount} ELSE 0 END), 0)`.as(
-						'today_expense'
-					),
-				periodIncome:
-					sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'income' AND ${transaction.date} >= ${periodStart} AND ${transaction.date} < ${periodEnd} THEN ${transaction.amount} ELSE 0 END), 0)`.as(
-						'period_income'
-					),
-				periodExpense:
-					sql<number>`COALESCE(SUM(CASE WHEN ${transaction.type} = 'expense' AND ${transaction.date} >= ${periodStart} AND ${transaction.date} < ${periodEnd} THEN ${transaction.amount} ELSE 0 END), 0)`.as(
-						'period_expense'
-					)
-			})
-			.from(transaction)
-			.where(
-				and(
-					eq(transaction.userId, userId),
-					profitAndLossRows(),
-					gte(transaction.date, earliestTransactionDate)
-				)
-			);
+		const profitAndLoss = profitAndLossTotals(db, userId, {
+			month: { start: startOfMonth, end: endOfMonth },
+			year: { start: startOfYear, end: startOfNextYear },
+			today: { start: today, end: tomorrowDate },
+			period: { start: periodStart, end: periodEnd }
+		});
 		const debtQuery = db
 			.select({
 				piutang:
@@ -1021,27 +991,20 @@ export const dashboardQueries = {
 
 		// D1 processes a batch through one connection and returns results in order,
 		// keeping the dashboard below the per-invocation connection limit.
-		const [accountRows, transactionRows, debtRows, taxRows] = await db.batch([
+		const [accountRows, transactionTotals, tradeDebtTotals, debtRows, taxRows] = await db.batch([
 			accountQuery,
-			transactionQuery,
+			profitAndLoss.transactions,
+			profitAndLoss.tradeDebts,
 			debtQuery,
 			taxQuery
 		]);
 
 		const accounts = accountRows[0];
-		const transactions = transactionRows[0];
 		const debts = debtRows[0];
+		const totals = profitAndLoss.read(transactionTotals, tradeDebtTotals);
 		const totalAssets = Number(accounts?.assets ?? 0);
 		const totalLiabilities = Number(accounts?.liabilities ?? 0);
 		const totalEquity = Number(accounts?.equity ?? 0);
-		const monthlyIncome = Number(transactions?.monthlyIncome ?? 0);
-		const monthlyExpense = Number(transactions?.monthlyExpense ?? 0);
-		const yearIncome = Number(transactions?.yearIncome ?? 0);
-		const yearExpense = Number(transactions?.yearExpense ?? 0);
-		const todayIncome = Number(transactions?.todayIncome ?? 0);
-		const todayExpense = Number(transactions?.todayExpense ?? 0);
-		const periodIncome = Number(transactions?.periodIncome ?? 0);
-		const periodExpense = Number(transactions?.periodExpense ?? 0);
 
 		return {
 			summary: {
@@ -1049,12 +1012,12 @@ export const dashboardQueries = {
 				totalLiabilities,
 				totalEquity,
 				netWorth: totalAssets - totalLiabilities,
-				monthlyIncome,
-				monthlyExpense,
-				monthlyProfit: monthlyIncome - monthlyExpense,
-				yearToDateRevenue: yearIncome,
-				yearToDateExpense: yearExpense,
-				yearToDateProfit: yearIncome - yearExpense,
+				monthlyIncome: totals.month.income,
+				monthlyExpense: totals.month.expense,
+				monthlyProfit: totals.month.profit,
+				yearToDateRevenue: totals.year.income,
+				yearToDateExpense: totals.year.expense,
+				yearToDateProfit: totals.year.profit,
 				activeDebtsCount: Number(debts?.activeCount ?? 0),
 				unpaidTaxesCount: Number(taxRows[0]?.count ?? 0)
 			},
@@ -1062,15 +1025,9 @@ export const dashboardQueries = {
 				period,
 				startDate: periodStart,
 				endDate: periodEnd,
-				income: periodIncome,
-				expense: periodExpense,
-				profit: periodIncome - periodExpense
+				...totals.period
 			},
-			todayStats: {
-				income: todayIncome,
-				expense: todayExpense,
-				profit: todayIncome - todayExpense
-			},
+			todayStats: totals.today,
 			debtSummary: {
 				piutang: Number(debts?.piutang ?? 0),
 				hutang: Number(debts?.hutang ?? 0)
@@ -1186,66 +1143,83 @@ export const dashboardQueries = {
 			endDate = `${now.getFullYear() + 1}-01-01`;
 		}
 
-		return (async () => {
-			// Get income by category
-			const incomeByCategory = await db
+		const byCategory = (type: 'income' | 'expense') =>
+			db
 				.select({
 					categoryId: transaction.categoryId,
 					categoryCode: category.code,
 					categoryName: category.name,
 					categoryColor: category.color,
-					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
+					total: sql<number>`COALESCE(SUM(${transaction.amount}), 0)`
 				})
 				.from(transaction)
 				.leftJoin(category, eq(transaction.categoryId, category.id))
 				.where(
 					and(
 						eq(transaction.userId, userId),
-						eq(transaction.type, 'income'),
+						eq(transaction.type, type),
 						profitAndLossRows(),
 						gte(transaction.date, startDate),
 						lt(transaction.date, endDate)
 					)
 				)
 				.groupBy(transaction.categoryId);
+		// Credit sales and purchases have no category, so each gets its own line.
+		const creditTotals = db
+			.select({
+				type: debt.type,
+				total: sql<number>`COALESCE(SUM(${debt.originalAmount}), 0)`
+			})
+			.from(debt)
+			.where(
+				and(
+					eq(debt.userId, userId),
+					tradeDebtRows(),
+					gte(debt.date, startDate),
+					lt(debt.date, endDate)
+				)
+			)
+			.groupBy(debt.type);
 
-			// Get expense by category
-			const expenseByCategory = await db
-				.select({
-					categoryId: transaction.categoryId,
-					categoryCode: category.code,
-					categoryName: category.name,
-					categoryColor: category.color,
-					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
-				})
-				.from(transaction)
-				.leftJoin(category, eq(transaction.categoryId, category.id))
-				.where(
-					and(
-						eq(transaction.userId, userId),
-						eq(transaction.type, 'expense'),
-						profitAndLossRows(),
-						gte(transaction.date, startDate),
-						lt(transaction.date, endDate)
-					)
-				)
-				.groupBy(transaction.categoryId);
+		return (async () => {
+			const [incomeByCategory, expenseByCategory, credit] = await Promise.all([
+				byCategory('income'),
+				byCategory('expense'),
+				creditTotals
+			]);
+			const creditTotal = (type: 'piutang' | 'hutang') =>
+				Number(credit.find((row) => row.type === type)?.total ?? 0);
+			const creditLine = (id: string, name: string, color: string, total: number) =>
+				total > 0
+					? [{ categoryId: id, categoryCode: '', categoryName: name, categoryColor: color, total }]
+					: [];
 
 			return {
-				income: incomeByCategory.map((row) => ({
-					categoryId: row.categoryId ?? '',
-					categoryCode: row.categoryCode ?? '',
-					categoryName: row.categoryName ?? 'Tanpa Kategori',
-					categoryColor: row.categoryColor ?? '#22c55e',
-					total: Number(row.total)
-				})),
-				expense: expenseByCategory.map((row) => ({
-					categoryId: row.categoryId ?? '',
-					categoryCode: row.categoryCode ?? '',
-					categoryName: row.categoryName ?? 'Tanpa Kategori',
-					categoryColor: row.categoryColor ?? '#ef4444',
-					total: Number(row.total)
-				}))
+				income: [
+					...incomeByCategory.map((row) => ({
+						categoryId: row.categoryId ?? '',
+						categoryCode: row.categoryCode ?? '',
+						categoryName: row.categoryName ?? 'Tanpa Kategori',
+						categoryColor: row.categoryColor ?? '#22c55e',
+						total: Number(row.total)
+					})),
+					...creditLine('credit-sales', CREDIT_SALES_LABEL, '#16a34a', creditTotal('piutang'))
+				],
+				expense: [
+					...expenseByCategory.map((row) => ({
+						categoryId: row.categoryId ?? '',
+						categoryCode: row.categoryCode ?? '',
+						categoryName: row.categoryName ?? 'Tanpa Kategori',
+						categoryColor: row.categoryColor ?? '#ef4444',
+						total: Number(row.total)
+					})),
+					...creditLine(
+						'credit-purchases',
+						CREDIT_PURCHASES_LABEL,
+						'#dc2626',
+						creditTotal('hutang')
+					)
+				]
 			};
 		})();
 	},
@@ -1332,85 +1306,16 @@ export const dashboardQueries = {
 			prevEndDate = startDate;
 		}
 
+		const totals = profitAndLossTotals(db, userId, {
+			current: { start: startDate, end: endDate },
+			previous: { start: prevStartDate, end: prevEndDate }
+		});
 		return (async () => {
-			// Current period
-			const currentIncome = await db
-				.select({
-					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
-				})
-				.from(transaction)
-				.where(
-					and(
-						eq(transaction.userId, userId),
-						eq(transaction.type, 'income'),
-						profitAndLossRows(),
-						gte(transaction.date, startDate),
-						lt(transaction.date, endDate)
-					)
-				)
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			const currentExpense = await db
-				.select({
-					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
-				})
-				.from(transaction)
-				.where(
-					and(
-						eq(transaction.userId, userId),
-						eq(transaction.type, 'expense'),
-						profitAndLossRows(),
-						gte(transaction.date, startDate),
-						lt(transaction.date, endDate)
-					)
-				)
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			// Previous period
-			const prevIncome = await db
-				.select({
-					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
-				})
-				.from(transaction)
-				.where(
-					and(
-						eq(transaction.userId, userId),
-						eq(transaction.type, 'income'),
-						profitAndLossRows(),
-						gte(transaction.date, prevStartDate),
-						lt(transaction.date, prevEndDate)
-					)
-				)
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			const prevExpense = await db
-				.select({
-					total: sql`COALESCE(SUM(${transaction.amount}), 0)`
-				})
-				.from(transaction)
-				.where(
-					and(
-						eq(transaction.userId, userId),
-						eq(transaction.type, 'expense'),
-						profitAndLossRows(),
-						gte(transaction.date, prevStartDate),
-						lt(transaction.date, prevEndDate)
-					)
-				)
-				.then((rows) => Number(rows[0]?.total ?? 0));
-
-			return {
-				current: {
-					income: currentIncome,
-					expense: currentExpense,
-					profit: currentIncome - currentExpense
-				},
-				previous: {
-					income: prevIncome,
-					expense: prevExpense,
-					profit: prevIncome - prevExpense
-				}
-			};
+			const [transactionRows, tradeDebtTotals] = await db.batch([
+				totals.transactions,
+				totals.tradeDebts
+			]);
+			return totals.read(transactionRows, tradeDebtTotals);
 		})();
 	}
 };

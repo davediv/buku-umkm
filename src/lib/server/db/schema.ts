@@ -1,5 +1,12 @@
 import { relations, sql } from 'drizzle-orm';
-import { integer, sqliteTable, text, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import {
+	integer,
+	sqliteTable,
+	text,
+	index,
+	uniqueIndex,
+	type AnySQLiteColumn
+} from 'drizzle-orm/sqlite-core';
 
 // Import auth tables to define cross-cutting relations
 import { user, session, account } from './auth.schema';
@@ -372,6 +379,20 @@ export const debt = sqliteTable(
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' }),
 		type: text('type').notNull(), // 'piutang' (receivable) | 'hutang' (payable)
+		// 'trade': a credit sale (piutang) or purchase (hutang), recognised as revenue or
+		// expense on `date`. 'loan': money lent (piutang) or borrowed (hutang); never
+		// revenue or expense, its principal moves cash through `principalAccountId`.
+		kind: text('kind').notNull().default('trade'),
+		// Loans only: the cash/bank account the principal moved through, and the
+		// transaction (with debtId = this debt) that moved it.
+		principalAccountId: text('principal_account_id').references(
+			(): AnySQLiteColumn => chartOfAccount.id,
+			{ onDelete: 'set null' }
+		),
+		principalTransactionId: text('principal_transaction_id').references(
+			(): AnySQLiteColumn => transaction.id,
+			{ onDelete: 'set null' }
+		),
 		contactName: text('contact_name').notNull(), // Customer/supplier name
 		contactPhone: text('contact_phone'),
 		contactAddress: text('contact_address'),
@@ -390,7 +411,8 @@ export const debt = sqliteTable(
 		index('debt_type_idx').on(table.type),
 		index('debt_status_idx').on(table.status),
 		index('debt_dueDate_idx').on(table.dueDate),
-		index('debt_isActive_idx').on(table.isActive)
+		index('debt_isActive_idx').on(table.isActive),
+		index('debt_principalTransactionId_idx').on(table.principalTransactionId)
 	]
 );
 

@@ -259,7 +259,7 @@
 								</div>
 								{#each data.balanceSheet.assets.breakdown.piutangDetail.items as item (item.id)}
 									<div class="flex justify-between text-sm text-muted-foreground pl-2">
-										<span>{item.name}</span>
+										<span>{item.name}{item.kind === 'loan' ? ' (pinjaman)' : ''}</span>
 										<span>{formatRupiah(item.remainingAmount)}</span>
 									</div>
 								{/each}
@@ -367,7 +367,7 @@
 								</div>
 								{#each data.balanceSheet.liabilities.breakdown.hutangDetail.items as item (item.id)}
 									<div class="flex justify-between text-sm text-muted-foreground pl-2">
-										<span>{item.name}</span>
+										<span>{item.name}{item.kind === 'loan' ? ' (pinjaman)' : ''}</span>
 										<span>{formatRupiah(item.remainingAmount)}</span>
 									</div>
 								{/each}

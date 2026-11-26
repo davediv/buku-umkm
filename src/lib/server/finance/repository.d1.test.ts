@@ -127,6 +127,8 @@ describe('financial writes on D1', () => {
 		const { userId, kas, service } = await setup(0);
 		const { entity: receivable } = await service.createDebt(userId, 'debt-key-0001', {
 			type: 'piutang',
+			kind: 'trade',
+			accountId: null,
 			contactName: 'Budi',
 			contactPhone: null,
 			contactAddress: null,
@@ -216,5 +218,103 @@ describe('financial writes on D1', () => {
 		expect(payments).toHaveLength(1);
 		expect(await balanceOf(kas)).toBe(-80_000);
 		expect(await countRows(financialCommand, userId)).toBe(1);
+	});
+
+	describe('loans', () => {
+		const loan = (type: 'piutang' | 'hutang', accountId: string, originalAmount: number) => ({
+			type,
+			kind: 'loan' as const,
+			accountId,
+			contactName: 'Koperasi',
+			contactPhone: null,
+			contactAddress: null,
+			originalAmount,
+			date: '2026-11-01',
+			dueDate: null,
+			description: null
+		});
+
+		it('moves the principal with the debt and links the two', async () => {
+			const { userId, kas, service } = await setup(1_000_000);
+			const { entity: received } = await service.createDebt(
+				userId,
+				'loan-key-0001',
+				loan('hutang', kas, 400_000)
+			);
+			const { entity: given } = await service.createDebt(
+				userId,
+				'loan-key-0002',
+				loan('piutang', kas, 300_000)
+			);
+			expect(await balanceOf(kas)).toBe(1_100_000);
+
+			const principal = await harness.db
+				.select()
+				.from(transaction)
+				.where(eq(transaction.id, received.principalTransactionId!));
+			expect(principal).toMatchObject([
+				{ type: 'income', amount: 400_000, accountId: kas, debtId: received.id, isActive: true }
+			]);
+			expect(given).toMatchObject({ kind: 'loan', principalAccountId: kas });
+			expect(given.principalTransactionId).toEqual(expect.any(String));
+		});
+
+		it('writes nothing when the account cannot cover a loan given', async () => {
+			const { userId, kas, service } = await setup(100_000);
+			await expect(
+				service.createDebt(userId, 'loan-key-0003', loan('piutang', kas, 150_000))
+			).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE' });
+
+			expect(await balanceOf(kas)).toBe(100_000);
+			expect(await countRows(transaction, userId)).toBe(0);
+			expect(await countRows(financialCommand, userId)).toBe(0);
+			expect(await harness.db.select().from(debt).where(eq(debt.userId, userId))).toEqual([]);
+		});
+
+		it('reverses the principal when an unpaid loan is deleted', async () => {
+			const { userId, kas, service } = await setup(1_000_000);
+			const { entity: given } = await service.createDebt(
+				userId,
+				'loan-key-0004',
+				loan('piutang', kas, 300_000)
+			);
+			expect(await balanceOf(kas)).toBe(700_000);
+
+			await service.deleteDebt(userId, given.id);
+			expect(await balanceOf(kas)).toBe(1_000_000);
+			const [principal] = await harness.db
+				.select({ isActive: transaction.isActive })
+				.from(transaction)
+				.where(eq(transaction.id, given.principalTransactionId!));
+			expect(principal.isActive).toBe(false);
+			await expect(service.deleteDebt(userId, given.id)).rejects.toMatchObject({
+				code: 'NOT_FOUND'
+			});
+			expect(await balanceOf(kas)).toBe(1_000_000);
+		});
+
+		it('refuses a delete batch once a payment exists, keeping the principal', async () => {
+			const { userId, kas, repository, service } = await setup(1_000_000);
+			const { entity: received } = await service.createDebt(
+				userId,
+				'loan-key-0005',
+				loan('hutang', kas, 400_000)
+			);
+			// The delete passed the service's pre-check before this payment committed.
+			await service.recordDebtPayment(userId, received.id, 'loan-pay-0001', {
+				amount: 100_000,
+				date: '2026-11-10',
+				accountId: kas,
+				notes: null
+			});
+			await expect(
+				repository.deleteDebtAtomic(userId, received.id, {
+					transactionId: received.principalTransactionId!,
+					accountId: kas,
+					balanceDelta: -400_000
+				})
+			).rejects.toMatchObject({ code: 'DEBT_HAS_PAYMENTS' });
+			expect(await balanceOf(kas)).toBe(1_300_000);
+		});
 	});
 });

@@ -10,30 +10,34 @@ function deferred<T>() {
 	return { promise, resolve };
 }
 
+/** Both halves of the cash-sales ∪ credit-sales statement; `unionAll` runs it. */
 function aggregateQuery(rows: Promise<unknown[]> | unknown[]) {
 	const query = {
 		from: vi.fn(),
 		where: vi.fn(),
-		groupBy: vi.fn().mockReturnValue(rows)
+		groupBy: vi.fn(),
+		unionAll: vi.fn().mockReturnValue(rows)
 	};
 	query.from.mockReturnValue(query);
 	query.where.mockReturnValue(query);
+	query.groupBy.mockReturnValue(query);
 	return query;
 }
 
 describe('tax revenue loading', () => {
-	it('returns twelve monthly totals from one grouped database statement', async () => {
+	it('adds credit sales to recorded income in twelve totals from one statement', async () => {
 		const query = aggregateQuery([
-			{ month: '2026-01', total: 1_250_000 },
-			{ month: '2026-08', total: 3_750_000 }
+			{ month: '2026-01', total: 1_000_000 },
+			{ month: '2026-08', total: 3_750_000 },
+			{ month: '2026-01', total: 250_000 }
 		]);
 		const select = vi.fn().mockReturnValue(query);
 		const db = { select } as unknown as SQLiteDb;
 
 		const result = await getRecordedMonthlyRevenue(db, 'user-1', 2026);
 
-		expect(select).toHaveBeenCalledOnce();
-		expect(query.groupBy).toHaveBeenCalledOnce();
+		expect(select).toHaveBeenCalledTimes(2);
+		expect(query.unionAll).toHaveBeenCalledOnce();
 		expect(result).toHaveLength(12);
 		expect(result[0]).toBe(1_250_000);
 		expect(result[1]).toBe(0);
@@ -53,7 +57,7 @@ describe('tax revenue loading', () => {
 
 		const contextPromise = getTaxYearContext(db, 'user-1', 2026);
 
-		expect(query.groupBy).toHaveBeenCalledOnce();
+		expect(query.unionAll).toHaveBeenCalledOnce();
 		expect(findFirst).toHaveBeenCalledOnce();
 
 		revenueRows.resolve([{ month: '2026-03', total: 900_000 }]);

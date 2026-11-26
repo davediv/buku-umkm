@@ -15,13 +15,13 @@ describe('CashFlowChart', () => {
 		await expect
 			.element(
 				page.getByRole('img', {
-					name: 'Grafik pemasukan dan pengeluaran enam bulan terakhir'
+					name: 'Grafik kas masuk dan kas keluar enam bulan terakhir'
 				})
 			)
 			.toBeInTheDocument();
 		expect(document.querySelectorAll('rect')).toHaveLength(4);
 		await expect
-			.element(page.getByText(/Jul\s+2026:\s+pemasukan Rp 5\.000\.000/))
+			.element(page.getByText(/Jul\s+2026:\s+kas masuk Rp 5\.000\.000/))
 			.toBeInTheDocument();
 	});
 });

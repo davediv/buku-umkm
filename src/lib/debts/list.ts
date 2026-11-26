@@ -3,6 +3,7 @@ import type { DebtDueFilter, DebtQuery } from './query';
 export type DebtListRecord = {
 	id: string;
 	type: string;
+	kind: string;
 	contactName: string;
 	contactPhone: string | null;
 	contactAddress: string | null;

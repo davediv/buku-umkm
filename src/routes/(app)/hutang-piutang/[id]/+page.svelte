@@ -18,6 +18,7 @@
 	import OperationStatus from '$lib/components/operation-status.svelte';
 	import ContextBackLink from '$lib/components/context-back-link.svelte';
 	import { Dialog } from '$lib/components/ui/dialog';
+	import { debtKindLabel } from '$lib/debts/kind';
 	import { getDebtDueState } from '$lib/debts/list';
 	import { getSafeDebtListHref } from '$lib/debts/query';
 	import { todayInJakarta } from '$lib/shared/dates';
@@ -42,6 +43,17 @@
 	let payments = $derived(data.payments);
 	let accounts = $derived(data.accounts);
 	let dueState = $derived(getDebtDueState(debt, data.today));
+	let kindLabel = $derived(debtKindLabel(debt.type, debt.kind));
+	// What a payment does to the books: debts only move cash once recorded.
+	let paymentEffect = $derived(
+		debt.kind === 'loan'
+			? debt.type === 'piutang'
+				? 'Pengembalian pinjaman tidak dihitung sebagai pendapatan.'
+				: 'Pembayaran pokok pinjaman tidak dihitung sebagai beban. Catat bunga, jika ada, sebagai transaksi pengeluaran terpisah.'
+			: debt.type === 'piutang'
+				? 'Pendapatannya sudah dihitung saat piutang dicatat. Penerimaan ini hanya menambah saldo kas.'
+				: 'Bebannya sudah dihitung saat utang dicatat. Pembayaran ini hanya mengurangi saldo kas.'
+	);
 	let listReturnTo = $derived(
 		getSafeDebtListHref(page.url.searchParams.get('return_to'), debt.type)
 	);
@@ -173,7 +185,7 @@
 					</span>
 				</div>
 				<p class="text-sm text-muted-foreground">
-					{getTypeLabel(debt.type)} - Dibuat {formatDate(debt.date)}
+					{kindLabel} - Dibuat {formatDate(debt.date)}
 				</p>
 			</div>
 		</div>
@@ -240,6 +252,33 @@
 		<div class="bg-card border rounded-lg p-6">
 			<h2 class="text-lg font-semibold mb-4">Detail</h2>
 			<dl class="space-y-4">
+				<div class="flex items-start gap-3">
+					<FileText class="w-4 h-4 text-muted-foreground mt-0.5" />
+					<div>
+						<dt class="text-xs text-muted-foreground">Jenis</dt>
+						<dd class="text-sm font-medium">{kindLabel}</dd>
+						<dd class="mt-1 text-xs text-muted-foreground">
+							{debt.kind === 'loan'
+								? 'Pinjaman tidak dihitung sebagai pendapatan atau beban.'
+								: debt.type === 'piutang'
+									? 'Dihitung sebagai pendapatan pada tanggal pencatatan.'
+									: 'Dihitung sebagai beban pada tanggal pencatatan.'}
+						</dd>
+					</div>
+				</div>
+
+				{#if debt.kind === 'loan' && debt.principalAccountName}
+					<div class="flex items-start gap-3">
+						<Wallet class="w-4 h-4 text-muted-foreground mt-0.5" />
+						<div>
+							<dt class="text-xs text-muted-foreground">
+								{debt.type === 'piutang' ? 'Dibayarkan dari' : 'Diterima ke'}
+							</dt>
+							<dd class="text-sm font-medium">{debt.principalAccountName}</dd>
+						</div>
+					</div>
+				{/if}
+
 				{#if debt.contactPhone}
 					<div class="flex items-start gap-3">
 						<Phone class="w-4 h-4 text-muted-foreground mt-0.5" />
@@ -369,6 +408,7 @@
 				{formatRupiah(debt.remainingAmount)}
 			</span>
 		</div>
+		<p class="mt-2 text-xs text-muted-foreground">{paymentEffect}</p>
 	</div>
 
 	<form onsubmit={handlePaymentSubmit} class="space-y-4">

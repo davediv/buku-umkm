@@ -34,6 +34,12 @@ export type NewTransaction = typeof transaction.$inferInsert;
 export type NewDebt = typeof debt.$inferInsert;
 export type NewPayment = typeof debtPayment.$inferInsert;
 
+/** The cash movement that pays out or receives a loan's principal. */
+export type LoanPrincipal = { entry: NewTransaction; balanceDelta: number };
+
+/** Undoes a loan's principal movement when the loan is deleted. */
+export type PrincipalReversal = { transactionId: string; accountId: string; balanceDelta: number };
+
 export interface FinanceRepository {
 	findCommand(userId: string, idempotencyKey: string): Promise<CommandRecord | undefined>;
 	findAccount(userId: string, accountId: string): Promise<AccountRecord | undefined>;
@@ -64,9 +70,17 @@ export interface FinanceRepository {
 		destination: NewTransaction;
 		amount: number;
 	}): Promise<void>;
-	createDebtAtomic(command: StoredCommand, entry: NewDebt): Promise<void>;
+	createDebtAtomic(
+		command: StoredCommand,
+		entry: NewDebt,
+		principal?: LoanPrincipal
+	): Promise<void>;
 	updateDebt(userId: string, debtId: string, updates: Partial<NewDebt>): Promise<void>;
-	deleteDebt(userId: string, debtId: string): Promise<void>;
+	deleteDebtAtomic(
+		userId: string,
+		debtId: string,
+		principal: PrincipalReversal | null
+	): Promise<void>;
 	recordDebtPaymentAtomic(input: {
 		command: StoredCommand;
 		payment: NewPayment;
@@ -96,6 +110,20 @@ async function paymentRejection(db: SQLiteDb, userId: string, debtId: string) {
 		`Jumlah pembayaran tidak boleh melebihi sisa tagihan (Rp${current.remainingAmount.toLocaleString('id-ID')})`,
 		400,
 		'OVERPAYMENT'
+	);
+}
+
+/** Explains why a delete batch guard failed, from the debt's state after the abort. */
+async function deleteRejection(db: SQLiteDb, userId: string, debtId: string) {
+	const [current] = await db
+		.select({ id: debt.id })
+		.from(debt)
+		.where(and(eq(debt.userId, userId), eq(debt.id, debtId), eq(debt.isActive, true)));
+	if (!current) return new FinanceError('Hutang/piutang tidak ditemukan', 404, 'NOT_FOUND');
+	return new FinanceError(
+		'Hutang/piutang yang sudah memiliki pembayaran tidak dapat dihapus',
+		409,
+		'DEBT_HAS_PAYMENTS'
 	);
 }
 
@@ -183,11 +211,48 @@ export function createD1FinanceRepository(db: SQLiteDb): FinanceRepository {
 				throw error;
 			}
 		},
-		async createDebtAtomic(commandRecord, entry) {
-			await runBatch(db, [
-				db.insert(financialCommand).values(commandRecord),
-				db.insert(debt).values(entry)
-			]);
+		async createDebtAtomic(commandRecord, entry, principal) {
+			if (!principal) {
+				await runBatch(db, [
+					db.insert(financialCommand).values(commandRecord),
+					db.insert(debt).values(entry)
+				]);
+				return;
+			}
+
+			const userId = commandRecord.userId;
+			const accountId = principal.entry.accountId;
+			const lending = principal.balanceDelta < 0;
+			try {
+				await runBatch(db, [
+					batchGuard(
+						db,
+						sql`exists (select 1 from ${chartOfAccount} where ${and(
+							eq(chartOfAccount.userId, userId),
+							eq(chartOfAccount.id, accountId),
+							eq(chartOfAccount.isActive, true),
+							lending ? gte(chartOfAccount.balance, -principal.balanceDelta) : undefined
+						)})`
+					),
+					db.insert(financialCommand).values(commandRecord),
+					// debt.principalTransactionId and transaction.debtId point at each other, so
+					// the debt's link is filled in once both rows exist.
+					db.insert(debt).values({ ...entry, principalTransactionId: null }),
+					db.insert(transaction).values(principal.entry),
+					db
+						.update(debt)
+						.set({ principalTransactionId: principal.entry.id })
+						.where(and(eq(debt.userId, userId), eq(debt.id, entry.id!))),
+					adjustBalance(db, userId, accountId, principal.balanceDelta)
+				]);
+			} catch (error) {
+				if (isGuardFailure(error)) {
+					throw lending
+						? new FinanceError('Saldo tidak mencukupi', 400, 'INSUFFICIENT_BALANCE')
+						: new FinanceError('Akun tidak ditemukan', 400, 'ACCOUNT_NOT_FOUND');
+				}
+				throw error;
+			}
 		},
 		async updateDebt(userId, debtId, updates) {
 			await db
@@ -195,11 +260,41 @@ export function createD1FinanceRepository(db: SQLiteDb): FinanceRepository {
 				.set(updates)
 				.where(and(eq(debt.userId, userId), eq(debt.id, debtId), eq(debt.isActive, true)));
 		},
-		async deleteDebt(userId, debtId) {
-			await db
-				.update(debt)
-				.set({ isActive: false })
-				.where(and(eq(debt.userId, userId), eq(debt.id, debtId), eq(debt.isActive, true)));
+		async deleteDebtAtomic(userId, debtId, principal) {
+			try {
+				await runBatch(db, [
+					// Still active (so a principal is never reversed twice) and still unpaid.
+					batchGuard(
+						db,
+						sql`exists (select 1 from ${debt} where ${and(
+							eq(debt.userId, userId),
+							eq(debt.id, debtId),
+							eq(debt.isActive, true)
+						)}) and not exists (select 1 from ${debtPayment} where ${and(
+							eq(debtPayment.userId, userId),
+							eq(debtPayment.debtId, debtId)
+						)})`
+					),
+					db
+						.update(debt)
+						.set({ isActive: false })
+						.where(and(eq(debt.userId, userId), eq(debt.id, debtId))),
+					...(principal
+						? [
+								db
+									.update(transaction)
+									.set({ isActive: false })
+									.where(
+										and(eq(transaction.userId, userId), eq(transaction.id, principal.transactionId))
+									),
+								adjustBalance(db, userId, principal.accountId, principal.balanceDelta)
+							]
+						: [])
+				]);
+			} catch (error) {
+				if (isGuardFailure(error)) throw await deleteRejection(db, userId, debtId);
+				throw error;
+			}
 		},
 		async recordDebtPaymentAtomic({ command: commandRecord, payment, entry, balanceDelta }) {
 			const userId = commandRecord.userId;

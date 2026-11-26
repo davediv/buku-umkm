@@ -104,6 +104,9 @@ function createRepository() {
 				id: entry.id!,
 				userId: entry.userId,
 				type: entry.type,
+				kind: entry.kind ?? 'trade',
+				principalAccountId: entry.principalAccountId ?? null,
+				principalTransactionId: entry.principalTransactionId ?? null,
 				contactName: entry.contactName,
 				contactPhone: entry.contactPhone ?? null,
 				contactAddress: entry.contactAddress ?? null,
@@ -121,7 +124,7 @@ function createRepository() {
 			});
 		}),
 		updateDebt: vi.fn(),
-		deleteDebt: vi.fn(),
+		deleteDebtAtomic: vi.fn(),
 		recordDebtPaymentAtomic: vi.fn()
 	} satisfies FinanceRepository;
 
@@ -260,6 +263,8 @@ describe('financial mutation commands', () => {
 		const service = createFinancialMutationService(repository, ids('debt-1', 'command-1'));
 		const input = {
 			type: 'piutang' as const,
+			kind: 'trade' as const,
+			accountId: null,
 			contactName: 'Budi',
 			contactPhone: null,
 			contactAddress: null,
@@ -283,6 +288,9 @@ describe('financial mutation commands', () => {
 			id: 'debt-1',
 			userId: 'user-1',
 			type: 'hutang',
+			kind: 'trade',
+			principalAccountId: null,
+			principalTransactionId: null,
 			contactName: 'Supplier',
 			contactPhone: null,
 			contactAddress: null,
@@ -317,6 +325,9 @@ describe('financial mutation commands', () => {
 			id: 'debt-1',
 			userId: 'user-1',
 			type: 'piutang',
+			kind: 'trade',
+			principalAccountId: null,
+			principalTransactionId: null,
 			contactName: 'Budi',
 			contactPhone: null,
 			contactAddress: null,
@@ -350,6 +361,6 @@ describe('financial mutation commands', () => {
 			code: 'DEBT_HAS_PAYMENTS',
 			status: 409
 		});
-		expect(repository.deleteDebt).not.toHaveBeenCalled();
+		expect(repository.deleteDebtAtomic).not.toHaveBeenCalled();
 	});
 });

@@ -12,6 +12,7 @@
 	} from '@lucide/svelte';
 	import OperationStatus from '$lib/components/operation-status.svelte';
 	import { Dialog } from '$lib/components/ui/dialog';
+	import { debtKindLabel, type DebtKind } from '$lib/debts/kind';
 	import { getDebtDueState } from '$lib/debts/list';
 	import { getDebtDetailHref, getDebtHref } from '$lib/debts/query';
 	import { todayInJakarta } from '$lib/shared/dates';
@@ -25,6 +26,8 @@
 	let formError = $state<string | null>(null);
 	let successMessage = $state<string | null>(null);
 	let createType = $state<'piutang' | 'hutang'>('piutang');
+	let createKind = $state<DebtKind>('trade');
+	let accountId = $state('');
 
 	let contactName = $state('');
 	let contactPhone = $state('');
@@ -35,6 +38,29 @@
 	let description = $state('');
 	let createCommandId = $state('');
 
+	let kindOptions = $derived(
+		createType === 'piutang'
+			? [
+					{
+						value: 'trade' as const,
+						hint: 'Penjualan secara kredit. Dihitung sebagai pendapatan pada tanggal pencatatan.'
+					},
+					{
+						value: 'loan' as const,
+						hint: 'Uang usaha yang dipinjamkan. Bukan pendapatan; saldo kas berkurang.'
+					}
+				]
+			: [
+					{
+						value: 'trade' as const,
+						hint: 'Pembelian secara kredit. Dihitung sebagai beban pada tanggal pencatatan.'
+					},
+					{
+						value: 'loan' as const,
+						hint: 'Uang pinjaman yang masuk ke kas. Bukan pendapatan.'
+					}
+				]
+	);
 	let query = $derived(data.query);
 	let selectedSummary = $derived(data.summary[query.type]);
 	let hasFilters = $derived(
@@ -59,6 +85,8 @@
 
 	function openCreateModal(type: 'piutang' | 'hutang') {
 		createType = type;
+		createKind = 'trade';
+		accountId = '';
 		formError = null;
 		contactName = '';
 		contactPhone = '';
@@ -89,6 +117,8 @@
 				},
 				body: JSON.stringify({
 					type: createType,
+					kind: createKind,
+					account_id: createKind === 'loan' ? accountId : undefined,
 					contact_name: contactName,
 					contact_phone: contactPhone || undefined,
 					contact_address: contactAddress || undefined,
@@ -337,6 +367,9 @@
 					<div class="flex items-start justify-between gap-3">
 						<div class="min-w-0">
 							<h2 class="truncate font-semibold">{debt.contactName}</h2>
+							{#if debt.kind === 'loan'}<p class="text-xs font-medium text-muted-foreground">
+									{debtKindLabel(debt.type, debt.kind)}
+								</p>{/if}
 							{#if debt.contactPhone}<p class="text-xs text-muted-foreground">
 									{debt.contactPhone}
 								</p>{/if}
@@ -410,7 +443,9 @@
 							><td class="px-4 py-3"
 								><a href={getDebtDetailHref(debt.id, query)} class="font-medium hover:underline"
 									>{debt.contactName}</a
-								>{#if debt.contactPhone}<p class="text-xs text-muted-foreground">
+								>{#if debt.kind === 'loan'}<p class="text-xs font-medium text-muted-foreground">
+										{debtKindLabel(debt.type, debt.kind)}
+									</p>{/if}{#if debt.contactPhone}<p class="text-xs text-muted-foreground">
 										{debt.contactPhone}
 									</p>{/if}</td
 							><td class="px-4 py-3 text-right">{formatRupiah(debt.originalAmount)}</td><td
@@ -492,6 +527,28 @@
 		>
 	</div>
 	<form onsubmit={handleSubmit} class="space-y-4">
+		<fieldset class="space-y-2">
+			<legend class="text-sm font-medium">Jenis catatan</legend>
+			<div class="grid gap-2 sm:grid-cols-2">
+				{#each kindOptions as option (option.value)}
+					<label
+						class="flex min-h-11 cursor-pointer gap-3 rounded-md border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+					>
+						<input
+							type="radio"
+							name="debt-kind"
+							value={option.value}
+							bind:group={createKind}
+							class="mt-0.5 h-4 w-4 shrink-0"
+						/>
+						<span>
+							<span class="block font-medium">{debtKindLabel(createType, option.value)}</span>
+							<span class="block text-xs text-muted-foreground">{option.hint}</span>
+						</span>
+					</label>
+				{/each}
+			</div>
+		</fieldset>
 		<div class="space-y-2">
 			<label for="debt-contact" class="text-sm font-medium"
 				>Nama kontak <span class="text-destructive">*</span></label
@@ -546,6 +603,33 @@
 				required
 			/>
 		</div>
+		{#if createKind === 'loan'}
+			<div class="space-y-2">
+				<label for="debt-account" class="text-sm font-medium"
+					>{createType === 'piutang' ? 'Dibayarkan dari kas/rekening' : 'Diterima ke kas/rekening'}
+					<span class="text-destructive">*</span></label
+				><select
+					id="debt-account"
+					bind:value={accountId}
+					class="min-h-11 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					required
+				>
+					<option value="">Pilih kas atau rekening</option>
+					{#each data.accounts as account (account.id)}
+						<option value={account.id}>{account.name} ({formatRupiah(account.balance)})</option>
+					{/each}
+				</select>
+				{#if data.accounts.length === 0}
+					<p class="text-xs text-destructive">
+						Belum ada kas atau rekening aktif. <a href="/akun" class="underline">Tambah dulu</a>.
+					</p>
+				{:else}
+					<p class="text-xs text-muted-foreground">
+						Saldo akun {createType === 'piutang' ? 'berkurang' : 'bertambah'} sebesar jumlah pinjaman.
+					</p>
+				{/if}
+			</div>
+		{/if}
 		<div class="grid gap-4 sm:grid-cols-2">
 			<div class="space-y-2">
 				<label for="debt-date" class="text-sm font-medium"

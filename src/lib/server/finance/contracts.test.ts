@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { parseCreateTransaction, parseUpdateTransaction, requireIdempotencyKey } from './contracts';
+import {
+	parseCreateDebt,
+	parseCreateTransaction,
+	parseUpdateTransaction,
+	requireIdempotencyKey
+} from './contracts';
 
 describe('financial command contracts', () => {
 	it('normalizes a valid transaction request', () => {
@@ -47,5 +52,20 @@ describe('financial command contracts', () => {
 
 		expect(requireIdempotencyKey(valid)).toBe('request-123');
 		expect(() => requireIdempotencyKey(missing)).toThrow(/Idempotency-Key wajib/);
+	});
+
+	it('defaults a debt to trade and requires an account only for loans', () => {
+		const base = { type: 'hutang', contact_name: 'Koperasi', amount: 500_000, date: '2026-08-30' };
+
+		expect(parseCreateDebt(base)).toMatchObject({ kind: 'trade', accountId: null });
+		expect(parseCreateDebt({ ...base, kind: 'loan', account_id: ' kas-1 ' })).toMatchObject({
+			kind: 'loan',
+			accountId: 'kas-1'
+		});
+		expect(() => parseCreateDebt({ ...base, kind: 'loan' })).toThrow(/Akun wajib diisi/);
+		expect(() => parseCreateDebt({ ...base, account_id: 'kas-1' })).toThrow(
+			/Akun hanya diisi untuk pinjaman/
+		);
+		expect(() => parseCreateDebt({ ...base, kind: 'gift' })).toThrow(/Jenis catatan tidak valid/);
 	});
 });

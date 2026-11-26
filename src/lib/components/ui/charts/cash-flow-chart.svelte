@@ -76,11 +76,11 @@
 	<div class="mb-1 flex h-6 items-center justify-end gap-4 text-xs text-muted-foreground">
 		<span class="inline-flex items-center gap-1.5">
 			<span class="h-2.5 w-2.5 rounded-sm bg-green-500"></span>
-			Pemasukan
+			Kas masuk
 		</span>
 		<span class="inline-flex items-center gap-1.5">
 			<span class="h-2.5 w-2.5 rounded-sm bg-red-500"></span>
-			Pengeluaran
+			Kas keluar
 		</span>
 	</div>
 
@@ -90,7 +90,7 @@
 		style:height="{chartHeight}px"
 		preserveAspectRatio="none"
 		role="img"
-		aria-label="Grafik pemasukan dan pengeluaran enam bulan terakhir"
+		aria-label="Grafik kas masuk dan kas keluar enam bulan terakhir"
 	>
 		{#each ticks as tick (tick)}
 			{@const y = yPosition(tick)}
@@ -124,7 +124,7 @@
 				rx="2"
 				class="fill-green-500"
 			>
-				<title>{item.label} {item.year}: Pemasukan Rp {fullNumber.format(item.income)}</title>
+				<title>{item.label} {item.year}: Kas masuk Rp {fullNumber.format(item.income)}</title>
 			</rect>
 			<rect
 				x={barX(index, 1)}
@@ -134,7 +134,7 @@
 				rx="2"
 				class="fill-red-500"
 			>
-				<title>{item.label} {item.year}: Pengeluaran Rp {fullNumber.format(item.expense)}</title>
+				<title>{item.label} {item.year}: Kas keluar Rp {fullNumber.format(item.expense)}</title>
 			</rect>
 			<text
 				x={MARGIN.left + index * groupWidth + groupWidth / 2}
@@ -151,7 +151,7 @@
 		{#each chartData as item (`summary-${item.year}-${item.label}`)}
 			<p>
 				{item.label}
-				{item.year}: pemasukan Rp {fullNumber.format(item.income)}, pengeluaran Rp
+				{item.year}: kas masuk Rp {fullNumber.format(item.income)}, kas keluar Rp
 				{fullNumber.format(item.expense)}.
 			</p>
 		{/each}

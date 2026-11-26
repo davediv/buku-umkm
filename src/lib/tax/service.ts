@@ -4,8 +4,9 @@
  * Contains reusable functions for fetching tax-related data from the database
  */
 
-import { businessProfile, taxProfile, taxRecord, transaction } from '$lib/server/db/schema';
+import { businessProfile, debt, taxProfile, taxRecord, transaction } from '$lib/server/db/schema';
 import { eq, and, gte, lt, sql } from 'drizzle-orm';
+import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import type { SQLiteDb } from '$lib/server/db';
 import type { TaxEligibilityDecision, TaxProfileData } from './types';
 import { REVENUE_THRESHOLD_WP_OP, TAX_TYPE, getIndonesianMonthName } from './config';
@@ -13,7 +14,7 @@ import { evaluateTaxEligibility } from './eligibility';
 import { decryptNPWP } from '$lib/server/crypto';
 import { calculateMonthlyTax } from './engine';
 import { todayInJakarta } from '$lib/shared/dates';
-import { profitAndLossRows } from '$lib/server/db/queries/ledger';
+import { profitAndLossRows, tradeDebtRows } from '$lib/server/db/queries/ledger';
 
 // Re-export for backward compatibility
 export { getIndonesianMonthName };
@@ -114,9 +115,12 @@ export async function upsertTaxProfile(
 	return saved;
 }
 
+const monthOf = (date: SQLiteColumn) => sql<string>`substr(${date}, 1, 7)`;
+
 /**
- * Aggregate recorded income by month in D1. The tax UI only needs 12 totals,
- * so returning every transaction wastes database transfer and Worker CPU.
+ * Recorded gross turnover by month, on the accrual basis: profit-and-loss income plus
+ * credit sales on their debt date (collecting them later adds nothing). Aggregated in
+ * D1 as one statement, since the tax UI only needs 12 totals.
  */
 export async function getRecordedMonthlyRevenue(
 	db: SQLiteDb,
@@ -128,10 +132,9 @@ export async function getRecordedMonthlyRevenue(
 	const lastMonth = endMonth ? Math.min(Math.max(Math.trunc(endMonth), 1), 12) : 12;
 	const yearEndDate =
 		lastMonth === 12 ? `${year + 1}-01-01` : `${year}-${String(lastMonth + 1).padStart(2, '0')}-01`;
-	const monthExpression = sql<string>`substr(${transaction.date}, 1, 7)`;
-	const rows = await db
+	const sales = db
 		.select({
-			month: monthExpression,
+			month: monthOf(transaction.date),
 			total: sql<number>`COALESCE(SUM(${transaction.amount}), 0)`
 		})
 		.from(transaction)
@@ -144,23 +147,43 @@ export async function getRecordedMonthlyRevenue(
 				lt(transaction.date, yearEndDate)
 			)
 		)
-		.groupBy(monthExpression);
+		.groupBy(monthOf(transaction.date));
+	const creditSales = db
+		.select({
+			month: monthOf(debt.date),
+			total: sql<number>`COALESCE(SUM(${debt.originalAmount}), 0)`
+		})
+		.from(debt)
+		.where(
+			and(
+				eq(debt.userId, userId),
+				eq(debt.type, 'piutang'),
+				tradeDebtRows(),
+				gte(debt.date, yearStartDate),
+				lt(debt.date, yearEndDate)
+			)
+		)
+		.groupBy(monthOf(debt.date));
+	const rows = await sales.unionAll(creditSales);
 
 	const monthlyRevenue: number[] = Array(12).fill(0);
 	for (const row of rows) {
 		const month = Number(row.month.slice(5, 7));
 		if (month >= 1 && month <= 12) {
-			monthlyRevenue[month - 1] = Number(row.total);
+			monthlyRevenue[month - 1] += Number(row.total);
 		}
 	}
 	return monthlyRevenue;
 }
 
+/** Recorded expense for the year: profit-and-loss expense plus credit purchases. */
 export async function getRecordedAnnualExpenseTotal(
 	db: SQLiteDb,
 	userId: string,
 	year: number
 ): Promise<number> {
+	const start = `${year}-01-01`;
+	const end = `${year + 1}-01-01`;
 	const rows = await db
 		.select({ total: sql<number>`COALESCE(SUM(${transaction.amount}), 0)` })
 		.from(transaction)
@@ -169,11 +192,25 @@ export async function getRecordedAnnualExpenseTotal(
 				eq(transaction.userId, userId),
 				eq(transaction.type, 'expense'),
 				profitAndLossRows(),
-				gte(transaction.date, `${year}-01-01`),
-				lt(transaction.date, `${year + 1}-01-01`)
+				gte(transaction.date, start),
+				lt(transaction.date, end)
 			)
+		)
+		.unionAll(
+			db
+				.select({ total: sql<number>`COALESCE(SUM(${debt.originalAmount}), 0)` })
+				.from(debt)
+				.where(
+					and(
+						eq(debt.userId, userId),
+						eq(debt.type, 'hutang'),
+						tradeDebtRows(),
+						gte(debt.date, start),
+						lt(debt.date, end)
+					)
+				)
 		);
-	return Number(rows[0]?.total ?? 0);
+	return rows.reduce((sum, row) => sum + Number(row.total), 0);
 }
 
 export interface TaxYearContext {

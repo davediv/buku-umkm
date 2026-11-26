@@ -6,6 +6,7 @@ const records: DebtListRecord[] = [
 	{
 		id: 'receivable-overdue',
 		type: 'piutang',
+		kind: 'trade',
 		contactName: 'Budi',
 		contactPhone: '0812',
 		contactAddress: null,
@@ -20,6 +21,7 @@ const records: DebtListRecord[] = [
 	{
 		id: 'receivable-soon',
 		type: 'piutang',
+		kind: 'trade',
 		contactName: 'Citra',
 		contactPhone: null,
 		contactAddress: null,
@@ -34,6 +36,7 @@ const records: DebtListRecord[] = [
 	{
 		id: 'payable-paid',
 		type: 'hutang',
+		kind: 'trade',
 		contactName: 'Toko Makmur',
 		contactPhone: null,
 		contactAddress: null,

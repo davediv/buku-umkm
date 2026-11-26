@@ -72,19 +72,32 @@ describe('dashboardQueries.getOverview', () => {
 		vi.useRealTimers();
 	});
 
-	it('loads all shared dashboard aggregates with four database statements', async () => {
+	it('loads all shared dashboard aggregates in one batch', async () => {
 		const resultSets = [
 			[{ assets: 12_000_000, liabilities: 2_000_000, equity: 10_000_000 }],
+			// Profit-and-loss transactions, then credit sales and purchases.
 			[
 				{
-					monthlyIncome: 8_000_000,
-					monthlyExpense: 3_000_000,
-					yearIncome: 60_000_000,
-					yearExpense: 25_000_000,
-					todayIncome: 500_000,
-					todayExpense: 100_000,
-					periodIncome: 2_000_000,
-					periodExpense: 750_000
+					month_income: 7_000_000,
+					month_expense: 3_000_000,
+					year_income: 59_000_000,
+					year_expense: 25_000_000,
+					today_income: 500_000,
+					today_expense: 100_000,
+					period_income: 1_000_000,
+					period_expense: 750_000
+				}
+			],
+			[
+				{
+					month_income: 1_000_000,
+					month_expense: 0,
+					year_income: 1_000_000,
+					year_expense: 0,
+					today_income: 0,
+					today_expense: 0,
+					period_income: 1_000_000,
+					period_expense: 0
 				}
 			],
 			[{ piutang: 4_000_000, hutang: 1_500_000, activeCount: 3 }],
@@ -104,7 +117,7 @@ describe('dashboardQueries.getOverview', () => {
 
 		const result = await dashboardQueries.getOverview(db, 'user-1', 'weekly');
 
-		expect(select).toHaveBeenCalledTimes(4);
+		expect(select).toHaveBeenCalledTimes(5);
 		expect(batch).toHaveBeenCalledOnce();
 		expect(batch).toHaveBeenCalledWith(queries);
 		expect(result.summary).toMatchObject({

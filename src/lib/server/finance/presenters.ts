@@ -66,6 +66,9 @@ export function presentDebt(item: DebtRecord) {
 	return {
 		id: item.id,
 		type: item.type,
+		kind: item.kind,
+		principalAccountId: item.principalAccountId,
+		principalTransactionId: item.principalTransactionId,
 		contactName: item.contactName,
 		contactPhone: item.contactPhone,
 		contactAddress: item.contactAddress,

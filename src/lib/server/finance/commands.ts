@@ -11,6 +11,7 @@ import type {
 	AccountRecord,
 	DebtRecord,
 	FinanceRepository,
+	LoanPrincipal,
 	PaymentRecord,
 	StoredCommand,
 	TransactionRecord
@@ -80,7 +81,7 @@ function requirePersisted<T>(entity: T | undefined, message: string): T {
 function requireStandaloneTransaction(entity: TransactionRecord): void {
 	if (entity.debtId) {
 		throw new FinanceError(
-			'Transaksi pembayaran hutang/piutang tidak dapat diubah terpisah dari catatan pembayaran',
+			'Transaksi yang terhubung ke hutang/piutang tidak dapat diubah terpisah dari catatannya',
 			409,
 			'LINKED_TRANSACTION'
 		);
@@ -102,6 +103,17 @@ function requireAccountOpenOn(account: AccountRecord, date: string): void {
 			'DATE_BEFORE_ACCOUNT_OPENING'
 		);
 	}
+}
+
+function paymentDescription(item: DebtRecord): string {
+	if (item.kind === 'loan') {
+		return item.type === 'piutang'
+			? `Pengembalian pinjaman dari ${item.contactName}`
+			: `Pembayaran pinjaman ke ${item.contactName}`;
+	}
+	return item.type === 'piutang'
+		? `Pembayaran piutang dari ${item.contactName}`
+		: `Pembayaran hutang ke ${item.contactName}`;
 }
 
 export function createFinancialMutationService(
@@ -390,6 +402,42 @@ export function createFinancialMutationService(
 		};
 	}
 
+	/**
+	 * A loan moves its principal when it is recorded: borrowed money (hutang) comes into
+	 * the account, lent money (piutang) leaves it. The movement is linked to the debt, so
+	 * it changes the balance without counting as revenue or expense.
+	 */
+	async function loanPrincipal(
+		userId: string,
+		debtId: string,
+		input: CreateDebtCommand
+	): Promise<LoanPrincipal> {
+		const account = input.accountId
+			? await repository.findAccount(userId, input.accountId)
+			: undefined;
+		if (!account) throw new FinanceError('Akun tidak ditemukan', 400, 'ACCOUNT_NOT_FOUND');
+		requireAccountOpenOn(account, input.date);
+		const type = input.type === 'hutang' ? 'income' : 'expense';
+		return {
+			balanceDelta: balanceEffect(type, input.originalAmount),
+			entry: {
+				id: createId(),
+				userId,
+				date: input.date,
+				type,
+				amount: input.originalAmount,
+				description:
+					input.type === 'hutang'
+						? `Pinjaman diterima dari ${input.contactName}`
+						: `Pinjaman diberikan ke ${input.contactName}`,
+				accountId: account.id,
+				categoryId: null,
+				toAccountId: null,
+				debtId
+			}
+		};
+	}
+
 	async function createDebt(
 		userId: string,
 		idempotencyKey: string,
@@ -398,24 +446,33 @@ export function createFinancialMutationService(
 		const replay = await replayDebt(userId, idempotencyKey);
 		if (replay) return replay;
 		const debtId = createId();
+		const principal =
+			input.kind === 'loan' ? await loanPrincipal(userId, debtId, input) : undefined;
 		const command = storedCommand(createId, userId, idempotencyKey, 'debt.create', { debtId });
 		try {
-			await repository.createDebtAtomic(command, {
-				id: debtId,
-				userId,
-				type: input.type,
-				contactName: input.contactName,
-				contactPhone: input.contactPhone,
-				contactAddress: input.contactAddress,
-				originalAmount: input.originalAmount,
-				paidAmount: 0,
-				remainingAmount: input.originalAmount,
-				date: input.date,
-				dueDate: input.dueDate,
-				description: input.description,
-				status: 'active',
-				isActive: true
-			});
+			await repository.createDebtAtomic(
+				command,
+				{
+					id: debtId,
+					userId,
+					type: input.type,
+					kind: input.kind,
+					principalAccountId: principal?.entry.accountId ?? null,
+					principalTransactionId: principal?.entry.id ?? null,
+					contactName: input.contactName,
+					contactPhone: input.contactPhone,
+					contactAddress: input.contactAddress,
+					originalAmount: input.originalAmount,
+					paidAmount: 0,
+					remainingAmount: input.originalAmount,
+					date: input.date,
+					dueDate: input.dueDate,
+					description: input.description,
+					status: 'active',
+					isActive: true
+				},
+				principal
+			);
 		} catch (error) {
 			const concurrentReplay = await replayDebt(userId, idempotencyKey);
 			if (concurrentReplay) return concurrentReplay;
@@ -464,7 +521,21 @@ export function createFinancialMutationService(
 				'DEBT_HAS_PAYMENTS'
 			);
 		}
-		await repository.deleteDebt(userId, debtId);
+		// Deleting a loan also takes back the principal it moved.
+		const movement = existing.principalTransactionId
+			? await repository.findTransaction(userId, existing.principalTransactionId)
+			: undefined;
+		await repository.deleteDebtAtomic(
+			userId,
+			debtId,
+			movement
+				? {
+						transactionId: movement.id,
+						accountId: movement.accountId,
+						balanceDelta: -balanceEffect(movement.type, movement.amount)
+					}
+				: null
+		);
 	}
 
 	async function replayDebtPayment(
@@ -533,10 +604,7 @@ export function createFinancialMutationService(
 		const paymentId = createId();
 		const transactionId = createId();
 		const transactionType = existingDebt.type === 'piutang' ? 'income' : 'expense';
-		const transactionDescription =
-			existingDebt.type === 'piutang'
-				? `Pembayaran piutang dari ${existingDebt.contactName}`
-				: `Pembayaran hutang ke ${existingDebt.contactName}`;
+		const transactionDescription = paymentDescription(existingDebt);
 		const command = storedCommand(createId, userId, idempotencyKey, 'debt.payment', {
 			debtId,
 			paymentId,

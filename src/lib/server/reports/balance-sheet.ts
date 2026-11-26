@@ -27,6 +27,8 @@ export type HistoricalTransaction = {
 export type HistoricalDebt = {
 	id: string;
 	type: string;
+	/** 'trade' (credit sale/purchase) or 'loan' (money lent/borrowed). */
+	kind: string;
 	contactName: string;
 	originalAmount: number;
 	date: string;
@@ -39,6 +41,7 @@ type AssetItem = { id: string; name: string; code: string; balance: number };
 type AssetGroup = { label: string; items: AssetItem[]; subtotal: number };
 type DebtItem = {
 	id: string;
+	kind: string;
 	name: string;
 	originalAmount: number;
 	paidAmount: number;
@@ -67,6 +70,7 @@ function debtAsOf(item: HistoricalDebt, selectedDate: string): DebtItem | null {
 
 	return {
 		id: item.id,
+		kind: item.kind,
 		name: item.contactName,
 		originalAmount: item.originalAmount,
 		paidAmount,
@@ -131,19 +135,22 @@ export function calculateBalanceSheetAsOf(
 	const totalAccountAssets = Object.values(groups).reduce((sum, group) => sum + group.subtotal, 0);
 	const totalAssets = totalAccountAssets + totalPiutang;
 
-	// Linked debt payments and transfers only move value between balance-sheet
-	// accounts. Excluding them here prevents counting them again as profit/loss.
-	const accumulatedOperatingResult = movements
+	// Accrual basis: the accumulated result is every profit-and-loss movement plus each
+	// credit sale (piutang) and purchase (hutang) on its debt date. Transfers, debt
+	// payments and loan principal (debtId set) only move value between balance-sheet
+	// items, and a loan is a receivable or payable with no effect on equity.
+	const cashResult = movements
 		.filter((item) => !item.debtId && !item.toAccountId)
 		.reduce((sum, item) => sum + movementEffect(item), 0);
-	const debtRecognition = debts
-		.filter((item) => item.isActive && item.date <= selectedDate)
+	const creditResult = debts
+		.filter((item) => item.isActive && item.kind === 'trade' && item.date <= selectedDate)
 		.reduce((sum, item) => {
 			if (item.type === 'piutang') return sum + item.originalAmount;
 			if (item.type === 'hutang') return sum - item.originalAmount;
 			return sum;
 		}, 0);
-	const totalEquity = openingCapital + accumulatedOperatingResult + debtRecognition;
+	const accumulatedResult = cashResult + creditResult;
+	const totalEquity = openingCapital + accumulatedResult;
 	const expected = totalHutang + totalEquity;
 
 	return {
@@ -181,8 +188,7 @@ export function calculateBalanceSheetAsOf(
 			total: totalEquity,
 			components: [
 				{ name: 'Modal dari saldo awal', amount: openingCapital },
-				{ name: 'Akumulasi hasil usaha', amount: accumulatedOperatingResult },
-				{ name: 'Dampak pengakuan hutang/piutang', amount: debtRecognition }
+				{ name: 'Akumulasi hasil usaha', amount: accumulatedResult }
 			]
 		},
 		isBalanced: totalAssets === expected,

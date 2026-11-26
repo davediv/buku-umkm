@@ -34,6 +34,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		const formattedDebt = {
 			id: debt.id,
 			type: debt.type,
+			kind: debt.kind,
+			// Loans: the account the principal moved through (it may since be deactivated).
+			principalAccountName:
+				accounts.find((account) => account.id === debt.principalAccountId)?.name ?? null,
 			contactName: debt.contactName,
 			contactPhone: debt.contactPhone,
 			contactAddress: debt.contactAddress,
