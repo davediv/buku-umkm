@@ -15,12 +15,12 @@ function createAuth() {
 	});
 }
 
-// Lazy initialization singleton for better-auth
-let authInstance: ReturnType<typeof betterAuth> | null = null;
+type AuthInstance = ReturnType<typeof createAuth>;
 
-export function getAuth() {
-	if (!authInstance) {
-		authInstance = createAuth();
-	}
+// Lazy initialization singleton for better-auth
+let authInstance: AuthInstance | undefined;
+
+export function getAuth(): AuthInstance {
+	authInstance ??= createAuth();
 	return authInstance;
 }
