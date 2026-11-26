@@ -19,7 +19,7 @@
 		TableRow
 	} from '$lib/components/ui/table';
 	import { TAX_STATUS, TAXPAYER_TYPE, getIndonesianMonthName } from '$lib/tax/config';
-	import { formatRupiah } from '$lib/utils';
+	import { formatPercent, formatRupiah } from '$lib/utils';
 	import { toast } from '$lib/components/ui/toast';
 	import {
 		AlertDialog,
@@ -284,7 +284,7 @@
 								? 'text-yellow-600'
 								: ''} {data.summary.thresholdPercentage >= 90 ? 'text-red-600' : ''}"
 						>
-							{data.summary.thresholdPercentage.toFixed(1)}%
+							{formatPercent(data.summary.thresholdPercentage)}
 						</span>
 						<span>100%</span>
 					</div>

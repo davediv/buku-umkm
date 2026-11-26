@@ -1,4 +1,4 @@
-import { formatRupiah, formatDateLong } from '$lib/utils';
+import { formatPercent, formatRupiah, formatDateLong } from '$lib/utils';
 import { todayInJakarta } from '$lib/shared/dates';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -274,7 +274,7 @@ export async function exportLabaRugiPDF(
 		const incomeTableData = report.categoryBreakdown.income.map((cat) => [
 			cat.categoryName,
 			formatRupiah(cat.total),
-			`${cat.percentage.toFixed(1)}%`
+			formatPercent(cat.percentage)
 		]);
 
 		doc.autoTable({
@@ -311,7 +311,7 @@ export async function exportLabaRugiPDF(
 		const expenseTableData = report.categoryBreakdown.expense.map((cat) => [
 			cat.categoryName,
 			formatRupiah(cat.total),
-			`${cat.percentage.toFixed(1)}%`
+			formatPercent(cat.percentage)
 		]);
 
 		doc.autoTable({

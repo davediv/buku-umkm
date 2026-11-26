@@ -128,10 +128,15 @@ export function getDebtStatusBadge(status: string): { label: string; class: stri
 /**
  * Get comparison text for period-over-period changes
  */
+/** A percentage with one decimal and an Indonesian decimal comma: 55.55 -> "55,6%". */
+export function formatPercent(value: number): string {
+	return `${value.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+}
+
 export function getComparisonText(change: number): { text: string; isPositive: boolean } {
 	const absChange = Math.abs(change);
-	if (change > 0) return { text: `Naik ${absChange.toFixed(1)}%`, isPositive: true };
-	else if (change < 0) return { text: `Turun ${absChange.toFixed(1)}%`, isPositive: false };
+	if (change > 0) return { text: `Naik ${formatPercent(absChange)}`, isPositive: true };
+	else if (change < 0) return { text: `Turun ${formatPercent(absChange)}`, isPositive: false };
 	return { text: 'Tidak berubah', isPositive: true };
 }
 

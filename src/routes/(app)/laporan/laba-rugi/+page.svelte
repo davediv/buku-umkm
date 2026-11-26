@@ -13,7 +13,7 @@
 	import PageErrorState from '$lib/components/page-error-state.svelte';
 	import ReportNavigation from '$lib/components/reports/report-navigation.svelte';
 	import { toast } from '$lib/components/ui/toast';
-	import { formatRupiah, getComparisonText, getMaxCategoryValue } from '$lib/utils';
+	import { formatPercent, formatRupiah, getComparisonText, getMaxCategoryValue } from '$lib/utils';
 	import { exportLabaRugiPDF, generatePDFFilename } from '$lib/utils/pdf-export';
 	import type { PageData } from './$types';
 
@@ -212,7 +212,7 @@
 						? 'bg-background shadow-sm'
 						: 'text-muted-foreground hover:text-foreground'}"
 				>
-					Quarter
+					Triwulan
 				</button>
 				<button
 					onclick={() => changePeriod('yearly')}
@@ -255,7 +255,7 @@
 							<TrendingUp class="w-4 h-4" />
 							<span>Pemasukan</span>
 						</div>
-						{#if profitLoss.comparison.income.change !== 0}
+						{#if profitLoss.comparison.income.change !== 0 && profitLoss.comparison.income.previousValue !== 0}
 							{@const comparison = getComparisonText(profitLoss.comparison.income.change)}
 							<span
 								class="text-xs font-medium {comparison.isPositive
@@ -284,12 +284,13 @@
 							<TrendingDown class="w-4 h-4" />
 							<span>Pengeluaran</span>
 						</div>
-						{#if profitLoss.comparison.expense.change !== 0}
+						{#if profitLoss.comparison.expense.change !== 0 && profitLoss.comparison.expense.previousValue !== 0}
 							{@const comparison = getComparisonText(profitLoss.comparison.expense.change)}
+							<!-- Rising expenses are bad news, so the colours are reversed here. -->
 							<span
 								class="text-xs font-medium {comparison.isPositive
-									? 'text-green-600'
-									: 'text-red-600'}"
+									? 'text-red-600'
+									: 'text-green-600'}"
 							>
 								{comparison.text}
 							</span>
@@ -322,7 +323,7 @@
 								<span>Rugi</span>
 							{/if}
 						</div>
-						{#if profitLoss.comparison.profit.change !== 0}
+						{#if profitLoss.comparison.profit.change !== 0 && profitLoss.comparison.profit.previousValue !== 0}
 							{@const comparison = getComparisonText(profitLoss.comparison.profit.change)}
 							<span
 								class="text-xs font-medium {comparison.isPositive
@@ -374,7 +375,7 @@
 												{category.categoryName}
 											</span>
 											<span class="text-muted-foreground">
-												{formatRupiah(category.total)} ({category.percentage.toFixed(1)}%)
+												{formatRupiah(category.total)} ({formatPercent(category.percentage)})
 											</span>
 										</div>
 										<div class="h-2 bg-muted rounded-full overflow-hidden">
@@ -413,7 +414,7 @@
 												{category.categoryName}
 											</span>
 											<span class="text-muted-foreground">
-												{formatRupiah(category.total)} ({category.percentage.toFixed(1)}%)
+												{formatRupiah(category.total)} ({formatPercent(category.percentage)})
 											</span>
 										</div>
 										<div class="h-2 bg-muted rounded-full overflow-hidden">
