@@ -11,6 +11,8 @@
  *   paid, with `format` set.
  * - 2.1: the tax profile's turnover-limit answer.
  * - 2.2: loan interest on debt payments (interestAmount, interestTransactionId).
+ * - 2.3: downloaded as a .zip with the receipt images; each photo names its image's entry
+ *   (`image`), and `contents.photoImages` says the images are included.
  */
 
 import type { ReceiptExtension } from '$lib/server/photos/receipts';
@@ -19,7 +21,7 @@ import type { ReceiptExtension } from '$lib/server/photos/receipts';
 export const BACKUP_FORMAT = 'buku-umkm-backup';
 
 /** Written into new backups. Restore accepts major versions 1 and 2. */
-export const BACKUP_SCHEMA_VERSION = '2.2.0';
+export const BACKUP_SCHEMA_VERSION = '2.3.0';
 
 export const SUPPORTED_BACKUP_MAJOR_VERSIONS = [1, 2] as const;
 
@@ -221,7 +223,7 @@ export type BackupTemplate = {
 	updatedAt: BackupTimestamp;
 };
 
-/** Photo metadata only: the image itself stays in R2 and is not in the file. */
+/** Photo metadata; in a .zip backup the image travels as the entry `image` names. */
 export type BackupPhoto = {
 	id: string;
 	transactionId: string;
@@ -230,6 +232,8 @@ export type BackupPhoto = {
 	mimeType: string;
 	/** Where the image was stored; restore only trusts it after checking R2 (see restore.ts). */
 	r2Key: string;
+	/** The archive entry holding the image (2.3 on); null when it is not in the archive. */
+	image: string | null;
 	caption: string | null;
 	createdAt: BackupTimestamp;
 };
@@ -241,8 +245,8 @@ export type BackupDocument = {
 	backupDate: string;
 	businessName: string;
 	contents: {
-		/** Receipt images are never in the file; only their metadata is. */
-		photoImages: 'not_included';
+		/** Whether the receipt images travel with the document (in a .zip) or only their metadata. */
+		photoImages: 'included' | 'not_included';
 		/** The NPWP can only be read back by a deployment with the same encryption key. */
 		npwp: 'encrypted';
 	};

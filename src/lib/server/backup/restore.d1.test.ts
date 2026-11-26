@@ -23,9 +23,14 @@ import { MAX_RECEIPT_BYTES } from '$lib/server/photos/receipts';
 import { createTestD1 } from '$lib/server/testing/d1';
 import { createTestR2, fakeImage } from '$lib/server/testing/r2';
 import { createZipStream } from '$lib/shared/zip';
-import { buildBackupDocument } from './export';
+import { buildBackupArchive, buildBackupDocument } from './export';
 import { BackupError } from './parse';
-import { BACKUP_DOCUMENT_ENTRY, BACKUP_SCHEMA_VERSION, MAX_RESTORE_ROWS } from './format';
+import {
+	BACKUP_DOCUMENT_ENTRY,
+	BACKUP_SCHEMA_VERSION,
+	MAX_BACKUP_ARCHIVE_BYTES,
+	MAX_RESTORE_ROWS
+} from './format';
 import {
 	restoreBackup,
 	restoreBackupArchive,
@@ -942,38 +947,69 @@ describe('restoreBackupArchive', () => {
 	const photosOf = (userId: string) =>
 		harness.db.select().from(transactionPhoto).where(eq(transactionPhoto.userId, userId));
 
-	it('restores a book into another account with its photos and the same reports', async () => {
+	it('round-trips a downloaded .zip into a new account: photos back, same reports', async () => {
 		const owner = await harness.createUser();
-		await seedBooks(owner);
-		const file = await snapshot(owner);
-		const before = await reports(owner);
-		const image = fakeImage('jpg', 4000, 3);
-		file.photos[0].image = `photos/${file.photos[0].id}.jpg`;
-		const fresh = await harness.createUser();
+		const { photoKey, created } = await seedBooks(owner);
+		const secondKey = `receipts/${owner}/${created[5]}/${crypto.randomUUID()}.png`;
+		await harness.db.insert(transactionPhoto).values({
+			id: crypto.randomUUID(),
+			userId: owner,
+			transactionId: created[5],
+			fileName: 'nota-toko.png',
+			fileSize: 3000,
+			mimeType: 'image/png',
+			r2Key: secondKey,
+			r2Url: `/api/photos/${secondKey}`
+		});
 		const r2 = createTestR2();
+		const images = {
+			'struk.jpg': fakeImage('jpg', 4000, 3),
+			'nota-toko.png': fakeImage('png', 3000, 4)
+		};
+		await r2.bucket.put(photoKey, images['struk.jpg']);
+		await r2.bucket.put(secondKey, images['nota-toko.png']);
+		const before = await reports(owner);
 
-		const summary = await restoreArchive(
-			fresh,
-			await archiveOf(file, [[file.photos[0].image, image]]),
-			{
-				receipts: r2.bucket
-			}
-		);
+		const archive = await buildBackupArchive(harness.db, owner, r2.bucket);
+		expect(archive).toMatchObject({ photoCount: 2, photosWithoutImage: 0, restorable: 'all' });
+		const zip = new Uint8Array(await new Response(archive.stream).arrayBuffer());
+		const fresh = await harness.createUser();
+		const summary = await restoreArchive(fresh, zip, { receipts: r2.bucket });
 
-		expect(summary.restored).toMatchObject({ transactions: 62, photos: 1 });
+		expect(summary.restored).toMatchObject({ transactions: 62, photos: 2 });
 		expect(summary.photosDropped).toBe(0);
 		expect(await reports(fresh)).toEqual(before);
-		const [photo] = await photosOf(fresh);
-		// A fresh key under the new owner's prefix, the image byte for byte.
-		expect(photo.r2Key).toBe(`receipts/${fresh}/${photo.transactionId}/${photo.id}.jpg`);
-		expect(photo).toMatchObject({
-			fileName: 'struk.jpg',
-			fileSize: image.length,
-			mimeType: 'image/jpeg',
-			r2Url: `/api/photos/${photo.r2Key}`
-		});
-		expect(r2.keysOf(fresh)).toEqual([photo.r2Key]);
-		expect(r2.objects.get(photo.r2Key)).toEqual(image);
+		const photos = await photosOf(fresh);
+		expect(r2.keysOf(fresh)).toEqual(photos.map((photo) => photo.r2Key).sort());
+		for (const photo of photos) {
+			const image = images[photo.fileName as keyof typeof images];
+			// A fresh key under the new owner's prefix, the image byte for byte.
+			const extension = photo.mimeType === 'image/png' ? 'png' : 'jpg';
+			expect(photo.r2Key).toBe(`receipts/${fresh}/${photo.transactionId}/${photo.id}.${extension}`);
+			expect(photo).toMatchObject({ fileSize: image.length, r2Url: `/api/photos/${photo.r2Key}` });
+			expect(r2.objects.get(photo.r2Key)).toEqual(image);
+		}
+		// The owner's books and images are untouched.
+		expect(await reports(owner)).toEqual(before);
+		expect(r2.keysOf(owner)).toEqual([photoKey, secondKey].sort());
+	});
+
+	it('says when only the data fits in one restore request', async () => {
+		const owner = await harness.createUser();
+		const { photoKey } = await seedBooks(owner);
+		// An R2 that lists the image as just over what one request carries.
+		const bucket = {
+			list: async () => ({
+				objects: [{ key: photoKey, size: MAX_BACKUP_ARCHIVE_BYTES }],
+				truncated: false
+			}),
+			get: async () => null
+		} as unknown as R2Bucket;
+
+		const archive = await buildBackupArchive(harness.db, owner, bucket);
+
+		expect(archive.restorable).toBe('data-only');
+		await archive.stream.cancel();
 	});
 
 	it('checks every image by its bytes and keeps three per transaction', async () => {

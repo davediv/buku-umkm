@@ -14,9 +14,17 @@ import {
 	transactionPhoto,
 	transactionTemplate
 } from '$lib/server/db/schema';
+import { summarizeError } from '$lib/server/error-summary';
+import { findReceiptObjects, isOwnReceiptKey, receiptMimeType } from '$lib/server/photos/receipts';
+import { createZipStream, type ZipEntrySource } from '$lib/shared/zip';
 import {
+	BACKUP_DOCUMENT_ENTRY,
 	BACKUP_FORMAT,
 	BACKUP_SCHEMA_VERSION,
+	MAX_BACKUP_ARCHIVE_BYTES,
+	MAX_BACKUP_BYTES,
+	MAX_RESTORE_ROWS,
+	photoEntryName,
 	type BackupDocument,
 	type BackupTimestamp
 } from './format';
@@ -80,9 +88,9 @@ function readUserRows(db: SQLiteDb, userId: string) {
 }
 
 /**
- * The backup file for `userId`: every row restore needs, including deleted transactions
- * and debts and every loan column. The NPWP stays encrypted, and receipt images are not
- * included (only their metadata), which `contents` says for the UI.
+ * The backup document for `userId`: every row restore needs, including deleted
+ * transactions and debts and every loan column. The NPWP stays encrypted. Photos carry
+ * only their metadata here; buildBackupArchive adds the images.
  */
 export async function buildBackupDocument(
 	db: SQLiteDb,
@@ -262,6 +270,7 @@ export async function buildBackupDocument(
 			fileSize: item.fileSize,
 			mimeType: item.mimeType,
 			r2Key: item.r2Key,
+			image: null,
 			caption: item.caption,
 			createdAt: iso(item.createdAt)
 		}))
@@ -282,4 +291,112 @@ export function backupRowCount(document: BackupDocument): number {
 		document.templates.length +
 		document.photos.length
 	);
+}
+
+export type BackupArchive = {
+	schemaVersion: string;
+	businessName: string;
+	/** Photo rows in the backup. */
+	photoCount: number;
+	/** Photos whose image was not in storage, so only their metadata is in the archive. */
+	photosWithoutImage: number;
+	/**
+	 * What /api/restore takes in one request: the whole archive, only its backup.json (the
+	 * archive is over MAX_BACKUP_ARCHIVE_BYTES; the page can send the document alone), or
+	 * neither (too many rows, or a document over MAX_BACKUP_BYTES).
+	 */
+	restorable: 'all' | 'data-only' | 'none';
+	/** The .zip, built as it is read. */
+	stream: ReadableStream<Uint8Array>;
+};
+
+type ArchiveImage = { key: string; entry: string; size: number };
+
+/** A ZIP entry's local header, central record and name twice ($lib/shared/zip.ts). */
+const entryOverhead = (name: string) => 30 + 46 + 2 * name.length;
+const END_RECORD_BYTES = 22;
+
+/**
+ * backup.json, then each image read from R2 one at a time as the archive is pulled, so a
+ * download holds about one image however many there are.
+ */
+async function* archiveEntries(
+	pending: { json: Uint8Array<ArrayBuffer> | null },
+	images: ArchiveImage[],
+	receipts: Pick<R2Bucket, 'get'> | null
+): AsyncGenerator<ZipEntrySource> {
+	try {
+		yield { name: BACKUP_DOCUMENT_ENTRY, data: pending.json!, compress: true };
+		// Up to 10 MB: not held while the images stream.
+		pending.json = null;
+		if (!receipts) return;
+		for (const image of images) {
+			const object = await receipts.get(image.key);
+			// Deleted since it was listed: restore counts the photo as dropped.
+			if (object) yield { name: image.entry, data: new Uint8Array(await object.arrayBuffer()) };
+		}
+	} catch (error) {
+		// The response has started by now; the download ends without a central directory.
+		console.error('Backup archive failed while streaming', summarizeError(error));
+		throw error;
+	}
+}
+
+/**
+ * The .zip backup for `userId`: backup.json, then every photo's image still in the user's
+ * storage, each named in its photo's `image`. Which images exist (and their sizes) is
+ * listed up front, so the document and the restorable estimate are settled before the
+ * first byte; the images themselves are read only as the stream is consumed.
+ */
+export async function buildBackupArchive(
+	db: SQLiteDb,
+	userId: string,
+	receipts: Pick<R2Bucket, 'list' | 'get'> | null,
+	now = new Date()
+): Promise<BackupArchive> {
+	const document = await buildBackupDocument(db, userId, now);
+
+	const named = new Map<string, { key: string; entry: string }>();
+	for (const photo of document.photos) {
+		const type = isOwnReceiptKey(userId, photo.r2Key) ? receiptMimeType(photo.r2Key) : null;
+		const entry = type && photoEntryName(photo.id, type === 'image/png' ? 'png' : 'jpg');
+		if (entry) named.set(photo.id, { key: photo.r2Key, entry });
+	}
+	const sizes =
+		receipts && named.size > 0
+			? await findReceiptObjects(receipts, userId, new Set([...named.values()].map((n) => n.key)))
+			: new Map<string, number>();
+
+	const images: ArchiveImage[] = [];
+	for (const photo of document.photos) {
+		const image = named.get(photo.id);
+		const size = image && sizes.get(image.key);
+		if (image && size !== undefined) {
+			photo.image = image.entry;
+			images.push({ ...image, size });
+		}
+	}
+	document.contents.photoImages = 'included';
+
+	const json = new TextEncoder().encode(JSON.stringify(document));
+	// The document counted uncompressed: an upper bound, so "all" is never promised wrongly.
+	const archiveBytes = images.reduce(
+		(total, image) => total + entryOverhead(image.entry) + image.size,
+		entryOverhead(BACKUP_DOCUMENT_ENTRY) + json.byteLength + END_RECORD_BYTES
+	);
+	const dataFits =
+		json.byteLength <= MAX_BACKUP_BYTES && backupRowCount(document) <= MAX_RESTORE_ROWS;
+
+	return {
+		schemaVersion: document.schemaVersion,
+		businessName: document.businessName,
+		photoCount: document.photos.length,
+		photosWithoutImage: document.photos.length - images.length,
+		restorable: !dataFits ? 'none' : archiveBytes <= MAX_BACKUP_ARCHIVE_BYTES ? 'all' : 'data-only',
+		// DOS times carry no zone; WIB is how the owner reads them.
+		stream: createZipStream(archiveEntries({ json }, images, receipts), {
+			modified: now,
+			utcOffsetMinutes: 7 * 60
+		})
+	};
 }
