@@ -6,7 +6,7 @@ import { getBalanceSheetAsOf } from '$lib/server/reports/balance-sheet';
 import { createTestD1 } from '$lib/server/testing/d1';
 import { parseAccountName } from '$lib/shared/account-types';
 import { todayInJakarta } from '$lib/shared/dates';
-import { deactivateAccount } from './accounts';
+import { deactivateAccount, reactivateAccount } from './accounts';
 import { createFinancialMutationService } from './commands';
 import { createD1FinanceRepository } from './repository';
 
@@ -74,6 +74,24 @@ describe('account deactivation on D1', () => {
 			true,
 			true
 		]);
+	});
+
+	it('reactivates an account deactivated while it held money', async () => {
+		const userId = await harness.createUser();
+		const legacy = await account(userId, 400_000, false);
+		const repository = createD1FinanceRepository(harness.db);
+		expect(await repository.findAccount(userId, legacy)).toBeUndefined();
+
+		expect(await reactivateAccount(harness.db, 'someone-else', legacy)).toBe('not_found');
+		expect(await isActive(legacy)).toBe(false);
+		expect(await reactivateAccount(harness.db, userId, legacy)).toBe('reactivated');
+		expect(await reactivateAccount(harness.db, userId, legacy)).toBe('already_active');
+
+		// Back in new entries, with its balance untouched.
+		expect(await repository.findAccount(userId, legacy)).toMatchObject({
+			isActive: true,
+			balance: 400_000
+		});
 	});
 
 	it('keeps a legacy deactivated balance in both the dashboard and the balance sheet', async () => {

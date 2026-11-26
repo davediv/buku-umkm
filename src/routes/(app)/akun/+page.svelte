@@ -11,7 +11,8 @@
 		Trash2,
 		Plus,
 		X,
-		ArrowLeftRight
+		ArrowLeftRight,
+		RotateCcw
 	} from '@lucide/svelte';
 	import { formatRupiah } from '$lib/utils';
 	import OperationStatus from '$lib/components/operation-status.svelte';
@@ -35,6 +36,7 @@
 	let editingAccount = $state<{ id: string; name: string; type: string } | null>(null);
 	let loading = $state(false);
 	let deletingId = $state<string | null>(null);
+	let reactivatingId = $state<string | null>(null);
 	let showDeleteConfirm = $state(false);
 	let deleteTargetId = $state<string | null>(null);
 	let operationStatus = $state<{ kind: 'success' | 'error'; message: string } | null>(null);
@@ -64,7 +66,14 @@
 
 	// Local mutable accounts state — syncs from load data, allows optimistic updates
 	let accounts = $derived(data.accounts);
-	let totalBalance = $derived(accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0));
+	let inactiveAccounts = $derived(data.inactiveAccounts);
+	let activeBalance = $derived(accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0));
+	let inactiveBalance = $derived(
+		inactiveAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0)
+	);
+	// Like the dashboard and the balance sheet, the total counts inactive accounts too:
+	// deactivating an account never takes its money out of the books.
+	let totalBalance = $derived(activeBalance + inactiveBalance);
 
 	// Helper to get icon by type
 	function getIconByType(accountType: string) {
@@ -247,6 +256,38 @@
 		};
 	}
 
+	// Handle reactivation of an inactive account
+	function handleReactivate(accountId: string) {
+		return () => {
+			reactivatingId = accountId;
+			operationStatus = null;
+			return async ({ result }: { result: { type: string; data?: Record<string, unknown> } }) => {
+				try {
+					if (result.type === 'success') {
+						await invalidateAll();
+						operationStatus = {
+							kind: 'success',
+							message:
+								typeof result.data?.message === 'string'
+									? result.data.message
+									: 'Akun aktif kembali.'
+						};
+						return;
+					}
+					operationStatus = {
+						kind: 'error',
+						message:
+							typeof result.data?.error === 'string'
+								? result.data.error
+								: 'Akun belum dapat diaktifkan kembali.'
+					};
+				} finally {
+					reactivatingId = null;
+				}
+			};
+		};
+	}
+
 	function closeDeleteDialog() {
 		showDeleteConfirm = false;
 		deleteTargetId = null;
@@ -342,6 +383,21 @@
 	<div class="bg-card border rounded-lg p-4 md:p-6">
 		<p class="text-sm text-muted-foreground mb-1">Total Saldo</p>
 		<p class="text-3xl font-bold">{formatRupiah(totalBalance)}</p>
+		{#if inactiveAccounts.length > 0}
+			<dl class="mt-3 grid gap-1 text-sm sm:flex sm:gap-6">
+				<div class="flex gap-2">
+					<dt class="text-muted-foreground">Akun aktif</dt>
+					<dd class="font-medium">{formatRupiah(activeBalance)}</dd>
+				</div>
+				<div class="flex gap-2">
+					<dt class="text-muted-foreground">Akun nonaktif</dt>
+					<dd class="font-medium">{formatRupiah(inactiveBalance)}</dd>
+				</div>
+			</dl>
+			<p class="mt-2 text-xs text-muted-foreground">
+				Saldo akun nonaktif tetap dihitung di beranda dan laporan neraca.
+			</p>
+		{/if}
 	</div>
 
 	{#if operationStatus && !showModal}
@@ -411,6 +467,54 @@
 				Tambah Kas/Rekening
 			</button>
 		</div>
+	{/if}
+
+	{#if inactiveAccounts.length > 0}
+		<section class="space-y-3" aria-labelledby="inactive-accounts-title">
+			<div>
+				<h2 id="inactive-accounts-title" class="text-lg font-semibold">Akun Nonaktif</h2>
+				<p class="text-sm text-muted-foreground">
+					Tidak muncul di pilihan transaksi baru, tetapi saldonya tetap tercatat. Aktifkan kembali
+					untuk memakainya lagi.
+				</p>
+			</div>
+			<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+				{#each inactiveAccounts as account (account.id)}
+					{@const IconComponent = getIconByType(account.type)}
+					<div class="rounded-lg border border-dashed bg-muted/30 p-4">
+						<div class="flex items-center gap-3">
+							<div class="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+								<IconComponent class="h-5 w-5 text-muted-foreground" />
+							</div>
+							<div class="min-w-0">
+								<h3 class="truncate font-medium">{account.name}</h3>
+								<p class="text-xs text-muted-foreground">
+									{getLabelByType(account.type)} · Nonaktif
+								</p>
+							</div>
+						</div>
+						<div class="mt-4 flex items-end justify-between gap-3 border-t pt-4">
+							<div>
+								<p class="text-sm text-muted-foreground">Saldo</p>
+								<p class="text-xl font-semibold">{formatRupiah(account.balance || 0)}</p>
+							</div>
+							<form method="post" action="?/reactivate" use:enhance={handleReactivate(account.id)}>
+								<input type="hidden" name="id" value={account.id} />
+								<button
+									type="submit"
+									disabled={reactivatingId !== null}
+									class="inline-flex min-h-11 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium transition-colors hover:bg-secondary disabled:opacity-50"
+									aria-label={`Aktifkan kembali ${account.name}`}
+								>
+									<RotateCcw class="h-4 w-4" aria-hidden="true" />
+									{reactivatingId === account.id ? 'Mengaktifkan…' : 'Aktifkan kembali'}
+								</button>
+							</form>
+						</div>
+					</div>
+				{/each}
+			</div>
+		</section>
 	{/if}
 </div>
 
@@ -640,7 +744,8 @@
 	<AlertDialogTitle>Nonaktifkan Akun?</AlertDialogTitle>
 	<AlertDialogDescription>
 		Akun akan disembunyikan dari pilihan transaksi baru. Data keuangan yang sudah tercatat tidak
-		akan diubah. Hanya akun bersaldo Rp0 tanpa transaksi yang dapat dinonaktifkan.
+		akan diubah. Hanya akun bersaldo Rp0 tanpa transaksi yang dapat dinonaktifkan, dan akun nonaktif
+		dapat diaktifkan kembali kapan saja.
 	</AlertDialogDescription>
 	<div class="flex gap-3 mt-6">
 		<AlertDialogCancel onclick={closeDeleteDialog}>Batal</AlertDialogCancel>

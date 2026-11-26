@@ -5,11 +5,11 @@ import { error as httpError, redirect, fail } from '@sveltejs/kit';
 import { chartOfAccount } from '$lib/server/db/schema';
 import {
 	ACCOUNT_TYPE_MAP,
-	filterActiveAccounts,
 	mapSchemaToApiType,
 	isValidAccountType,
 	parseAccountName
 } from '$lib/shared/account-types';
+import { reactivateAccount } from '$lib/server/finance/accounts';
 import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
 import { MAX_TRANSACTION_AMOUNT } from '$lib/constants';
 import { summarizeError } from '$lib/server/error-summary';
@@ -26,22 +26,25 @@ export const load: PageServerLoad = async ({ locals }) => {
 	try {
 		const accounts = await chartOfAccountQueries.findAll(db, userId);
 
-		// Filter only active asset accounts (cash, bank, ewallet)
-		const filteredAccounts = filterActiveAccounts(accounts);
-
-		// Map to API response format
-		const mappedAccounts = filteredAccounts.map((account) => ({
-			id: account.id,
-			name: account.name,
-			type: mapSchemaToApiType(account.subType),
-			balance: account.balance,
-			code: account.code,
-			createdAt: account.createdAt,
-			updatedAt: account.updatedAt
-		}));
+		// Asset accounts (cash, bank, ewallet), mapped to the API response format.
+		// Inactive ones are listed separately: they take no new entries, but their
+		// balance still counts on the dashboard and the balance sheet.
+		const mappedAccounts = accounts
+			.filter((account) => account.type === 'asset' && account.subType)
+			.map((account) => ({
+				id: account.id,
+				name: account.name,
+				type: mapSchemaToApiType(account.subType),
+				balance: account.balance,
+				code: account.code,
+				isActive: account.isActive,
+				createdAt: account.createdAt,
+				updatedAt: account.updatedAt
+			}));
 
 		return {
-			accounts: mappedAccounts
+			accounts: mappedAccounts.filter((account) => account.isActive),
+			inactiveAccounts: mappedAccounts.filter((account) => !account.isActive)
 		};
 	} catch (cause) {
 		console.error('Error fetching accounts:', summarizeError(cause));
@@ -180,6 +183,34 @@ export const actions: Actions = {
 			};
 		} catch (cause) {
 			console.error('Error updating account:', summarizeError(cause));
+			return fail(500, { error: 'Terjadi kesalahan server', success: false });
+		}
+	},
+
+	reactivate: async ({ request, locals }) => {
+		if (!locals.user || !locals.session) {
+			return fail(401, { error: 'Unauthorized', success: false });
+		}
+
+		try {
+			const id = (await request.formData()).get('id');
+			if (typeof id !== 'string' || !id) {
+				return fail(400, { error: 'ID akun diperlukan', success: false });
+			}
+
+			const outcome = await reactivateAccount(getDb(), locals.user.id, id);
+			if (outcome === 'not_found') {
+				return fail(404, { error: 'Akun tidak ditemukan', success: false });
+			}
+			if (outcome === 'already_active') {
+				return fail(400, { error: 'Akun sudah aktif', success: false });
+			}
+			return {
+				success: true,
+				message: 'Akun aktif kembali dan dapat dipakai untuk transaksi baru.'
+			};
+		} catch (cause) {
+			console.error('Error reactivating account:', summarizeError(cause));
 			return fail(500, { error: 'Terjadi kesalahan server', success: false });
 		}
 	}

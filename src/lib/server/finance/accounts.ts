@@ -49,3 +49,37 @@ export async function deactivateAccount(
 	if (current.balance !== 0) return 'has_balance';
 	return 'has_transactions';
 }
+
+export type AccountReactivation = 'reactivated' | 'not_found' | 'already_active';
+
+/**
+ * Brings a deactivated cash, bank or e-wallet account back into new entries. Always
+ * allowed: deactivation never took the balance out of the books, so an account
+ * deactivated while holding money (older versions allowed it) can be used again.
+ */
+export async function reactivateAccount(
+	db: SQLiteDb,
+	userId: string,
+	accountId: string
+): Promise<AccountReactivation> {
+	const [updated] = await db
+		.update(chartOfAccount)
+		.set({ isActive: true })
+		.where(
+			and(
+				eq(chartOfAccount.userId, userId),
+				eq(chartOfAccount.id, accountId),
+				eq(chartOfAccount.type, 'asset'),
+				eq(chartOfAccount.isActive, false)
+			)
+		)
+		.returning({ id: chartOfAccount.id });
+	if (updated) return 'reactivated';
+
+	const current = await db.query.chartOfAccount.findFirst({
+		where: (account, { and, eq }) =>
+			and(eq(account.userId, userId), eq(account.id, accountId), eq(account.type, 'asset')),
+		columns: { isActive: true }
+	});
+	return current ? 'already_active' : 'not_found';
+}
