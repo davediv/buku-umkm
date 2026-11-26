@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getAuth } from '$lib/server/auth';
+import { getLoginNotice } from '$lib/server/account/login-notice';
 import { APIError } from 'better-auth/api';
 import {
 	CREDENTIAL_RATE_LIMIT_MESSAGE,
@@ -21,7 +22,8 @@ export const load: PageServerLoad = async (event) => {
 	}
 	return {
 		returnTo,
-		registrationHref: getRegistrationHref(getSafeAppReturnTo(returnTo) ?? DEFAULT_APP_RETURN_TO)
+		registrationHref: getRegistrationHref(getSafeAppReturnTo(returnTo) ?? DEFAULT_APP_RETURN_TO),
+		notice: getLoginNotice(event.url.searchParams.get('info'))
 	};
 };
 

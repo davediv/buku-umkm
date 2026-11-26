@@ -2,9 +2,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	API_RATE_LIMIT_MESSAGE,
 	CREDENTIAL_RATE_LIMIT_MESSAGE,
+	EMAIL_RATE_LIMIT_MESSAGE,
 	clientKey,
 	isCredentialAttemptAllowed,
 	isCredentialAuthRequest,
+	isEmailAuthRequest,
+	isEmailRequestAllowed,
 	limitRequest,
 	type RateLimitEnv
 } from './rate-limit';
@@ -105,6 +108,55 @@ describe('credential attempts', () => {
 	});
 });
 
+describe('email requests', () => {
+	it('allows five emails per address per minute on counters separate from sign-in', async () => {
+		const env = fakeEnv();
+		const signIn = () =>
+			isCredentialAttemptAllowed({ ...request('/masuk'), platform: { env } }, 'ayu@example.com');
+		const reset = () =>
+			isEmailRequestAllowed(
+				{ ...request('/lupa-kata-sandi'), platform: { env } },
+				'Ayu@Example.com'
+			);
+
+		expect(await repeat(6, signIn)).toEqual([true, true, true, true, true, false]);
+		expect(await repeat(6, reset)).toEqual([true, true, true, true, true, false]);
+		expect(env.AUTH_EMAIL_RATE_LIMITER.keys()).toEqual(['ayu@example.com', 'mail:ayu@example.com']);
+		expect(env.AUTH_IP_RATE_LIMITER.keys()).toEqual(['203.0.113.7', 'mail:203.0.113.7']);
+	});
+
+	it('limits one IP asking for links to many addresses', async () => {
+		const env = fakeEnv();
+		const results = await repeat(21, () =>
+			isEmailRequestAllowed(
+				{ ...request('/lupa-kata-sandi'), platform: { env } },
+				`user${Math.random()}@example.com`
+			)
+		);
+		expect(results.filter(Boolean)).toHaveLength(20);
+		expect(results.at(-1)).toBe(false);
+	});
+
+	it("limits better-auth's reset request endpoint by the email in its body", async () => {
+		const env = fakeEnv();
+		const results = await repeat(6, () =>
+			limitRequest(
+				event(env, '/api/auth/request-password-reset', {
+					method: 'POST',
+					json: { email: 'ayu@example.com' }
+				})
+			)
+		);
+
+		const blocked = results[5] as Response;
+		expect(results.slice(0, 5)).toEqual([null, null, null, null, null]);
+		expect(blocked.status).toBe(429);
+		expect(await blocked.json()).toMatchObject({ error: EMAIL_RATE_LIMIT_MESSAGE });
+		expect(env.AUTH_EMAIL_RATE_LIMITER.keys()).toEqual(['mail:ayu@example.com']);
+		expect(env.API_RATE_LIMITER.limit).not.toHaveBeenCalled();
+	});
+});
+
 describe('client key', () => {
 	it('uses the IPv4 address as is', () => {
 		expect(clientKey(request('/', { ip: '198.51.100.4' }).request)).toBe('198.51.100.4');
@@ -123,8 +175,10 @@ describe('request limits', () => {
 	it('recognizes better-auth credential endpoints but not session reads or sign-out', () => {
 		expect(isCredentialAuthRequest('POST', '/api/auth/sign-in/email')).toBe(true);
 		expect(isCredentialAuthRequest('POST', '/api/auth/sign-up/email')).toBe(true);
-		expect(isCredentialAuthRequest('POST', '/api/auth/request-password-reset')).toBe(true);
 		expect(isCredentialAuthRequest('POST', '/api/auth/reset-password')).toBe(true);
+		expect(isCredentialAuthRequest('POST', '/api/auth/request-password-reset')).toBe(false);
+		expect(isEmailAuthRequest('POST', '/api/auth/request-password-reset')).toBe(true);
+		expect(isEmailAuthRequest('GET', '/api/auth/request-password-reset')).toBe(false);
 		expect(isCredentialAuthRequest('POST', '/api/auth/sign-out')).toBe(false);
 		expect(isCredentialAuthRequest('GET', '/api/auth/get-session')).toBe(false);
 		expect(isCredentialAuthRequest('GET', '/api/auth/reset-password/token')).toBe(false);

@@ -27,6 +27,11 @@ export interface EmailTransport {
 const EMAIL_ADDRESS = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
 const ANY_EMAIL_ADDRESS = /[^\s@<>"'(),;:]+@[^\s@<>"'(),;:]+/g;
 
+/** `text` with every email address in it replaced, for log lines. */
+export function redactEmailAddresses(text: string): string {
+	return text.replace(ANY_EMAIL_ADDRESS, '[alamat]');
+}
+
 /** The binding's error code and message, with any address in the message redacted. */
 function describeSendError(error: unknown): string {
 	const code =
@@ -36,7 +41,7 @@ function describeSendError(error: unknown): string {
 				? 'TypeError'
 				: 'UNKNOWN';
 	const message = error instanceof Error ? error.message : String(error);
-	return `${code}: ${message.replace(ANY_EMAIL_ADDRESS, '[alamat]').slice(0, 200)}`;
+	return `${code}: ${redactEmailAddresses(message).slice(0, 200)}`;
 }
 
 export async function sendEmail(

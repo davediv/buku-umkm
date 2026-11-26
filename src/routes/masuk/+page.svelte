@@ -43,6 +43,16 @@
 			<p class="text-sm text-muted-foreground">Masuk ke akun Buku UMKM Anda</p>
 		</div>
 
+		<!-- Notice from the flow that led here, e.g. a password reset -->
+		{#if data.notice && !form}
+			<div
+				role="status"
+				class="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
+			>
+				{data.notice}
+			</div>
+		{/if}
+
 		<!-- Error Message -->
 		{#if form?.message}
 			<div
@@ -85,7 +95,12 @@
 			</div>
 
 			<div class="space-y-2">
-				<Label for="password">{t('common.password')}</Label>
+				<div class="flex items-center justify-between gap-2">
+					<Label for="password">{t('common.password')}</Label>
+					<a href="/lupa-kata-sandi" class="text-sm font-medium text-primary hover:underline">
+						Lupa kata sandi?
+					</a>
+				</div>
 				<Input
 					id="password"
 					name="password"

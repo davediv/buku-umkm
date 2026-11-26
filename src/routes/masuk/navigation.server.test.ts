@@ -32,8 +32,25 @@ describe('login navigation continuity', () => {
 
 		expect(result).toEqual({
 			returnTo: '/transaksi?q=kopi&page=3',
-			registrationHref: '/daftar?return_to=%2Ftransaksi%3Fq%3Dkopi%26page%3D3'
+			registrationHref: '/daftar?return_to=%2Ftransaksi%3Fq%3Dkopi%26page%3D3',
+			notice: null
 		});
+	});
+
+	it('shows only the known notices passed as ?info=', async () => {
+		const notice = async (info: string) =>
+			(
+				(await load({
+					locals: {},
+					url: new URL(`https://buku.test/masuk?info=${encodeURIComponent(info)}`)
+				} as Parameters<typeof load>[0])) as { notice: string | null }
+			).notice;
+
+		expect(await notice('kata-sandi-diubah')).toBe(
+			'Kata sandi berhasil diubah. Silakan masuk dengan kata sandi baru.'
+		);
+		expect(await notice('Akun Anda diblokir, hubungi 0812')).toBeNull();
+		expect(await notice('toString')).toBeNull();
 	});
 
 	it('redirects to the validated destination after authentication', async () => {

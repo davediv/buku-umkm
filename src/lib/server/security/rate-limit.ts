@@ -6,6 +6,9 @@
  * - Credential attempts (the /masuk and /daftar form actions and better-auth's sign-in, sign-up
  *   and password endpoints) are limited per account (normalized email) and, more loosely, per
  *   client IP: many Indonesian mobile users share one carrier IP.
+ * - Requests that send an account email (a password reset link) are limited the same way but on
+ *   their own counters, so someone locked out by failed sign-ins can still ask for a reset link,
+ *   and a stranger cannot flood one inbox faster than the per-address limit.
  * - Every other /api/* request is limited per signed-in user, or per IP when signed out, with a
  *   much tighter limit on backup and restore.
  */
@@ -15,6 +18,8 @@ export const RATE_LIMIT_PERIOD_SECONDS = 60;
 
 export const CREDENTIAL_RATE_LIMIT_MESSAGE = 'Terlalu banyak percobaan. Coba lagi dalam 1 menit.';
 export const API_RATE_LIMIT_MESSAGE = 'Terlalu banyak permintaan. Coba lagi dalam 1 menit.';
+export const EMAIL_RATE_LIMIT_MESSAGE =
+	'Terlalu banyak permintaan email. Tunggu 1 menit sebelum mencoba lagi.';
 
 type LimiterName =
 	| 'AUTH_EMAIL_RATE_LIMITER'
@@ -35,14 +40,12 @@ interface RateLimitRequestEvent extends RateLimitEvent {
 }
 
 const AUTH_API_PREFIX = '/api/auth/';
-/** better-auth endpoints that check a password or start account recovery (trailing / = prefix). */
-const CREDENTIAL_AUTH_ENDPOINTS = [
-	'sign-in/',
-	'sign-up/',
-	'request-password-reset',
-	'reset-password',
-	'change-password'
-];
+/** better-auth endpoints that check or set a password (trailing / = prefix). */
+const CREDENTIAL_AUTH_ENDPOINTS = ['sign-in/', 'sign-up/', 'reset-password', 'change-password'];
+/** better-auth endpoints that send an email to the address in their body. */
+const EMAIL_AUTH_ENDPOINTS = ['request-password-reset'];
+/** Key prefix that keeps email-sending requests on their own counters. */
+const EMAIL_KEY_PREFIX = 'mail:';
 const HEAVY_API_PATHS = ['/api/backup', '/api/restore'];
 
 const reportedMissing = new Set<LimiterName>();
@@ -92,31 +95,59 @@ export function clientKey(request: Request): string {
 		.join(':')}::/64`;
 }
 
-export function isCredentialAuthRequest(method: string, pathname: string): boolean {
+function isAuthEndpoint(method: string, pathname: string, endpoints: string[]): boolean {
 	if (method !== 'POST' || !pathname.startsWith(AUTH_API_PREFIX)) return false;
 	const endpoint = pathname.slice(AUTH_API_PREFIX.length);
-	return CREDENTIAL_AUTH_ENDPOINTS.some((name) =>
+	return endpoints.some((name) =>
 		name.endsWith('/') ? endpoint.startsWith(name) : endpoint === name
 	);
+}
+
+export function isCredentialAuthRequest(method: string, pathname: string): boolean {
+	return isAuthEndpoint(method, pathname, CREDENTIAL_AUTH_ENDPOINTS);
+}
+
+export function isEmailAuthRequest(method: string, pathname: string): boolean {
+	return isAuthEndpoint(method, pathname, EMAIL_AUTH_ENDPOINTS);
 }
 
 function isHeavyApiPath(pathname: string): boolean {
 	return HEAVY_API_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
+async function isAllowedForClientAndAccount(
+	event: RateLimitEvent,
+	email: string | null | undefined,
+	keyPrefix: string
+): Promise<boolean> {
+	const env = event.platform?.env;
+	const account = email ? normalizeEmail(email) : '';
+	const checks = [consume(env, 'AUTH_IP_RATE_LIMITER', keyPrefix + clientKey(event.request))];
+	if (account) checks.push(consume(env, 'AUTH_EMAIL_RATE_LIMITER', keyPrefix + account));
+	return (await Promise.all(checks)).every(Boolean);
+}
+
 /**
  * Counts one credential attempt against the client IP and, when known, the account. Returns
  * false when either limit is exceeded.
  */
-export async function isCredentialAttemptAllowed(
+export function isCredentialAttemptAllowed(
 	event: RateLimitEvent,
 	email: string | null | undefined
 ): Promise<boolean> {
-	const env = event.platform?.env;
-	const account = email ? normalizeEmail(email) : '';
-	const checks = [consume(env, 'AUTH_IP_RATE_LIMITER', clientKey(event.request))];
-	if (account) checks.push(consume(env, 'AUTH_EMAIL_RATE_LIMITER', account));
-	return (await Promise.all(checks)).every(Boolean);
+	return isAllowedForClientAndAccount(event, email, '');
+}
+
+/**
+ * Counts one request that sends an account email to `email` against the client IP and that
+ * address, on counters separate from credential attempts. Returns false when either limit is
+ * exceeded.
+ */
+export function isEmailRequestAllowed(
+	event: RateLimitEvent,
+	email: string | null | undefined
+): Promise<boolean> {
+	return isAllowedForClientAndAccount(event, email, EMAIL_KEY_PREFIX);
 }
 
 export function tooManyRequests(message: string): Response {
@@ -147,8 +178,9 @@ async function readBodyEmail(request: Request): Promise<string | null> {
 }
 
 /**
- * Applies the limits that can be decided from the request alone (better-auth credential
- * endpoints and /api/*). Form actions call {@link isCredentialAttemptAllowed} themselves.
+ * Applies the limits that can be decided from the request alone (better-auth credential and
+ * email endpoints and /api/*). Form actions call {@link isCredentialAttemptAllowed} or
+ * {@link isEmailRequestAllowed} themselves.
  * Returns the 429 response to send, or null to continue.
  */
 export async function limitRequest(event: RateLimitRequestEvent): Promise<Response | null> {
@@ -159,6 +191,12 @@ export async function limitRequest(event: RateLimitRequestEvent): Promise<Respon
 		return (await isCredentialAttemptAllowed(event, email))
 			? null
 			: tooManyRequests(CREDENTIAL_RATE_LIMIT_MESSAGE);
+	}
+	if (isEmailAuthRequest(event.request.method, pathname)) {
+		const email = (await readBodyEmail(event.request)) ?? event.locals.user?.email;
+		return (await isEmailRequestAllowed(event, email))
+			? null
+			: tooManyRequests(EMAIL_RATE_LIMIT_MESSAGE);
 	}
 
 	if (!pathname.startsWith('/api/')) return null;

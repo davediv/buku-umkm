@@ -8,3 +8,4 @@ Disallow: /hutang-piutang
 Disallow: /pajak
 Disallow: /pengaturan
 Disallow: /onboarding
+Disallow: /atur-ulang-kata-sandi
