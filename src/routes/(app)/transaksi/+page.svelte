@@ -2,6 +2,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
+		ArrowLeftRight,
 		Calendar,
 		ChevronDown,
 		ChevronLeft,
@@ -22,6 +23,7 @@
 		AlertDialogDescription,
 		AlertDialogTitle
 	} from '$lib/components/ui/alert-dialog';
+	import CategoryIcon from '$lib/components/category-icon.svelte';
 	import OperationStatus from '$lib/components/operation-status.svelte';
 	import { toast } from '$lib/components/ui/toast';
 	import {
@@ -37,6 +39,7 @@
 		type ExportFormat,
 		type TransactionForExport
 	} from '$lib/utils/export';
+	import { categoryColorOrDefault, isCategoryColor } from '$lib/shared/validation/category';
 	import { formatDate, formatDateShort, formatRupiah, formatTransactionAmount } from '$lib/utils';
 	import type { PageData } from './$types';
 
@@ -119,6 +122,15 @@
 	/** Transfer legs and debt movements are corrected from their transfer or debt, not here. */
 	function isLinked(transaction: { toAccountId: string | null; debtId: string | null }): boolean {
 		return transaction.toAccountId !== null || transaction.debtId !== null;
+	}
+
+	function isTransfer(transaction: { type: string; toAccountId: string | null }): boolean {
+		return transaction.toAccountId !== null || transaction.type === 'transfer';
+	}
+
+	/** White on a category's own colour, grey on the light fallback circle. */
+	function iconTone(color: string | null | undefined): string {
+		return isCategoryColor(color) ? 'text-white' : 'text-gray-600';
 	}
 
 	function formatAmount(amount: number, type: string): string {
@@ -378,15 +390,24 @@
 						<div class="flex items-start justify-between gap-3">
 							<div class="flex min-w-0 items-center gap-2">
 								<span
-									class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm"
-									style="background-color: {transaction.category?.color || '#e5e7eb'}"
+									class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full {iconTone(
+										transaction.category?.color
+									)}"
+									style="background-color: {categoryColorOrDefault(
+										transaction.category?.color,
+										'#e5e7eb'
+									)}"
 								>
-									{transaction.category?.icon || (transaction.type === 'transfer' ? '↔' : '📁')}
+									{#if !transaction.category && isTransfer(transaction)}
+										<ArrowLeftRight class="h-4 w-4" aria-hidden="true" />
+									{:else}
+										<CategoryIcon name={transaction.category?.icon} />
+									{/if}
 								</span>
 								<div class="min-w-0">
 									<h2 class="truncate text-sm font-medium">
 										{transaction.category?.name ||
-											(transaction.type === 'transfer' ? 'Transfer' : 'Tanpa kategori')}
+											(isTransfer(transaction) ? 'Transfer' : 'Tanpa kategori')}
 									</h2>
 									<p class="text-xs text-muted-foreground">{formatDate(transaction.date)}</p>
 								</div>
@@ -476,14 +497,23 @@
 								<td class="px-4 py-3">
 									<div class="flex items-center gap-2">
 										<span
-											class="flex h-6 w-6 items-center justify-center rounded-full text-xs"
-											style="background-color: {transaction.category?.color || '#e5e7eb'}"
+											class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full {iconTone(
+												transaction.category?.color
+											)}"
+											style="background-color: {categoryColorOrDefault(
+												transaction.category?.color,
+												'#e5e7eb'
+											)}"
 										>
-											{transaction.category?.icon || (transaction.type === 'transfer' ? '↔' : '📁')}
+											{#if !transaction.category && isTransfer(transaction)}
+												<ArrowLeftRight class="h-3.5 w-3.5" aria-hidden="true" />
+											{:else}
+												<CategoryIcon name={transaction.category?.icon} class="h-3.5 w-3.5" />
+											{/if}
 										</span>
 										<span class="text-sm"
 											>{transaction.category?.name ||
-												(transaction.type === 'transfer' ? 'Transfer' : '-')}</span
+												(isTransfer(transaction) ? 'Transfer' : '-')}</span
 										>
 									</div>
 								</td>

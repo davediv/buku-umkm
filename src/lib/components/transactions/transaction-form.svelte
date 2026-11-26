@@ -5,6 +5,7 @@
 	import { categoryColorOrDefault } from '$lib/shared/validation/category';
 	import { formatIdr } from '$lib/utils';
 	import { Dialog } from '$lib/components/ui/dialog';
+	import CategoryIcon from '$lib/components/category-icon.svelte';
 
 	interface TransactionFormCategory {
 		id: string;
@@ -228,9 +229,9 @@
 		>
 			{#if selectedCategory}
 				<span
-					class="flex h-8 w-8 items-center justify-center rounded-full text-lg text-white"
+					class="flex h-8 w-8 items-center justify-center rounded-full text-white"
 					style="background-color: {categoryColorOrDefault(selectedCategory.color)}"
-					>{selectedCategory.icon || '📁'}</span
+					><CategoryIcon name={selectedCategory.icon} /></span
 				>
 				<span class="flex-1 font-medium">{selectedCategory.name}</span>
 			{:else}
@@ -386,9 +387,9 @@
 							: ''}"
 					>
 						<span
-							class="flex h-12 w-12 items-center justify-center rounded-full text-xl"
+							class="flex h-12 w-12 items-center justify-center rounded-full text-white"
 							style="background-color: {categoryColorOrDefault(category.color)}"
-							>{category.icon || '📁'}</span
+							><CategoryIcon name={category.icon} class="h-6 w-6" /></span
 						>
 						<span class="line-clamp-2 text-xs font-medium">{category.name}</span>
 						{#if categoryId === category.id}<Check class="h-4 w-4 text-primary" />{/if}

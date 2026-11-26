@@ -15,6 +15,7 @@
 		ToggleRight,
 		Shield
 	} from '@lucide/svelte';
+	import CategoryIcon from '$lib/components/category-icon.svelte';
 	import OperationStatus from '$lib/components/operation-status.svelte';
 	import { Dialog } from '$lib/components/ui/dialog';
 	import { TabList } from '$lib/components/ui/tabs';
@@ -316,9 +317,11 @@
 								>
 									<div class="flex items-center gap-3">
 										<div
-											class="w-3 h-3 rounded-full"
+											class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white"
 											style="background-color: {categoryColorOrDefault(category.color)}"
-										></div>
+										>
+											<CategoryIcon name={category.icon} />
+										</div>
 										<div>
 											<div class="flex items-center gap-2">
 												<span class="font-medium">{category.name}</span>
