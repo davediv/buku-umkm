@@ -362,24 +362,21 @@ describe('chose the Pasal 17 rates vs. turnover that passed Rp4,8 miliar', () =>
 		expect(result.reasons[0]).toContain('Pasal 57 ayat (2) huruf a');
 	});
 
-	it('does not end the final rate for a koperasi that once passed Rp4,8 miliar (ayat (4))', () => {
+	it('ends the final rate after the turnover passed Rp4,8 miliar, koperasi included (Pasal 61)', () => {
 		const koperasi = cooperative({
 			registeredAt: '2026-06-01',
 			finalRegimeStartYear: 2026,
 			turnoverLimitExceeded: true,
 			priorYearAggregatedRevenue: 1_000_000_000
 		});
-		expect(evaluate(koperasi, 2027).status).toBe('eligible');
-	});
-
-	it('still ends it under PP 55 criteria for tax years up to 2025', () => {
-		const result = evaluate({ turnoverLimitExceeded: true }, 2025);
+		const result = evaluate(koperasi, 2027);
 		expect(result.status).toBe('ineligible');
-		expect(result.reasons[0]).toContain('Rp4,8 miliar');
+		expect(result.reasons[0]).toContain('Pasal 61 ayat (2) PP 55/2022');
 	});
 
-	it('ends it for a CV on the Pasal II angka 1 huruf e transition', () => {
-		const result = evaluate(
+	it('applies the same rule before PP 20/2026 and to a CV on the transition', () => {
+		expect(evaluate({ turnoverLimitExceeded: true }, 2025).status).toBe('ineligible');
+		const cv = evaluate(
 			{
 				legalForm: TAX_LEGAL_FORM.CV,
 				registeredAt: '2024-01-15',
@@ -388,13 +385,17 @@ describe('chose the Pasal 17 rates vs. turnover that passed Rp4,8 miliar', () =>
 			},
 			2027
 		);
-		expect(result.status).toBe('ineligible');
-		expect(result.reasons[0]).toContain('Pasal II angka 1 huruf e');
+		expect(cv.status).toBe('ineligible');
+		expect(cv.reasons[0]).toContain('Pasal 61');
 	});
 
-	it("treats an individual's own exceeded turnover as the founder group's (huruf e)", () => {
-		const result = evaluate({ turnoverLimitExceeded: true, groupTurnoverExceeded: false }, 2027);
+	it("gives an individual's own excess no 2026 grace: Pasal II angka 1 huruf f covers only huruf e", () => {
+		// Registered before PP 20/2026 with a PP 55 term that covers 2026, so the founder-group
+		// rule alone would still allow 2026.
+		const individual = { registeredAt: '2020-03-01', finalRegimeStartYear: 2020 };
+		expect(evaluate({ ...individual, groupTurnoverExceeded: true }, 2026).status).toBe('eligible');
+		const result = evaluate({ ...individual, turnoverLimitExceeded: true }, 2026);
 		expect(result.status).toBe('ineligible');
-		expect(result.reasons[0]).toContain('Pasal 57 ayat (2) huruf e');
+		expect(result.reasons[0]).toContain('Pasal 61');
 	});
 });

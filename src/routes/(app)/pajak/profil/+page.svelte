@@ -55,8 +55,6 @@
 	const isBody = $derived(legalForm !== '' && isBodyLegalForm(legalForm));
 	const asksExpertService = $derived(legalForm !== '' && asksExpertServiceQuestion(legalForm));
 	const asksFounderGroup = $derived(legalForm !== '' && asksFounderGroupQuestion(legalForm));
-	// Individuals and perseroan perorangan answer this through the founder-group question.
-	const asksOwnTurnover = $derived(legalForm !== '' && !asksFounderGroup);
 
 	async function saveProfile(event: SubmitEvent) {
 		event.preventDefault();
@@ -77,7 +75,7 @@
 						asksExpertService && form.soleOwnerProvidesProfessionalServices,
 					usesOtherTaxFacility: isBody && form.usesOtherTaxFacility,
 					groupTurnoverExceeded: asksFounderGroup ? form.groupTurnoverExceeded : null,
-					turnoverLimitExceeded: asksOwnTurnover && form.turnoverLimitExceeded
+					turnoverLimitExceeded: legalForm !== '' && form.turnoverLimitExceeded
 				})
 			});
 			const result = (await response.json()) as { error?: string };
@@ -263,15 +261,12 @@
 						ayat (2) huruf a dan ayat (3)).
 					</span>
 				</label>
-				{#if asksOwnTurnover}
+				{#if legalForm !== ''}
 					<label class="flex items-start gap-3 text-sm">
 						<input type="checkbox" bind:checked={form.turnoverLimitExceeded} class="mt-1 h-4 w-4" />
 						<span>
-							Omzet bruto usaha ini pernah melebihi Rp4,8 miliar dalam satu tahun pajak.
-							{#if legalForm === TAX_LEGAL_FORM.COOPERATIVE}
-								Mulai Tahun Pajak 2026 hal ini tidak menutup tarif final bagi koperasi; yang dinilai
-								adalah omzet tahun pajak sebelumnya (Pasal 57 ayat (1) dan ayat (4) PP 20/2026).
-							{/if}
+							Omzet bruto {isIndividual ? 'usaha saya' : 'usaha ini'} pernah melebihi Rp4,8 miliar dalam
+							satu tahun pajak saat memakai tarif final (Pasal 61 PP 55/2022).
 						</span>
 					</label>
 				{/if}

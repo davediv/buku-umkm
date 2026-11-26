@@ -509,8 +509,8 @@ export const taxProfile = sqliteTable(
 		everUsedGeneralRegime: integer('ever_used_general_regime', { mode: 'boolean' })
 			.default(false)
 			.notNull(),
-		// The taxpayer's own turnover passed Rp4.8 billion in an earlier tax year. Whether that is
-		// permanent depends on the legal form and tax year (src/lib/tax/eligibility.ts).
+		// The taxpayer's own turnover passed Rp4.8 billion in an earlier tax year while on the final
+		// rate: Pasal 17 rates in every later tax year (Pasal 61 ayat (2) PP 55/2022).
 		turnoverLimitExceeded: integer('turnover_limit_exceeded', { mode: 'boolean' })
 			.default(false)
 			.notNull(),

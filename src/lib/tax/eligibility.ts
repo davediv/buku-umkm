@@ -272,8 +272,7 @@ const GRACE_2026_REASON =
 function individualOrCompanyOutcome(profile: TaxProfileData, taxYear: number): Outcome {
 	const isCompany = profile.legalForm === TAX_LEGAL_FORM.SINGLE_MEMBER_COMPANY;
 	const expert = isCompany && profile.soleOwnerProvidesProfessionalServices;
-	// The taxpayer's own turnover is part of the founder group's, so it settles the answer.
-	const groupExceeded = profile.turnoverLimitExceeded ? true : profile.groupTurnoverExceeded;
+	const groupExceeded = profile.groupTurnoverExceeded;
 
 	// Before 22 April 2026 tax year 2026 was still governed by PP 55/2022 with its time limits,
 	// so a taxpayer already registered then needs a PP 55 basis to cover the whole year.
@@ -467,19 +466,16 @@ export function evaluateTaxEligibility(
 		);
 	}
 
-	// Own turnover that once passed Rp4.8 billion. Up to tax year 2025, and for CV, firma, PT
-	// and BUM Desa on the Pasal II angka 1 huruf e transition (which keeps PP 55's criteria),
-	// the later tax years stay excluded. From 2026 an individual or perseroan perorangan is
-	// judged with its founder group under Pasal 57 ayat (2) huruf e (individualOrCompanyOutcome),
-	// and a koperasi only by the previous year's turnover: Pasal 57 ayat (4) PP 20/2026 does not
-	// make passing the limit permanent for it.
-	if (
-		profile.turnoverLimitExceeded &&
-		(taxYear < PP20_FIRST_TAX_YEAR || TRANSITIONAL_BODY_FORMS.has(profile.legalForm))
-	) {
+	// Pasal 61 PP 55/2022, which PP 20/2026 did not amend: a taxpayer under the final rate
+	// whose turnover passes Rp4.8 billion in a tax year keeps the final rate to the end of that
+	// year (Pasal 61 ayat (1)) and is taxed at the Pasal 17 rates in every later tax year
+	// (ayat (2)). It applies to every taxpayer in Pasal 57 ayat (1), koperasi included, and the
+	// Pasal II angka 1 huruf f grace covers only the new founder-group rule of Pasal 57 ayat (2)
+	// huruf e, not a taxpayer's own turnover.
+	if (profile.turnoverLimitExceeded) {
 		return stop(
 			'ineligible',
-			'Omzet pernah melebihi Rp4,8 miliar dalam satu tahun pajak. Menurut kriteria PP 55/2022, yang juga berlaku bagi CV, firma, PT, dan BUM Desa pada masa peralihan (Pasal II angka 1 huruf e PP 20/2026), tarif final tidak dapat dipakai pada tahun-tahun pajak berikutnya.'
+			'Omzet bruto usaha ini pernah melebihi Rp4,8 miliar dalam satu tahun pajak saat memakai tarif final, sehingga tahun-tahun pajak berikutnya dikenai tarif umum Pasal 17 UU PPh (Pasal 61 ayat (2) PP 55/2022, tidak diubah PP 20/2026).'
 		);
 	}
 
