@@ -37,7 +37,7 @@ describe('findOutstandingMonths', () => {
 			[4, 'unpaid', 400_000],
 			[10, 'unpaid', 300_000]
 		]);
-		expect(items[2].dueDate).toBe('2026-11-15');
+		expect(items[2].dueDate).toBe('2026-11-16'); // 15 Nov 2026 is a Sunday
 		expect(items[2].billingCodeUrl).toBe('/pajak/kode-billing/2026/10');
 	});
 
