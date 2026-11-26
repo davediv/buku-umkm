@@ -2,13 +2,8 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { taxRecord } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
 import { calculateMonthlyTax } from '$lib/tax/engine';
-import {
-	calculateCumulativeRevenue,
-	getTaxRecordForMonth,
-	getTaxYearContext
-} from '$lib/tax/service';
+import { calculateCumulativeRevenue, getTaxYearContext } from '$lib/tax/service';
 import { TAX_TYPE, TAX_STATUS } from '$lib/tax/config';
 import { jakartaToday } from '$lib/tax/period';
 
@@ -87,40 +82,12 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			);
 		}
 
-		// Check if there's an existing tax record for this month
-		const existingRecord = await getTaxRecordForMonth(db, userId, year, month);
-
-		if (existingRecord) {
-			// Update existing record
-			await db
-				.update(taxRecord)
-				.set({
-					status: TAX_STATUS.PAID,
-					paymentDate,
-					billingCode: billingCode || null,
-					taxableIncome: taxCalculation.taxableRevenue,
-					taxAmount: taxCalculation.taxAmount,
-					updatedAt: new Date()
-				})
-				.where(eq(taxRecord.id, existingRecord.id));
-
-			return json({
-				message: 'Tax payment updated',
-				data: {
-					id: existingRecord.id,
-					year,
-					month,
-					taxAmount: taxCalculation.taxAmount,
-					status: TAX_STATUS.PAID,
-					paymentDate,
-					billingCode
-				}
-			});
-		} else {
-			// Create new tax record
-			const newId = crypto.randomUUID();
-			await db.insert(taxRecord).values({
-				id: newId,
+		// One statement keyed on the (user, year, month, tax type) unique index, so a
+		// double submit updates the same record instead of inserting a second one.
+		const [saved] = await db
+			.insert(taxRecord)
+			.values({
+				id: crypto.randomUUID(),
 				userId,
 				year,
 				month,
@@ -130,25 +97,34 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 				taxAmount: taxCalculation.taxAmount,
 				status: TAX_STATUS.PAID,
 				paymentDate,
-				billingCode: billingCode || null
-			});
+				billingCode
+			})
+			.onConflictDoUpdate({
+				target: [taxRecord.userId, taxRecord.year, taxRecord.month, taxRecord.taxType],
+				set: {
+					status: TAX_STATUS.PAID,
+					paymentDate,
+					billingCode,
+					taxableIncome: taxCalculation.taxableRevenue,
+					taxRate: taxCalculation.taxRate,
+					taxAmount: taxCalculation.taxAmount,
+					updatedAt: new Date()
+				}
+			})
+			.returning({ id: taxRecord.id });
 
-			return json(
-				{
-					message: 'Tax marked as paid',
-					data: {
-						id: newId,
-						year,
-						month,
-						taxAmount: taxCalculation.taxAmount,
-						status: TAX_STATUS.PAID,
-						paymentDate,
-						billingCode
-					}
-				},
-				{ status: 201 }
-			);
-		}
+		return json({
+			message: 'Tax marked as paid',
+			data: {
+				id: saved.id,
+				year,
+				month,
+				taxAmount: taxCalculation.taxAmount,
+				status: TAX_STATUS.PAID,
+				paymentDate,
+				billingCode
+			}
+		});
 	} catch {
 		console.error('Error in POST /api/tax/[year]/[month]/mark-paid:');
 		return json({ error: 'Failed to mark tax as paid' }, { status: 500 });

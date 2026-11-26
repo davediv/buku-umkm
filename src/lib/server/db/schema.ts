@@ -573,7 +573,14 @@ export const taxRecord = sqliteTable(
 		...timestampColumns
 	},
 	(table) => [
-		index('tax_record_userId_idx').on(table.userId),
+		// One record per tax period and type; mark-paid upserts on it. It also serves
+		// user_id lookups, so no separate user_id index is needed.
+		uniqueIndex('tax_record_user_period_type_unique').on(
+			table.userId,
+			table.year,
+			table.month,
+			table.taxType
+		),
 		index('tax_record_year_idx').on(table.year),
 		index('tax_record_month_idx').on(table.month),
 		index('tax_record_status_idx').on(table.status)

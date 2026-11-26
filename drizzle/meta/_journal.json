@@ -64,6 +64,13 @@
       "when": 1795713720510,
       "tag": "0008_tax_profile_founder_group",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1795713882355,
+      "tag": "0009_tax_record_unique_period",
+      "breakpoints": true
     }
   ]
 }
