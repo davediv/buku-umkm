@@ -1,19 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { findOutstandingMonths, reminderPeriod, reminderUrgency } from './reminder';
+import { findOutstandingMonths, reminderPeriods, reminderUrgency } from './reminder';
 import { jakartaToday } from './period';
 
 const day = (date: string) => jakartaToday(new Date(`${date}T05:00:00Z`));
 
-describe('reminderPeriod', () => {
-	it('checks every earlier month of the current year', () => {
-		expect(reminderPeriod(day('2026-11-27'))).toEqual({
-			year: 2026,
-			months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-		});
+const allMonths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+describe('reminderPeriods', () => {
+	it('checks all of last year and every earlier month of this year', () => {
+		expect(reminderPeriods(day('2026-11-27'))).toEqual([
+			{ year: 2025, months: allMonths },
+			{ year: 2026, months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }
+		]);
 	});
 
-	it('checks December of the previous year in January', () => {
-		expect(reminderPeriod(day('2027-01-10'))).toEqual({ year: 2026, months: [12] });
+	it('checks only last year in January', () => {
+		expect(reminderPeriods(day('2027-01-10'))).toEqual([{ year: 2026, months: allMonths }]);
+	});
+
+	it('keeps last year in the reminder after January', () => {
+		expect(reminderPeriods(day('2027-03-02'))).toEqual([
+			{ year: 2026, months: allMonths },
+			{ year: 2027, months: [1, 2] }
+		]);
 	});
 });
 

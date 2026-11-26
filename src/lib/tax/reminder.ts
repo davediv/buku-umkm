@@ -7,13 +7,17 @@ export interface ReminderPeriod {
 	months: number[];
 }
 
+const monthsUpTo = (last: number) => Array.from({ length: last }, (_, i) => i + 1);
+
 /**
- * The tax months the reminder checks: every earlier month of the current year, or, in
- * January, December of the previous year.
+ * The tax months the reminder checks, oldest first: all of the previous year, then every
+ * earlier month of the current year. An unpaid month stays owed after the year ends, so a
+ * month from last year must not drop out of the reminder in February.
  */
-export function reminderPeriod(today: CalendarDay): ReminderPeriod {
-	if (today.month === 1) return { year: today.year - 1, months: [12] };
-	return { year: today.year, months: Array.from({ length: today.month - 1 }, (_, i) => i + 1) };
+export function reminderPeriods(today: CalendarDay): ReminderPeriod[] {
+	const periods: ReminderPeriod[] = [{ year: today.year - 1, months: monthsUpTo(12) }];
+	if (today.month > 1) periods.push({ year: today.year, months: monthsUpTo(today.month - 1) });
+	return periods;
 }
 
 export interface OutstandingMonth {

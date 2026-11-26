@@ -4,14 +4,14 @@ import { getDb } from '$lib/server/db';
 import { calculateAnnualTax } from '$lib/tax/engine';
 import { getTaxRecordsForYear, getTaxYearContext } from '$lib/tax/service';
 import { jakartaToday } from '$lib/tax/period';
-import { findOutstandingMonths, reminderPeriod, reminderUrgency } from '$lib/tax/reminder';
+import { findOutstandingMonths, reminderPeriods, reminderUrgency } from '$lib/tax/reminder';
 
 /**
  * GET /api/tax/reminder
  *
- * Lists every earlier month of the current year (in January: December of the previous
- * year) whose recomputed PPh Final estimate is unpaid, or higher than the amount recorded
- * as paid.
+ * Lists every month of the previous year and every earlier month of the current year
+ * whose recomputed PPh Final estimate is unpaid, or higher than the amount recorded as
+ * paid. Each year is judged by its own eligibility; a year without an estimate is skipped.
  *
  * Response:
  * - showReminder: boolean
@@ -30,37 +30,49 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 	try {
 		const today = jakartaToday();
-		const { year, months } = reminderPeriod(today);
-		const lastMonth = months[months.length - 1];
+		const periods = reminderPeriods(today);
+		const years = await Promise.all(
+			periods.map(async ({ year, months }) => {
+				const [context, records] = await Promise.all([
+					getTaxYearContext(db, userId, year, months[months.length - 1]),
+					getTaxRecordsForYear(db, userId, year)
+				]);
+				const taxpayerType = context.eligibility.taxpayerType;
+				if (context.eligibility.status !== 'eligible' || !taxpayerType) {
+					return { context, taxpayerType: null, items: [] };
+				}
+				const annualTax = calculateAnnualTax(
+					context.aggregatedMonthlyRevenue.map((revenue, index) => ({
+						month: index + 1,
+						revenue
+					})),
+					taxpayerType,
+					year
+				);
+				const items = findOutstandingMonths({
+					year,
+					months,
+					monthlyTax: annualTax.months.map((month) => month.taxAmount),
+					records,
+					today: today.date
+				});
+				return { context, taxpayerType, items };
+			})
+		);
 
-		const [context, records] = await Promise.all([
-			getTaxYearContext(db, userId, year, lastMonth),
-			getTaxRecordsForYear(db, userId, year)
-		]);
-		const taxpayerType = context.eligibility.taxpayerType;
-		if (context.eligibility.status !== 'eligible' || !taxpayerType) {
+		const current = years[years.length - 1];
+		const eligibleYears = years.filter((entry) => entry.taxpayerType);
+		if (eligibleYears.length === 0) {
 			return json({
 				data: {
 					showReminder: false,
 					reason: 'tax_estimate_unavailable',
-					eligibility: context.eligibility
+					eligibility: current.context.eligibility
 				}
 			});
 		}
 
-		const annualTax = calculateAnnualTax(
-			context.aggregatedMonthlyRevenue.map((revenue, index) => ({ month: index + 1, revenue })),
-			taxpayerType,
-			year
-		);
-		const items = findOutstandingMonths({
-			year,
-			months,
-			monthlyTax: annualTax.months.map((month) => month.taxAmount),
-			records,
-			today: today.date
-		});
-
+		const items = years.flatMap((entry) => entry.items);
 		if (items.length === 0) {
 			return json({ data: { showReminder: false, reason: 'nothing_outstanding' } });
 		}
@@ -71,7 +83,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 				items,
 				totalOutstanding: items.reduce((sum, item) => sum + item.outstandingAmount, 0),
 				urgencyLevel: reminderUrgency(items),
-				taxpayerType,
+				taxpayerType: eligibleYears[eligibleYears.length - 1].taxpayerType,
 				calculationStatus: 'estimate'
 			}
 		});

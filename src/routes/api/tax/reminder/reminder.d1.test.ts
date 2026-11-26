@@ -89,15 +89,17 @@ describe('tax reminder on D1', () => {
 		expect(data.totalOutstanding).toBe(700_000);
 	});
 
-	it('checks December of the previous year during January', async () => {
+	it('keeps every unpaid month of the previous year after the year ends', async () => {
 		const userId = await userWithTurnover({ 10: 100_000_000, 12: 200_000_000 });
 
-		// 08:00 WIB on 10 January 2027.
-		const { data } = await reminderAt(userId, '2027-01-10T01:00:00Z');
-
-		expect(data.items?.map((item) => [item.year, item.month, item.outstandingAmount])).toEqual([
-			[2026, 12, 1_000_000]
-		]);
+		// 08:00 WIB on 10 January 2027, then 08:00 WIB on 2 March 2027.
+		for (const at of ['2027-01-10T01:00:00Z', '2027-03-02T01:00:00Z']) {
+			const { data } = await reminderAt(userId, at);
+			expect(data.items?.map((item) => [item.year, item.month, item.outstandingAmount])).toEqual([
+				[2026, 10, 500_000],
+				[2026, 12, 1_000_000]
+			]);
+		}
 	});
 
 	it('stays quiet when every earlier month is paid in full', async () => {
