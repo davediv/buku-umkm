@@ -2,7 +2,9 @@
  * Holidays that move a tax payment deadline. PMK 81/2024 Pasal 100: when a due date of
  * Pasal 94 falls on a hari libur, payment may be made at the latest on the next working day,
  * and hari libur means Saturday, Sunday, a national holiday (hari libur nasional), a day
- * declared off for a general election, or a nationally set cuti bersama.
+ * declared off for a general election, or a nationally set cuti bersama. Checked against the
+ * official texts of all four amendments to PMK 81/2024 (PMK 11/2025, 53/2025, 54/2025 and
+ * 1/2026): none changes Pasal 94 or Pasal 100.
  *
  * Each year lists the national holidays and cuti bersama of the SKB 3 Menteri for that year,
  * taken only from the official publication cited next to it. A year without a verified list
