@@ -24,7 +24,12 @@
 		Save,
 		Trash2
 	} from '@lucide/svelte';
-	import { BUSINESS_TYPES, MAX_BACKUP_BYTES } from '$lib/constants';
+	import {
+		BACKUP_DOCUMENT_ENTRY,
+		BUSINESS_TYPES,
+		MAX_BACKUP_ARCHIVE_BYTES,
+		MAX_BACKUP_BYTES
+	} from '$lib/constants';
 	import { getBusinessTypeLabel, formatDateTime } from '$lib/utils';
 	import {
 		getSettingsHref,
@@ -64,6 +69,17 @@
 	let restoreError = $state<string | null>(null);
 	let lastBackupDate = $state<string | null>(null);
 	let fileInputRef = $state<HTMLInputElement | null>(null);
+	/**
+	 * How the chosen file is restored: a .json as is, a .zip with its photos, or only the
+	 * backup.json inside a .zip too large to upload in one request.
+	 */
+	let restoreKind = $state<'json' | 'zip' | 'zip-data-only'>('json');
+
+	const MB = 1024 * 1024;
+	const ARCHIVE_LIMIT_MB = MAX_BACKUP_ARCHIVE_BYTES / MB;
+	const formatMb = (bytes: number) =>
+		`${(bytes / MB).toLocaleString('id-ID', { maximumFractionDigits: 1 })} MB`;
+	const USE_ORIGINAL_ARCHIVE = 'Gunakan file .zip asli yang diunduh dari Buku UMKM.';
 
 	// Business profile edit state
 	let isEditingProfile = $state(false);
@@ -200,7 +216,7 @@
 			// Get the blob and trigger download
 			const blob = await response.blob();
 			const contentDisposition = response.headers.get('Content-Disposition');
-			let filename = `backup-${new Date().toISOString().split('T')[0]}.json`;
+			let filename = `backup-${new Date().toISOString().split('T')[0]}.zip`;
 			if (contentDisposition) {
 				const match = contentDisposition.match(/filename="?([^";\n]+)"?/);
 				if (match) {
@@ -224,16 +240,28 @@
 			lastBackupDate = now;
 
 			const photoCount = Number(response.headers.get('X-Backup-Photo-Count') ?? 0);
+			const withoutImage = Number(response.headers.get('X-Backup-Photos-Without-Image') ?? 0);
+			const withImage = photoCount - withoutImage;
 			toast.success(
 				'Backup berhasil dibuat!',
-				photoCount > 0
-					? `File backup tidak berisi gambar ${photoCount} foto nota. Foto hanya kembali bila dipulihkan ke akun ini selama gambarnya masih tersimpan.`
-					: undefined
+				withImage > 0 ? `File .zip berisi data dan ${withImage} foto nota.` : undefined
 			);
-			if (response.headers.get('X-Backup-Restorable') === 'false') {
+			if (withoutImage > 0) {
+				toast.warning(
+					`${withoutImage} foto nota tanpa gambar`,
+					'Gambarnya tidak ditemukan di penyimpanan, jadi hanya keterangannya yang masuk ke backup.'
+				);
+			}
+			const restorable = response.headers.get('X-Backup-Restorable');
+			if (restorable === 'none') {
 				toast.warning(
 					'Backup terlalu besar untuk dipulihkan',
 					'Data Anda melebihi batas pemulihan sekali jalan. Simpan file ini, lalu hubungi pengelola aplikasi bila perlu memulihkannya.'
+				);
+			} else if (restorable === 'data-only') {
+				toast.warning(
+					'Foto tidak dapat dipulihkan sekaligus',
+					`File ini lebih dari ${ARCHIVE_LIMIT_MB} MB, batas sekali unggah. Saat dipulihkan, data dapat dipulihkan tanpa foto nota.`
 				);
 			}
 		} catch (error) {
@@ -249,17 +277,67 @@
 		const input = event.target as HTMLInputElement;
 		const file = input.files?.[0];
 		if (!file) return;
-		if (file.size > MAX_BACKUP_BYTES) {
+		const zip = /\.zip$/i.test(file.name) || file.type.includes('zip');
+		if (!zip && file.size > MAX_BACKUP_BYTES) {
 			input.value = '';
 			toast.error(
 				'File backup terlalu besar',
-				`Ukuran maksimal ${MAX_BACKUP_BYTES / 1024 / 1024} MB. Pastikan Anda memilih file backup Buku UMKM.`
+				`Ukuran maksimal ${MAX_BACKUP_BYTES / MB} MB. Pastikan Anda memilih file backup Buku UMKM.`
 			);
 			return;
 		}
+		restoreKind = !zip ? 'json' : file.size > MAX_BACKUP_ARCHIVE_BYTES ? 'zip-data-only' : 'zip';
 		selectedFile = file;
 		showRestoreConfirm = true;
 	}
+
+	/** The backup.json inside a .zip backup, read in the browser without the photos after it. */
+	async function backupDocumentOf(file: File): Promise<Uint8Array<ArrayBuffer>> {
+		if (typeof DecompressionStream === 'undefined') {
+			throw new Error('Browser ini belum dapat membuka file .zip. Perbarui browser Anda.');
+		}
+		const { readZip, ZipError } = await import('$lib/shared/zip');
+		const entries = readZip(file.stream(), {
+			maxArchiveBytes: file.size,
+			maxEntries: 1,
+			maxEntryBytes: MAX_BACKUP_BYTES,
+			maxTotalBytes: MAX_BACKUP_BYTES
+		});
+		try {
+			const first = await entries.next();
+			if (first.done || first.value.name !== BACKUP_DOCUMENT_ENTRY) {
+				throw new Error(`File .zip ini tidak berisi backup Buku UMKM. ${USE_ORIGINAL_ARCHIVE}`);
+			}
+			return first.value.data;
+		} catch (error) {
+			if (!(error instanceof ZipError)) throw error;
+			throw new Error(
+				error.code === 'limit'
+					? `Data di dalam file backup melebihi ${MAX_BACKUP_BYTES / MB} MB.`
+					: `File .zip ini rusak atau sudah dikompres ulang. ${USE_ORIGINAL_ARCHIVE}`
+			);
+		} finally {
+			await entries.return(undefined);
+		}
+	}
+
+	/** The request for the chosen file: a .zip goes up whole, unwrapped, so the server can stream it. */
+	async function restoreRequest(file: File): Promise<RequestInit> {
+		if (restoreKind === 'zip') {
+			return { method: 'POST', headers: { 'Content-Type': 'application/zip' }, body: file };
+		}
+		if (restoreKind === 'zip-data-only') {
+			const document = await backupDocumentOf(file);
+			return { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: document };
+		}
+		const formData = new FormData();
+		formData.append('file', file);
+		return { method: 'POST', body: formData };
+	}
+
+	/** "a, b, dan c" */
+	const listOf = (items: string[]) =>
+		items.length > 1 ? `${items.slice(0, -1).join(', ')}, dan ${items.at(-1)}` : items.join('');
 
 	// Handle restore confirmation
 	async function confirmRestore() {
@@ -269,19 +347,14 @@
 		restoreError = null;
 
 		try {
-			const formData = new FormData();
-			formData.append('file', selectedFile);
-
-			const response = await fetch('/api/restore', {
-				method: 'POST',
-				body: formData
-			});
+			const kind = restoreKind;
+			const response = await fetch('/api/restore', await restoreRequest(selectedFile));
 
 			const result = (await response.json()) as {
 				success?: boolean;
 				error?: string;
 				summary?: {
-					restored: { transactions: number; accounts: number; debts: number };
+					restored: { transactions: number; accounts: number; debts: number; photos: number };
 					photosDropped: number;
 					npwpDropped: boolean;
 				};
@@ -303,16 +376,24 @@
 			await invalidateAll();
 
 			const summary = result.summary;
+			const restored = summary?.restored;
 			toast.success(
 				'Data berhasil dipulihkan!',
-				summary
-					? `${summary.restored.transactions} transaksi, ${summary.restored.accounts} akun, dan ${summary.restored.debts} hutang/piutang dipulihkan.`
+				restored
+					? `${listOf([
+							`${restored.transactions} transaksi`,
+							`${restored.accounts} akun`,
+							`${restored.debts} hutang/piutang`,
+							...(restored.photos > 0 ? [`${restored.photos} foto nota`] : [])
+						])} dipulihkan.`
 					: undefined
 			);
 			if (summary && summary.photosDropped > 0) {
 				toast.warning(
 					`${summary.photosDropped} foto nota tidak dipulihkan`,
-					'Gambar foto tidak ada di file backup. Foto hanya kembali bila dipulihkan ke akun yang membuat backup selama gambarnya masih tersimpan.'
+					kind === 'zip'
+						? 'Gambarnya tidak ada di file backup, bukan gambar JPEG/PNG yang utuh, atau melebihi 3 foto per transaksi.'
+						: `Gambar foto tidak ikut diunggah${kind === 'json' ? ' (file .json tidak berisi gambar)' : ''}. Foto hanya kembali bila dipulihkan ke akun yang membuat backup selama gambarnya masih tersimpan.`
 				);
 			}
 			if (summary?.npwpDropped) {
@@ -849,15 +930,16 @@
 					<input
 						bind:this={fileInputRef}
 						type="file"
-						accept=".json,application/json"
+						accept=".zip,.json,application/zip,application/json"
 						onchange={handleFileSelect}
 						class="hidden"
 					/>
 
 					<!-- Info text -->
 					<p class="text-xs text-muted-foreground">
-						File backup dapat digunakan untuk memulihkan data jika terjadi masalah pada perangkat
-						Anda.
+						File backup (.zip) berisi data dan foto nota, dan dapat digunakan untuk memulihkan data
+						jika terjadi masalah pada perangkat Anda. File backup .json versi lama tetap dapat
+						dipulihkan.
 					</p>
 				</div>
 			</div>
@@ -888,8 +970,16 @@
 			Data saat ini akan ditimpa!
 		</p>
 		<p class="text-sm text-amber-700 dark:text-amber-300 mt-1">
-			Gambar foto nota tidak ada di file backup; foto hanya kembali bila gambarnya masih tersimpan
-			di akun ini.
+			{#if restoreKind === 'zip'}
+				Foto nota di dalam file backup ikut dipulihkan.
+			{:else if restoreKind === 'zip-data-only' && selectedFile}
+				File ini {formatMb(selectedFile.size)}, melebihi batas {ARCHIVE_LIMIT_MB} MB untuk dipulihkan
+				sekaligus dengan foto. Data dapat dipulihkan tanpa foto nota; foto hanya kembali bila gambarnya
+				masih tersimpan di akun ini.
+			{:else}
+				File .json tidak berisi gambar foto nota; foto hanya kembali bila gambarnya masih tersimpan
+				di akun ini.
+			{/if}
 		</p>
 		<p class="text-sm text-amber-700 dark:text-amber-300 mt-1">
 			{#if selectedFile}
@@ -897,6 +987,12 @@
 			{/if}
 		</p>
 	</div>
+
+	{#if restoring && restoreKind === 'zip'}
+		<p class="text-sm text-muted-foreground mb-4" role="status">
+			Mengunggah file backup dan foto nota. Jangan tutup halaman ini.
+		</p>
+	{/if}
 
 	{#if restoreError}
 		<div
@@ -911,6 +1007,8 @@
 		<AlertDialogAction variant="warning" onclick={confirmRestore} loading={restoring}>
 			{#if restoring}
 				Memulihkan...
+			{:else if restoreKind === 'zip-data-only'}
+				Pulihkan Data Tanpa Foto
 			{:else}
 				Ya, Pulihkan
 			{/if}
