@@ -43,17 +43,20 @@ function convertToExportRows(transactions: TransactionForExport[]): TransactionE
 	}));
 }
 
+// Spreadsheet apps run a cell that starts with one of these as a formula. A lone
+// "-" or "+" is the export's empty-cell placeholder and cannot form one.
+const FORMULA_PREFIX = /^[=@\t\r]|^[+-]./s;
+
+function serializeCsvCell(value: string | number): string {
+	// Numbers are written as-is so negative amounts stay numeric.
+	if (typeof value === 'number') return String(value);
+	// A leading apostrophe makes Excel and Sheets show user text instead of evaluating it.
+	const text = FORMULA_PREFIX.test(value) ? `'${value}` : value;
+	return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
 export function serializeCsvRows(rows: (string | number)[][]): string {
-	return rows
-		.map((row) =>
-			row
-				.map((value) => {
-					const text = String(value);
-					return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-				})
-				.join(',')
-		)
-		.join('\n');
+	return rows.map((row) => row.map(serializeCsvCell).join(',')).join('\n');
 }
 
 export async function exportTransactions(

