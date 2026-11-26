@@ -304,9 +304,10 @@ describe('streaming', () => {
 		expect(consumed).toBe(count);
 		// The writer asked for entry k + 1 only after the reader had handed over entry k.
 		expect(mostAhead).toBe(1);
-		// Live buffers mid-stream, after a full GC: a few entries' worth (the runner's own
-		// buffers included), against the 120 MB that went through.
-		expect(mostLive).toBeLessThan(16 * 1024 * 1024);
+		// Buffers held mid-stream, after a full GC: a few entries' worth alone (0-6 MB), more
+		// under a parallel run, where V8 frees them lazily. Mostly it rules out holding the
+		// 120 MB that went through; mostAhead above is the exact guarantee.
+		expect(mostLive).toBeLessThan((count * size) / 3);
 	});
 
 	it('errors the stream with the source error, and closes the source when cancelled', async () => {
