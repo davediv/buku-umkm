@@ -398,6 +398,118 @@ describe('restoreBackup', () => {
 		expect((await rowCounts(userId)).financial_command).toBe(0);
 	});
 
+	it('keeps loan interest and its link to the interest transaction', async () => {
+		const owner = await harness.createUser();
+		const { kas, bank, loanId } = await seedBooks(owner);
+		const service = createFinancialMutationService(createD1FinanceRepository(harness.db));
+		const pay = (debtId: string, key: string, amount: number, interestAmount: number) =>
+			service.recordDebtPayment(owner, debtId, `restore-${owner}-${key}`, {
+				amount,
+				interestAmount,
+				date: '2026-08-01',
+				accountId: debtId === loanId ? bank : kas,
+				notes: null
+			});
+		const lent = await service.createDebt(owner, `restore-${owner}-lent`, {
+			type: 'piutang',
+			kind: 'loan',
+			accountId: kas,
+			contactName: 'Pak Budi',
+			contactPhone: null,
+			contactAddress: null,
+			originalAmount: 300_000,
+			// After Bu Sri's receivable: the balance sheet lists debts in insertion order, and
+			// restore inserts them by date.
+			date: '2026-05-01',
+			dueDate: null,
+			description: null
+		});
+		await pay(loanId, 'interest-1', 100_000, 12_000);
+		await pay(loanId, 'interest-2', 0, 9_000);
+		// Interest income stays out of turnover only while the link survives.
+		await pay(lent.entity.id, 'interest-3', 50_000, 15_000);
+		const file = await snapshot(owner);
+		const before = await reports(owner);
+		const fresh = await harness.createUser();
+
+		await restoreBackup(harness.db, fresh, file, { decryptNpwp });
+
+		expect(await reports(fresh)).toEqual(before);
+		const payments = await harness.db
+			.select()
+			.from(debtPayment)
+			.where(eq(debtPayment.userId, fresh));
+		const withInterest = payments.filter((item) => item.interestAmount > 0);
+		expect(withInterest.map((item) => [item.amount, item.interestAmount]).sort()).toEqual(
+			[
+				[0, 9_000],
+				[100_000, 12_000],
+				[50_000, 15_000]
+			].sort()
+		);
+		const transactions = await harness.db
+			.select()
+			.from(transaction)
+			.where(eq(transaction.userId, fresh));
+		for (const item of withInterest) {
+			expect(transactions.find((row) => row.id === item.interestTransactionId)).toMatchObject({
+				amount: item.interestAmount,
+				debtId: null,
+				isActive: true
+			});
+		}
+		expect(
+			payments
+				.filter((item) => item.interestAmount === 0)
+				.every((item) => item.interestTransactionId === null)
+		).toBe(true);
+
+		// The restored categories are found again: no second "Beban Bunga" is created.
+		const [restoredLoan] = await harness.db
+			.select()
+			.from(debt)
+			.where(and(eq(debt.userId, fresh), eq(debt.contactName, 'Koperasi Maju')));
+		const [restoredBank] = await harness.db
+			.select()
+			.from(chartOfAccount)
+			.where(and(eq(chartOfAccount.userId, fresh), eq(chartOfAccount.code, '1102')));
+		await service.recordDebtPayment(fresh, restoredLoan.id, `restore-${fresh}-after`, {
+			amount: 0,
+			interestAmount: 5_000,
+			date: '2026-09-01',
+			accountId: restoredBank.id,
+			notes: null
+		});
+		const interestCategories = await harness.db
+			.select()
+			.from(category)
+			.where(and(eq(category.userId, fresh), eq(category.code, '7101')));
+		expect(interestCategories).toHaveLength(1);
+	});
+
+	it('restores payments from a file written before loan interest without any', async () => {
+		const owner = await harness.createUser();
+		await seedBooks(owner);
+		const file = await snapshot(owner);
+		file.schemaVersion = '2.1.0';
+		for (const payment of file.debtPayments) {
+			delete payment.interestAmount;
+			delete payment.interestTransactionId;
+		}
+		const fresh = await harness.createUser();
+
+		await restoreBackup(harness.db, fresh, file, { decryptNpwp });
+
+		const payments = await harness.db
+			.select()
+			.from(debtPayment)
+			.where(eq(debtPayment.userId, fresh));
+		expect(payments).toHaveLength(3);
+		expect(
+			payments.every((item) => item.interestAmount === 0 && item.interestTransactionId === null)
+		).toBe(true);
+	});
+
 	it('restores into another account with the same reports, dropping photos it cannot see', async () => {
 		const owner = await harness.createUser();
 		const { photoKey } = await seedBooks(owner);

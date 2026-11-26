@@ -200,9 +200,11 @@ export async function buildBackupDocument(
 			id: item.id,
 			debtId: item.debtId,
 			amount: item.amount,
+			interestAmount: item.interestAmount,
 			date: item.date,
 			accountId: item.accountId,
 			transactionId: item.transactionId,
+			interestTransactionId: item.interestTransactionId,
 			notes: item.notes,
 			createdAt: iso(item.createdAt)
 		})),

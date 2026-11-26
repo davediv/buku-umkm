@@ -9,13 +9,15 @@
  * - 2.0: every row, including deleted transactions and debts, every debt column, the
  *   onboarding state, the tax profile's group-turnover answer and the tax actually
  *   paid, with `format` set.
+ * - 2.1: the tax profile's turnover-limit answer.
+ * - 2.2: loan interest on debt payments (interestAmount, interestTransactionId).
  */
 
 /** Identifies a Buku UMKM backup from version 2 on. */
 export const BACKUP_FORMAT = 'buku-umkm-backup';
 
 /** Written into new backups. Restore accepts major versions 1 and 2. */
-export const BACKUP_SCHEMA_VERSION = '2.1.0';
+export const BACKUP_SCHEMA_VERSION = '2.2.0';
 
 export const SUPPORTED_BACKUP_MAJOR_VERSIONS = [1, 2] as const;
 
@@ -134,10 +136,15 @@ export type BackupDebt = {
 export type BackupDebtPayment = {
 	id: string;
 	debtId: string;
+	/** The principal; 0 on a loan payment of interest alone. */
 	amount: number;
+	/** Added in 2.2; older files default to 0. */
+	interestAmount?: number;
 	date: string;
 	accountId: string;
 	transactionId: string | null;
+	/** Added in 2.2: the interest's transaction; older files default to null. */
+	interestTransactionId?: string | null;
 	notes: string | null;
 	createdAt: BackupTimestamp;
 };

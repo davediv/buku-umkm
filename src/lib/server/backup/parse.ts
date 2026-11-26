@@ -695,17 +695,26 @@ export function parseBackup(value: unknown, userId: string): RestorePlan {
 		readAccount(row, newId(ids.accounts, row), userId, ids.accounts, opening)
 	);
 
-	const payments = paymentRows.map((row): NewPayment => ({
-		id: crypto.randomUUID(),
-		userId,
-		debtId: row.requiredRef('debtId', ids.debts, 'Hutang/piutang'),
-		amount: row.money('amount', 'Jumlah pembayaran'),
-		date: row.date('date', 'Tanggal'),
-		accountId: row.requiredRef('accountId', ids.accounts, 'Akun'),
-		transactionId: row.ref('transactionId', ids.transactions, 'Transaksi pembayaran'),
-		notes: row.text('notes', 'Catatan', 1000),
-		createdAt: row.timestamp('createdAt')
-	}));
+	const payments = paymentRows.map((row): NewPayment => {
+		// Loan interest arrived in backup 2.2; with it, the principal may be 0.
+		const interestAmount = row.integer('interestAmount', 'Bunga', 0, MAX_TRANSACTION_AMOUNT, 0);
+		return {
+			id: crypto.randomUUID(),
+			userId,
+			debtId: row.requiredRef('debtId', ids.debts, 'Hutang/piutang'),
+			amount:
+				interestAmount > 0
+					? row.integer('amount', 'Jumlah pembayaran', 0, MAX_TRANSACTION_AMOUNT)
+					: row.money('amount', 'Jumlah pembayaran'),
+			interestAmount,
+			date: row.date('date', 'Tanggal'),
+			accountId: row.requiredRef('accountId', ids.accounts, 'Akun'),
+			transactionId: row.ref('transactionId', ids.transactions, 'Transaksi pembayaran'),
+			interestTransactionId: row.ref('interestTransactionId', ids.transactions, 'Transaksi bunga'),
+			notes: row.text('notes', 'Catatan', 1000),
+			createdAt: row.timestamp('createdAt')
+		};
+	});
 
 	const taxYears = new Set<number>();
 	const taxProfiles = taxProfileRows.map((row) => {
