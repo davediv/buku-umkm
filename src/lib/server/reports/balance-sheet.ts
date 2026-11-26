@@ -230,10 +230,12 @@ export async function getBalanceSheetAsOf(db: SQLiteDb, userId: string, selected
 		db.query.debt.findMany({
 			where: (item) =>
 				and(eq(item.userId, userId), eq(item.isActive, true), lte(item.date, selectedDate)),
+			// A stable order that survives a restore, which gives every row a new id.
+			orderBy: (item, { asc }) => [asc(item.date), asc(item.contactName), asc(item.createdAt)],
 			with: {
 				payments: {
 					where: (payment) => lte(payment.date, selectedDate),
-					orderBy: (payment, { asc }) => [asc(payment.date)]
+					orderBy: (payment, { asc }) => [asc(payment.date), asc(payment.createdAt)]
 				}
 			}
 		})
