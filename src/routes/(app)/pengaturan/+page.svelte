@@ -283,20 +283,16 @@
 	async function handleLogout() {
 		loggingOut = true;
 		try {
-			const response = await fetch('/api/auth/signout', {
-				method: 'POST'
+			// better-auth's own endpoint; it revokes the session and clears the session cookies.
+			const response = await fetch('/api/auth/sign-out', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: '{}'
 			});
+			if (!response.ok) throw new Error('Logout failed');
 
-			// Only proceed if logout was successful
-			if (response.ok) {
-				// Clear local storage
-				localStorage.removeItem('lastBackupDate');
-
-				// Redirect to landing page
-				await goto('/');
-			} else {
-				throw new Error('Logout failed');
-			}
+			localStorage.removeItem('lastBackupDate');
+			await goto('/masuk', { invalidateAll: true, replaceState: true });
 		} catch (error) {
 			console.error('Logout error:', error);
 			toast.error('Gagal logout. Silakan coba lagi.');
