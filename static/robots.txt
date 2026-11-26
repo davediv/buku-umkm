@@ -8,4 +8,3 @@ Disallow: /hutang-piutang
 Disallow: /pajak
 Disallow: /pengaturan
 Disallow: /onboarding
-Disallow: /demo
