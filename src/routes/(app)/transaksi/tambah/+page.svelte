@@ -62,11 +62,11 @@
 	}
 
 	beforeNavigate(() => {
-		if (draftReady && !savedTransactionId) saveTransactionDraft(currentDraft());
+		if (draftReady && !savedTransactionId) saveTransactionDraft(data.user.id, currentDraft());
 	});
 
 	onMount(() => {
-		const draft = loadTransactionDraft();
+		const draft = loadTransactionDraft(data.user.id);
 		if (draft) {
 			const availableCategories =
 				draft.type === 'income' ? data.categories.income : data.categories.expense;
@@ -91,7 +91,7 @@
 		const draft = currentDraft();
 		if (!draftReady || savedTransactionId) return;
 
-		const timeout = window.setTimeout(() => saveTransactionDraft(draft), 250);
+		const timeout = window.setTimeout(() => saveTransactionDraft(data.user.id, draft), 250);
 		return () => window.clearTimeout(timeout);
 	});
 
@@ -226,7 +226,7 @@
 
 			savedTransactionId = result.transaction.id;
 			draftReady = false;
-			clearTransactionDraft();
+			clearTransactionDraft(data.user.id);
 
 			if (photos.length === 0) {
 				await goto('/transaksi?success=created');

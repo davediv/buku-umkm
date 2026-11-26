@@ -67,10 +67,12 @@
 			</div>
 			<p class="text-sm leading-6 text-muted-foreground">
 				Catatan keuangan yang berhasil disimpan berada pada layanan aplikasi dan dikaitkan dengan
-				akun Anda. Perangkat dapat menyimpan informasi operasional terbatas, seperti draf yang belum
-				dikirim, status antarmuka, dan waktu cadangan terakhir. Menghapus data browser dapat
-				menghapus informasi lokal tersebut, tetapi tidak otomatis menghapus catatan yang sudah
-				tersimpan di server.
+				akun Anda. Selama Anda masuk, perangkat dapat menyimpan informasi operasional terbatas,
+				seperti draf yang belum dikirim, status antarmuka, dan waktu cadangan terakhir. Draf
+				disimpan terpisah untuk setiap akun, dan semua informasi lokal ini dihapus saat Anda keluar
+				dari aplikasi. Foto nota tidak disimpan di cache browser. Menghapus data browser juga
+				menghapus informasi lokal tersebut, tetapi tidak menghapus catatan yang sudah tersimpan di
+				server.
 			</p>
 		</section>
 
@@ -94,7 +96,8 @@
 
 		<p class="text-sm leading-6 text-muted-foreground">
 			Jangan masukkan data pribadi yang tidak diperlukan untuk pembukuan. Gunakan kata sandi yang
-			unik dan keluar dari aplikasi saat memakai perangkat bersama.
+			unik dan keluar dari aplikasi saat memakai perangkat bersama. File yang sudah diunduh, seperti
+			cadangan dan laporan, tetap ada di perangkat sampai Anda menghapusnya.
 		</p>
 	</div>
 </div>

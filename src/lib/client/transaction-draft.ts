@@ -1,4 +1,13 @@
-export const TRANSACTION_DRAFT_KEY = 'buku-umkm:transaction-draft:v1';
+/**
+ * Drafts used to live under this single key, shared by everyone who signed in on the device.
+ * Its owner is unknown, so it is discarded rather than shown to whoever signs in next.
+ */
+export const LEGACY_TRANSACTION_DRAFT_KEY = 'buku-umkm:transaction-draft:v1';
+
+/** One draft per account, so a shared device never shows one user's draft to another. */
+export function transactionDraftKey(userId: string): string {
+	return `${LEGACY_TRANSACTION_DRAFT_KEY}:${userId}`;
+}
 
 export type TransactionDraft = {
 	version: 2;
@@ -47,10 +56,12 @@ function parseTransactionDraft(value: unknown): TransactionDraft | null {
 }
 
 export function loadTransactionDraft(
+	userId: string,
 	storage: DraftStorage = localStorage
 ): TransactionDraft | null {
 	try {
-		const serialized = storage.getItem(TRANSACTION_DRAFT_KEY);
+		storage.removeItem(LEGACY_TRANSACTION_DRAFT_KEY);
+		const serialized = storage.getItem(transactionDraftKey(userId));
 		if (!serialized) return null;
 		const parsed: unknown = JSON.parse(serialized);
 		return parseTransactionDraft(parsed);
@@ -60,12 +71,13 @@ export function loadTransactionDraft(
 }
 
 export function saveTransactionDraft(
+	userId: string,
 	draft: Omit<TransactionDraft, 'version' | 'updatedAt'>,
 	storage: DraftStorage = localStorage
 ): void {
 	try {
 		storage.setItem(
-			TRANSACTION_DRAFT_KEY,
+			transactionDraftKey(userId),
 			JSON.stringify({ ...draft, version: 2, updatedAt: new Date().toISOString() })
 		);
 	} catch {
@@ -73,9 +85,9 @@ export function saveTransactionDraft(
 	}
 }
 
-export function clearTransactionDraft(storage: DraftStorage = localStorage): void {
+export function clearTransactionDraft(userId: string, storage: DraftStorage = localStorage): void {
 	try {
-		storage.removeItem(TRANSACTION_DRAFT_KEY);
+		storage.removeItem(transactionDraftKey(userId));
 	} catch {
 		// A storage failure must not affect a successfully saved server record.
 	}

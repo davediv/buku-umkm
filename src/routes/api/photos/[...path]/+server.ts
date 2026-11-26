@@ -49,7 +49,8 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
 			headers: {
 				'Content-Type': contentType,
 				'Content-Disposition': `inline; filename="${fileName}"`,
-				'Cache-Control': 'private, max-age=31536000',
+				// Receipts are financial records: keep them out of a shared device's HTTP cache.
+				'Cache-Control': 'private, no-store',
 				'X-Content-Type-Options': 'nosniff'
 			}
 		});

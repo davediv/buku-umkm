@@ -279,6 +279,21 @@
 		}
 	}
 
+	/**
+	 * Everything this origin keeps in Web Storage belongs to the signed-in user: transaction
+	 * drafts, the last backup date and remembered navigation (which can include search terms).
+	 * A shop phone is often shared, so none of it may outlive the session.
+	 */
+	function clearDeviceStorage() {
+		for (const storage of [localStorage, sessionStorage]) {
+			try {
+				storage.clear();
+			} catch {
+				// Storage can be unavailable (e.g. blocked by the browser); then nothing was stored.
+			}
+		}
+	}
+
 	// Handle logout
 	async function handleLogout() {
 		loggingOut = true;
@@ -290,15 +305,15 @@
 				body: '{}'
 			});
 			if (!response.ok) throw new Error('Logout failed');
-
-			localStorage.removeItem('lastBackupDate');
-			await goto('/masuk', { invalidateAll: true, replaceState: true });
 		} catch (error) {
 			console.error('Logout error:', error);
 			toast.error('Gagal logout. Silakan coba lagi.');
-		} finally {
 			loggingOut = false;
+			return;
 		}
+
+		// Clear after navigating: leaving this page records its URL as the navigation origin.
+		await goto('/masuk', { invalidateAll: true, replaceState: true }).finally(clearDeviceStorage);
 	}
 </script>
 

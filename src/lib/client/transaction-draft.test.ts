@@ -2,9 +2,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	clearTransactionDraft,
 	loadTransactionDraft,
+	LEGACY_TRANSACTION_DRAFT_KEY,
 	saveTransactionDraft,
-	TRANSACTION_DRAFT_KEY
+	transactionDraftKey
 } from './transaction-draft';
+
+const USER = 'user-ayu';
+
+const draftInput = {
+	commandId: 'command-1',
+	type: 'expense' as const,
+	amount: '25000',
+	categoryId: 'category-1',
+	accountId: 'account-1',
+	date: '2026-08-30',
+	description: 'Beli bahan',
+	referenceNumber: 'INV-01',
+	notes: 'Tunai'
+};
 
 function createStorage() {
 	const values = new Map<string, string>();
@@ -23,22 +38,9 @@ describe('transaction draft storage', () => {
 		vi.setSystemTime(new Date('2026-08-30T08:00:00.000Z'));
 		const storage = createStorage();
 
-		saveTransactionDraft(
-			{
-				commandId: 'command-1',
-				type: 'expense',
-				amount: '25000',
-				categoryId: 'category-1',
-				accountId: 'account-1',
-				date: '2026-08-30',
-				description: 'Beli bahan',
-				referenceNumber: 'INV-01',
-				notes: 'Tunai'
-			},
-			storage
-		);
+		saveTransactionDraft(USER, draftInput, storage);
 
-		expect(loadTransactionDraft(storage)).toEqual({
+		expect(loadTransactionDraft(USER, storage)).toEqual({
 			version: 2,
 			commandId: 'command-1',
 			type: 'expense',
@@ -56,7 +58,7 @@ describe('transaction draft storage', () => {
 	it('migrates version 1 drafts without discarding entered work', () => {
 		const storage = createStorage();
 		storage.setItem(
-			TRANSACTION_DRAFT_KEY,
+			transactionDraftKey(USER),
 			JSON.stringify({
 				version: 1,
 				commandId: 'command-old',
@@ -70,7 +72,7 @@ describe('transaction draft storage', () => {
 			})
 		);
 
-		expect(loadTransactionDraft(storage)).toMatchObject({
+		expect(loadTransactionDraft(USER, storage)).toMatchObject({
 			version: 2,
 			commandId: 'command-old',
 			referenceNumber: '',
@@ -80,10 +82,30 @@ describe('transaction draft storage', () => {
 
 	it('rejects corrupted data and clears only the transaction draft key', () => {
 		const storage = createStorage();
-		storage.setItem(TRANSACTION_DRAFT_KEY, '{bad json');
+		storage.setItem(transactionDraftKey(USER), '{bad json');
 
-		expect(loadTransactionDraft(storage)).toBeNull();
-		clearTransactionDraft(storage);
-		expect(storage.removeItem).toHaveBeenCalledWith(TRANSACTION_DRAFT_KEY);
+		expect(loadTransactionDraft(USER, storage)).toBeNull();
+		clearTransactionDraft(USER, storage);
+		expect(storage.removeItem).toHaveBeenLastCalledWith(transactionDraftKey(USER));
+	});
+
+	it("keeps each account's draft private to that account on a shared device", () => {
+		const storage = createStorage();
+		saveTransactionDraft(USER, draftInput, storage);
+
+		expect(loadTransactionDraft('user-budi', storage)).toBeNull();
+		clearTransactionDraft('user-budi', storage);
+		expect(loadTransactionDraft(USER, storage)).toMatchObject({ amount: '25000' });
+	});
+
+	it('discards the pre-account shared draft because its owner is unknown', () => {
+		const storage = createStorage();
+		storage.setItem(
+			LEGACY_TRANSACTION_DRAFT_KEY,
+			JSON.stringify({ ...draftInput, version: 2, updatedAt: '2026-08-30T08:00:00.000Z' })
+		);
+
+		expect(loadTransactionDraft(USER, storage)).toBeNull();
+		expect(storage.getItem(LEGACY_TRANSACTION_DRAFT_KEY)).toBeNull();
 	});
 });
