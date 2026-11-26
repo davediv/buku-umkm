@@ -22,9 +22,11 @@
 		"db:generate": "drizzle-kit generate",
 		"db:migrate:local": "wrangler d1 migrations apply buku-umkm-db --local",
 		"db:migrate:remote": "wrangler d1 migrations apply buku-umkm-db --remote",
+		"db:migrate:staging": "wrangler d1 migrations apply buku-umkm-db-staging --env staging --remote",
 		"auth:schema": "auth generate --config src/lib/server/auth.cli.ts --output src/lib/server/db/auth.schema.ts --yes",
 		"deploy": "node scripts/check-deploy-config.mjs && pnpm run build && wrangler deploy",
-		"cf-typegen": "wrangler types ./src/worker-configuration.d.ts --include-main-module=false"
+		"deploy:staging": "node scripts/check-deploy-config.mjs --env staging && pnpm run build && wrangler deploy --env staging",
+		"cf-typegen": "wrangler types ./src/worker-configuration.d.ts --include-main-module=false --strict-vars=false"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.1.1",

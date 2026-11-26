@@ -11,6 +11,16 @@
 	"observability": {
 		"enabled": true
 	},
+	// Production. Placeholders (<...>) must be replaced before `pnpm run deploy`, which refuses
+	// to deploy while any remain (scripts/check-deploy-config.mjs). Local development reads
+	// these from .env (`pnpm dev`) or .dev.vars (`pnpm preview`) instead; see README.
+	"vars": {
+		// Public https:// URL of the app. Auth cookies and email links are built from it.
+		"ORIGIN": "<YOUR_PRODUCTION_ORIGIN>",
+		// Sender of password reset and verification emails, on a domain onboarded to
+		// Cloudflare Email Sending, e.g. noreply@example.com.
+		"EMAIL_FROM": "<YOUR_SENDER_ADDRESS>"
+	},
 	"d1_databases": [
 		{
 			"binding": "DB",
@@ -67,5 +77,63 @@
 			"namespace_id": "1005",
 			"simple": { "limit": 1, "period": 60 }
 		}
-	]
+	],
+	"env": {
+		// `pnpm run deploy:staging` and `pnpm db:migrate:staging`. Bindings are not inherited
+		// from the top level, so staging repeats them with its own database, bucket and rate
+		// limit namespaces (staging traffic must not count against production limits).
+		"staging": {
+			"name": "buku-umkm-staging",
+			"vars": {
+				"ORIGIN": "<YOUR_STAGING_ORIGIN>",
+				"EMAIL_FROM": "<YOUR_STAGING_SENDER_ADDRESS>"
+			},
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "buku-umkm-db-staging",
+					"database_id": "<YOUR_STAGING_D1_DATABASE_ID>",
+					"migrations_dir": "drizzle"
+				}
+			],
+			"r2_buckets": [
+				{
+					"binding": "R2",
+					"bucket_name": "buku-umkm-receipts-staging"
+				}
+			],
+			"send_email": [
+				{
+					"name": "EMAIL"
+				}
+			],
+			"ratelimits": [
+				{
+					"name": "AUTH_EMAIL_RATE_LIMITER",
+					"namespace_id": "2001",
+					"simple": { "limit": 5, "period": 60 }
+				},
+				{
+					"name": "AUTH_IP_RATE_LIMITER",
+					"namespace_id": "2002",
+					"simple": { "limit": 20, "period": 60 }
+				},
+				{
+					"name": "API_RATE_LIMITER",
+					"namespace_id": "2003",
+					"simple": { "limit": 120, "period": 60 }
+				},
+				{
+					"name": "HEAVY_API_RATE_LIMITER",
+					"namespace_id": "2004",
+					"simple": { "limit": 3, "period": 60 }
+				},
+				{
+					"name": "MAIL_ADDRESS_RATE_LIMITER",
+					"namespace_id": "2005",
+					"simple": { "limit": 1, "period": 60 }
+				}
+			]
+		}
+	}
 }
