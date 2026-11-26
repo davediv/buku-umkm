@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { businessProfileQueries } from '$lib/server/db/queries';
 import { decryptNPWP, formatNPWP } from '$lib/server/crypto';
+import { summarizeError } from '$lib/server/error-summary';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user || !locals.session) throw redirect(302, '/masuk');
@@ -14,7 +15,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			const decrypted = await decryptNPWP(profile.npwp);
 			npwp = decrypted ? formatNPWP(decrypted) : '';
 		} catch (cause) {
-			console.error('Error decrypting NPWP for annual tax report', cause);
+			console.error('Error decrypting NPWP for annual tax report', summarizeError(cause));
 			throw httpError(500, 'NPWP tidak dapat dimuat dengan aman. Data Anda tidak diubah.');
 		}
 	}

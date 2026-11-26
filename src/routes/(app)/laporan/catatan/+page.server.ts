@@ -5,6 +5,7 @@ import { redirect } from '@sveltejs/kit';
 import { getIndonesianMonthName } from '$lib/tax/config';
 import { reportPeriodRanges } from '$lib/server/db/queries/ledger';
 import { todayInJakarta } from '$lib/shared/dates';
+import { summarizeError } from '$lib/server/error-summary';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Check authentication
@@ -110,8 +111,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				notesSections
 			}
 		};
-	} catch {
-		console.error('Error fetching catatan data:');
+	} catch (cause) {
+		console.error('Error fetching catatan data:', summarizeError(cause));
 		return {
 			catatan: null,
 			error: 'Gagal memuat catatan atas laporan keuangan'

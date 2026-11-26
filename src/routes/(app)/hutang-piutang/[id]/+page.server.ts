@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { debtQueries, chartOfAccountQueries } from '$lib/server/db/queries';
 import { todayInJakarta } from '$lib/shared/dates';
+import { summarizeError } from '$lib/server/error-summary';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	// Check authentication
@@ -77,7 +78,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		};
 	} catch (cause) {
 		if (isHttpError(cause)) throw cause;
-		console.error('Error loading debt detail', cause);
+		console.error('Error loading debt detail', summarizeError(cause));
 		throw error(500, 'Terjadi kesalahan server');
 	}
 };

@@ -13,6 +13,7 @@ import {
 } from '$lib/shared/account-types';
 import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
 import { MAX_TRANSACTION_AMOUNT } from '$lib/constants';
+import { summarizeError } from '$lib/server/error-summary';
 
 // GET /api/accounts - Returns all accounts for authenticated user
 export const GET: RequestHandler = async ({ locals }) => {
@@ -42,8 +43,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 		}));
 
 		return json({ accounts: mappedAccounts });
-	} catch {
-		console.error('Error fetching accounts:');
+	} catch (cause) {
+		console.error('Error fetching accounts:', summarizeError(cause));
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -140,8 +141,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			},
 			{ status: 201 }
 		);
-	} catch {
-		console.error('Error creating account:');
+	} catch (cause) {
+		console.error('Error creating account:', summarizeError(cause));
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { getBalanceSheetAsOf } from '$lib/server/reports/balance-sheet';
 import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
+import { summarizeError } from '$lib/server/error-summary';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user || !locals.session) throw redirect(302, '/masuk');
@@ -18,7 +19,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			balanceSheet: await getBalanceSheetAsOf(getDb(), locals.user.id, selectedDate)
 		};
 	} catch (cause) {
-		console.error('Error fetching balance sheet data:', cause);
+		console.error('Error fetching balance sheet data:', summarizeError(cause));
 		return {
 			balanceSheet: null,
 			error: 'Gagal memuat data laporan posisi keuangan'

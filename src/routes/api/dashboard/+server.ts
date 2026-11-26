@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { dashboardQueries, transactionQueries } from '$lib/server/db/queries';
 import { getTaxDashboardEstimate } from '$lib/tax/service';
+import { summarizeError } from '$lib/server/error-summary';
 
 type PeriodParam = 'daily' | 'weekly' | 'monthly';
 
@@ -81,8 +82,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				}
 			}
 		});
-	} catch {
-		console.error('Error fetching dashboard data:');
+	} catch (cause) {
+		console.error('Error fetching dashboard data:', summarizeError(cause));
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

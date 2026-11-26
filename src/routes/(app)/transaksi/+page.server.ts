@@ -3,6 +3,7 @@ import { getDb } from '$lib/server/db';
 import { error as httpError, redirect } from '@sveltejs/kit';
 import { getTransactionPage } from '$lib/server/transactions/list';
 import { getTransactionHref, parseTransactionQuery } from '$lib/transactions/query';
+import { summarizeError } from '$lib/server/error-summary';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Check authentication
@@ -16,7 +17,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	try {
 		result = await getTransactionPage(getDb(), locals.user.id, query);
 	} catch (cause) {
-		console.error('Error loading transactions:', cause);
+		console.error('Error loading transactions:', summarizeError(cause));
 		throw httpError(500, 'Transaksi tidak dapat dimuat. Data Anda tidak diubah.');
 	}
 

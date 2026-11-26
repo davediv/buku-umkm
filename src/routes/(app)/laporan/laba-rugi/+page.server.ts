@@ -4,6 +4,7 @@ import { dashboardQueries, chartOfAccountQueries } from '$lib/server/db/queries'
 import { reportPeriodRanges, type ReportPeriod } from '$lib/server/db/queries/ledger';
 import { todayInJakarta } from '$lib/shared/dates';
 import { redirect } from '@sveltejs/kit';
+import { summarizeError } from '$lib/server/error-summary';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Check authentication
@@ -108,8 +109,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				}
 			}
 		};
-	} catch {
-		console.error('Error fetching profit/loss data:');
+	} catch (cause) {
+		console.error('Error fetching profit/loss data:', summarizeError(cause));
 		return {
 			profitLoss: null,
 			error: 'Gagal memuat data laporan laba/rugi'

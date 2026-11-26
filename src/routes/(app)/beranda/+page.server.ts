@@ -4,6 +4,7 @@ import { dashboardQueries, transactionQueries } from '$lib/server/db/queries';
 import { redirect } from '@sveltejs/kit';
 import { getTaxDashboardEstimate } from '$lib/tax/service';
 import { resolveDashboardPeriod } from '$lib/navigation/view-state';
+import { summarizeError } from '$lib/server/error-summary';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Check authentication
@@ -71,8 +72,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				}
 			}
 		};
-	} catch {
-		console.error('Error fetching dashboard data:');
+	} catch (cause) {
+		console.error('Error fetching dashboard data:', summarizeError(cause));
 		return {
 			dashboard: null,
 			error: 'Gagal memuat data dashboard'

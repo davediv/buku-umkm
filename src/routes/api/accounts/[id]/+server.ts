@@ -10,6 +10,7 @@ import {
 	mapSchemaToApiType,
 	parseAccountName
 } from '$lib/shared/account-types';
+import { summarizeError } from '$lib/server/error-summary';
 
 const DEACTIVATION_ERRORS: Record<Exclude<AccountDeactivation, 'deactivated'>, [string, number]> = {
 	not_found: ['Akun tidak ditemukan', 404],
@@ -56,8 +57,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				updatedAt: account.updatedAt
 			}
 		});
-	} catch {
-		console.error('Error fetching account:');
+	} catch (cause) {
+		console.error('Error fetching account:', summarizeError(cause));
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -144,8 +145,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				type: mapSchemaToApiType(updatedAccount.subType)
 			}
 		});
-	} catch {
-		console.error('Error updating account:');
+	} catch (cause) {
+		console.error('Error updating account:', summarizeError(cause));
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
@@ -176,8 +177,8 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		return json({
 			message: 'Akun berhasil dinonaktifkan'
 		});
-	} catch {
-		console.error('Error deleting account:');
+	} catch (cause) {
+		console.error('Error deleting account:', summarizeError(cause));
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

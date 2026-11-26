@@ -7,6 +7,7 @@ import {
 	transactionPhotoQueries
 } from '$lib/server/db/queries';
 import { error as httpError, isHttpError, redirect } from '@sveltejs/kit';
+import { summarizeError } from '$lib/server/error-summary';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	// Check authentication
@@ -46,7 +47,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		};
 	} catch (cause) {
 		if (isHttpError(cause)) throw cause;
-		console.error('Error loading transaction:', cause);
+		console.error('Error loading transaction:', summarizeError(cause));
 		throw httpError(500, 'Transaksi tidak dapat dimuat. Data Anda tidak diubah.');
 	}
 };

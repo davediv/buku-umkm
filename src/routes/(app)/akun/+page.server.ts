@@ -12,6 +12,7 @@ import {
 } from '$lib/shared/account-types';
 import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
 import { MAX_TRANSACTION_AMOUNT } from '$lib/constants';
+import { summarizeError } from '$lib/server/error-summary';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Check authentication
@@ -43,7 +44,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			accounts: mappedAccounts
 		};
 	} catch (cause) {
-		console.error('Error fetching accounts:', cause);
+		console.error('Error fetching accounts:', summarizeError(cause));
 		throw httpError(500, 'Kas dan rekening tidak dapat dimuat. Data Anda tidak diubah.');
 	}
 };
@@ -121,8 +122,8 @@ export const actions: Actions = {
 					type: mapSchemaToApiType(createdAccount.subType)
 				}
 			};
-		} catch {
-			console.error('Error creating account:');
+		} catch (cause) {
+			console.error('Error creating account:', summarizeError(cause));
 			return fail(500, { error: 'Terjadi kesalahan server', success: false });
 		}
 	},
@@ -177,8 +178,8 @@ export const actions: Actions = {
 					? { ...updatedAccount, type: mapSchemaToApiType(updatedAccount.subType) }
 					: null
 			};
-		} catch {
-			console.error('Error updating account:');
+		} catch (cause) {
+			console.error('Error updating account:', summarizeError(cause));
 			return fail(500, { error: 'Terjadi kesalahan server', success: false });
 		}
 	}
