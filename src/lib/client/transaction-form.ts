@@ -5,8 +5,7 @@ export type TransactionFormValues = {
 };
 
 export type TransactionFormValidation =
-	| { valid: true; amount: number }
-	| { valid: false; message: string };
+	{ valid: true; amount: number } | { valid: false; message: string };
 
 export function validateTransactionForm(values: TransactionFormValues): TransactionFormValidation {
 	const amount = Number.parseInt(values.amount.replace(/\D/g, ''), 10);
