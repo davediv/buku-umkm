@@ -62,4 +62,38 @@ describe('better-auth password policy', () => {
 			expect(await response.json()).toMatchObject({ code: 'PASSWORD_POLICY' });
 		}
 	});
+
+	it('requires the current password to delete the account, even with a fresh session', async () => {
+		const auth = betterAuth({
+			baseURL: BASE,
+			secret: 'test-secret-0123456789abcdef0123456789',
+			database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
+			emailAndPassword: { enabled: true },
+			user: { deleteUser: { enabled: true } },
+			hooks: { before: enforcePasswordPolicy },
+			logger: { disabled: true }
+		});
+		const signUp = await auth.handler(
+			post('/sign-up/email', { email: 'ayu@example.com', password: 'Rahasia123', name: 'Ayu' })
+		);
+		const cookie = signUp.headers
+			.getSetCookie()
+			.map((value) => value.split(';')[0])
+			.join('; ');
+
+		for (const body of [{}, { password: '' }, { password: 42 }]) {
+			const request = post('/delete-user', body);
+			request.headers.set('cookie', cookie);
+			const response = await auth.handler(request);
+			expect(response.status).toBe(400);
+			expect(await response.json()).toMatchObject({
+				code: 'PASSWORD_REQUIRED',
+				message: 'Kata sandi wajib diisi'
+			});
+		}
+		const session = new Request(`${BASE}/api/auth/get-session`, { headers: { cookie } });
+		expect(await (await auth.handler(session)).json()).toMatchObject({
+			user: { email: 'ayu@example.com' }
+		});
+	});
 });

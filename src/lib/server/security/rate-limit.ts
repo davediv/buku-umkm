@@ -41,7 +41,13 @@ interface RateLimitRequestEvent extends RateLimitEvent {
 
 const AUTH_API_PREFIX = '/api/auth/';
 /** better-auth endpoints that check or set a password (trailing / = prefix). */
-const CREDENTIAL_AUTH_ENDPOINTS = ['sign-in/', 'sign-up/', 'reset-password', 'change-password'];
+const CREDENTIAL_AUTH_ENDPOINTS = [
+	'sign-in/',
+	'sign-up/',
+	'reset-password',
+	'change-password',
+	'delete-user'
+];
 /** better-auth endpoints that send an email to the address in their body. */
 const EMAIL_AUTH_ENDPOINTS = ['request-password-reset', 'send-verification-email'];
 /** Key prefix that keeps email-sending requests on their own counters. */
@@ -186,7 +192,8 @@ async function readBodyEmail(request: Request): Promise<string | null> {
 export async function limitRequest(event: RateLimitRequestEvent): Promise<Response | null> {
 	const { pathname } = event.url;
 	if (isCredentialAuthRequest(event.request.method, pathname)) {
-		// change-password has no email in its body; it belongs to the signed-in account.
+		// change-password and delete-user have no email in their body; they belong to the
+		// signed-in account.
 		const email = (await readBodyEmail(event.request)) ?? event.locals.user?.email;
 		return (await isCredentialAttemptAllowed(event, email))
 			? null

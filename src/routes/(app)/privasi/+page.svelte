@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ArrowLeft, Database, Download, LockKeyhole, Smartphone } from '@lucide/svelte';
+	import { ArrowLeft, Database, Download, LockKeyhole, Smartphone, Trash2 } from '@lucide/svelte';
 </script>
 
 <svelte:head>
@@ -18,7 +18,7 @@
 		</a>
 		<div>
 			<h1 class="text-lg font-semibold">Privasi</h1>
-			<p class="text-xs text-muted-foreground">Terakhir diperbarui 30 Agustus 2026</p>
+			<p class="text-xs text-muted-foreground">Terakhir diperbarui 27 November 2026</p>
 		</div>
 	</header>
 
@@ -53,6 +53,10 @@
 				</div>
 				<ul class="list-disc space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
 					<li>Mengautentikasi dan melindungi akses ke akun Anda.</li>
+					<li>
+						Mengirim email untuk keperluan akun, yaitu verifikasi alamat email dan tautan atur ulang
+						kata sandi.
+					</li>
 					<li>Menyimpan catatan serta menghitung saldo dan laporan.</li>
 					<li>Menyediakan estimasi pajak saat profil dinyatakan memenuhi syarat.</li>
 					<li>Memulihkan data dari cadangan yang Anda pilih.</li>
@@ -91,6 +95,27 @@
 				class="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline"
 			>
 				Kelola cadangan data
+			</a>
+		</section>
+
+		<section class="space-y-3 rounded-xl border bg-card p-5">
+			<div class="flex items-center gap-2">
+				<Trash2 class="h-5 w-5 text-primary" />
+				<h2 class="font-semibold">Menghapus akun</h2>
+			</div>
+			<p class="text-sm leading-6 text-muted-foreground">
+				Anda dapat menghapus akun kapan saja dari Pengaturan &gt; Akun Saya &gt; Hapus akun dengan
+				memasukkan kata sandi. Penghapusan bersifat permanen: akun, semua buku (transaksi, rekening,
+				kategori, utang-piutang, catatan pajak, dan profil usaha), serta semua foto nota dihapus
+				dari server, dan Anda dikeluarkan dari semua perangkat. Data yang sudah dihapus tidak dapat
+				dipulihkan. File cadangan dan laporan yang sudah diunduh tetap ada di perangkat Anda sampai
+				Anda menghapusnya.
+			</p>
+			<a
+				href="/pengaturan?bagian=akun"
+				class="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline"
+			>
+				Kelola akun
 			</a>
 		</section>
 

@@ -189,6 +189,7 @@ describe('request limits', () => {
 		expect(isCredentialAuthRequest('POST', '/api/auth/sign-in/email')).toBe(true);
 		expect(isCredentialAuthRequest('POST', '/api/auth/sign-up/email')).toBe(true);
 		expect(isCredentialAuthRequest('POST', '/api/auth/reset-password')).toBe(true);
+		expect(isCredentialAuthRequest('POST', '/api/auth/delete-user')).toBe(true);
 		expect(isCredentialAuthRequest('POST', '/api/auth/request-password-reset')).toBe(false);
 		expect(isEmailAuthRequest('POST', '/api/auth/request-password-reset')).toBe(true);
 		expect(isEmailAuthRequest('POST', '/api/auth/send-verification-email')).toBe(true);

@@ -3,6 +3,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
+import { deleteUserOptions } from '$lib/server/account/deletion';
 import { getDb } from '$lib/server/db';
 import { passwordResetEmail, verificationEmail } from '$lib/server/email/messages';
 import { EmailNotSentError, sendAccountEmail } from '$lib/server/email/send';
@@ -76,6 +77,14 @@ function createAuth() {
 				// Lets the resend button in Pengaturan say so; on sign-up better-auth only logs it.
 				if (!sent) throw new EmailNotSentError('email-verification');
 			}
+		},
+		// Pengaturan > Hapus akun (DELETE /api/account). The password is always required (see
+		// enforcePasswordPolicy); the hooks delete the user's receipt photos from R2.
+		user: {
+			deleteUser: deleteUserOptions({
+				getBucket: () => getRequestEvent().platform?.env?.R2,
+				getDb
+			})
 		},
 		hooks: { before: enforcePasswordPolicy },
 		advanced: { backgroundTasks: { handler: runAfterResponse } },

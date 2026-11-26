@@ -21,7 +21,8 @@
 		MapPin,
 		Phone,
 		FileText,
-		Save
+		Save,
+		Trash2
 	} from '@lucide/svelte';
 	import { BUSINESS_TYPES } from '$lib/constants';
 	import { getBusinessTypeLabel, formatDateTime } from '$lib/utils';
@@ -98,6 +99,19 @@
 
 	// Logout state
 	let loggingOut = $state(false);
+
+	// Account deletion state
+	const DELETE_CONFIRMATION_WORD = 'HAPUS';
+	type DeleteField = 'password' | 'confirmation';
+	let showDeleteDialog = $state(false);
+	let deletingAccount = $state(false);
+	let deletePassword = $state('');
+	let deleteConfirmation = $state('');
+	let deleteError = $state<{ message: string; field?: DeleteField } | null>(null);
+	let canDeleteAccount = $derived(
+		deletePassword.length > 0 &&
+			deleteConfirmation.trim().toUpperCase() === DELETE_CONFIRMATION_WORD
+	);
 
 	// Initialize last backup date from localStorage (only once)
 	onMount(() => {
@@ -318,6 +332,59 @@
 
 		// Clear after navigating: leaving this page records its URL as the navigation origin.
 		await goto('/masuk', { invalidateAll: true, replaceState: true }).finally(clearDeviceStorage);
+	}
+
+	function openDeleteDialog() {
+		deletePassword = '';
+		deleteConfirmation = '';
+		deleteError = null;
+		showDeleteDialog = true;
+	}
+
+	function closeDeleteDialog() {
+		if (deletingAccount) return;
+		showDeleteDialog = false;
+		deletePassword = '';
+		deleteConfirmation = '';
+		deleteError = null;
+	}
+
+	// Permanently deletes the account, its books and receipt photos (DELETE /api/account).
+	async function deleteAccount() {
+		if (!canDeleteAccount || deletingAccount) return;
+		deletingAccount = true;
+		deleteError = null;
+		try {
+			const response = await fetch('/api/account', {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ password: deletePassword, confirmation: deleteConfirmation })
+			});
+			if (!response.ok) {
+				const result = (await response.json().catch(() => ({}))) as {
+					error?: string;
+					field?: DeleteField;
+				};
+				deleteError = {
+					message: result.error ?? 'Akun belum dihapus. Silakan coba lagi.',
+					field: result.field
+				};
+				deletingAccount = false;
+				return;
+			}
+		} catch {
+			deleteError = {
+				message: 'Tidak dapat terhubung ke server. Periksa koneksi, lalu coba lagi.'
+			};
+			deletingAccount = false;
+			return;
+		}
+
+		deletePassword = '';
+		// The account and every session are gone; leave the way sign-out does.
+		await goto('/akun-dihapus', { invalidateAll: true, replaceState: true }).finally(
+			clearDeviceStorage
+		);
 	}
 </script>
 
@@ -642,6 +709,38 @@
 						Keluar
 					</Button>
 				</div>
+
+				<!-- Danger zone: delete the account -->
+				<section
+					aria-labelledby="delete-account-heading"
+					class="p-4 space-y-3 rounded-lg border border-destructive/40 bg-destructive/5"
+				>
+					<div class="flex items-center gap-2">
+						<Trash2 class="w-5 h-5 text-destructive" />
+						<h3 id="delete-account-heading" class="font-semibold text-destructive">Hapus akun</h3>
+					</div>
+					<p class="text-sm text-muted-foreground">
+						Menghapus akun akan menghapus permanen semua buku Anda (transaksi, rekening, kategori,
+						utang-piutang, catatan pajak, dan profil usaha), semua foto nota, serta akun ini. Data
+						yang sudah dihapus tidak dapat dipulihkan.
+					</p>
+					<p class="text-sm text-muted-foreground">
+						Jika masih memerlukan catatan ini,
+						<a
+							href={getSettingsHref('data')}
+							class="font-medium text-primary underline-offset-4 hover:underline">unduh cadangan</a
+						>
+						terlebih dahulu.
+					</p>
+					<Button
+						variant="outline"
+						class="w-full border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+						onclick={openDeleteDialog}
+					>
+						<Trash2 class="w-4 h-4 mr-2" />
+						Hapus akun
+					</Button>
+				</section>
 			</div>
 		{/if}
 
@@ -768,4 +867,82 @@
 			{/if}
 		</AlertDialogAction>
 	</div>
+</AlertDialog>
+
+<!-- Delete Account Dialog -->
+<AlertDialog
+	open={showDeleteDialog}
+	closeOnExternalClick={!deletingAccount}
+	onopenchange={(open) => !open && closeDeleteDialog()}
+>
+	<div class="flex items-center gap-2 mb-4">
+		<AlertTriangle class="w-5 h-5 text-destructive" />
+		<AlertDialogTitle>Hapus akun permanen?</AlertDialogTitle>
+	</div>
+	<AlertDialogDescription>
+		Semua buku, foto nota, dan akun {data.user.email} akan dihapus dan tidak dapat dipulihkan. Anda akan
+		keluar dari semua perangkat.
+	</AlertDialogDescription>
+
+	<form
+		class="mt-4 space-y-4"
+		onsubmit={(event) => {
+			event.preventDefault();
+			deleteAccount();
+		}}
+	>
+		<div class="space-y-2">
+			<Label for="delete-password">Kata sandi saat ini</Label>
+			<Input
+				id="delete-password"
+				type="password"
+				autocomplete="current-password"
+				bind:value={deletePassword}
+				error={deleteError?.field === 'password'}
+				disabled={deletingAccount}
+				required
+			/>
+		</div>
+
+		<div class="space-y-2">
+			<Label for="delete-confirmation">
+				Ketik <strong>{DELETE_CONFIRMATION_WORD}</strong> untuk mengonfirmasi
+			</Label>
+			<Input
+				id="delete-confirmation"
+				type="text"
+				autocomplete="off"
+				autocapitalize="characters"
+				spellcheck="false"
+				bind:value={deleteConfirmation}
+				error={deleteError?.field === 'confirmation'}
+				disabled={deletingAccount}
+				required
+			/>
+		</div>
+
+		{#if deleteError}
+			<div
+				role="alert"
+				class="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg"
+			>
+				<p class="text-sm text-red-800 dark:text-red-200">{deleteError.message}</p>
+			</div>
+		{/if}
+
+		<div class="flex gap-3 pt-2">
+			<AlertDialogCancel type="button" class="flex-1" disabled={deletingAccount}>
+				Batal
+			</AlertDialogCancel>
+			<AlertDialogAction
+				type="submit"
+				variant="destructive"
+				class="flex-1"
+				loading={deletingAccount}
+				disabled={!canDeleteAccount}
+			>
+				{deletingAccount ? 'Menghapus...' : 'Hapus permanen'}
+			</AlertDialogAction>
+		</div>
+	</form>
 </AlertDialog>
