@@ -962,7 +962,8 @@ export const dashboardQueries = {
 					)
 			})
 			.from(debt)
-			.where(eq(debt.userId, userId));
+			// A deleted debt (isActive = false) no longer exists, whatever its status says.
+			.where(and(eq(debt.userId, userId), eq(debt.isActive, true)));
 		const taxQuery = db
 			.select({ count: sql<number>`COUNT(*)`.as('count') })
 			.from(taxRecord)
