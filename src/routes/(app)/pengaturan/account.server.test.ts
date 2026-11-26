@@ -56,7 +56,7 @@ describe('resend verification email', () => {
 
 		expect(
 			await resend(USER, {
-				env: { AUTH_EMAIL_RATE_LIMITER: blocked, AUTH_IP_RATE_LIMITER: allowed }
+				env: { MAIL_ADDRESS_RATE_LIMITER: blocked, AUTH_IP_RATE_LIMITER: allowed }
 			})
 		).toMatchObject({ status: 429 });
 		expect(blocked.limit).toHaveBeenCalledWith({ key: 'mail:ayu@example.com' });

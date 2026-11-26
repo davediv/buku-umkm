@@ -69,7 +69,7 @@ describe('forgot password page', () => {
 		const allowed = { limit: vi.fn(async () => ({ success: true })) };
 
 		const result = await requestReset('Ayu@Example.com', {
-			env: { AUTH_EMAIL_RATE_LIMITER: blocked, AUTH_IP_RATE_LIMITER: allowed }
+			env: { MAIL_ADDRESS_RATE_LIMITER: blocked, AUTH_IP_RATE_LIMITER: allowed }
 		});
 
 		expect(result).toMatchObject({
