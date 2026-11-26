@@ -332,6 +332,8 @@
 						{#each businessTypes as type (type.value)}
 							<button
 								type="button"
+								aria-pressed={businessType === type.value}
+								aria-label="{type.label}: {type.desc}"
 								class="w-full p-4 rounded-lg border-2 text-left transition-all hover:border-primary/50
 								{businessType === type.value
 									? 'border-primary bg-primary/5'
