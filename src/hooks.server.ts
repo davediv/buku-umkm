@@ -4,6 +4,7 @@ import { building } from '$app/environment';
 import { getAuth } from '$lib/server/auth';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { getLoginHref } from '$lib/navigation/return-to';
+import { isCrossSiteRequest } from '$lib/server/security/csrf';
 import { limitRequest } from '$lib/server/security/rate-limit';
 
 // ============================================
@@ -43,22 +44,11 @@ const handleSecurityHeaders: Handle = async ({ event, resolve }) => {
 // CSRF Protection Handler
 // ============================================
 
+// Covers form actions, the app's API and better-auth's endpoints alike.
 const handleCSRF: Handle = async ({ event, resolve }) => {
-	const method = event.request.method;
-	// Only check state-changing methods
-	if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
-		return resolve(event);
+	if (isCrossSiteRequest(event.request, event.url)) {
+		return new Response('Forbidden', { status: 403 });
 	}
-
-	const origin = event.request.headers.get('origin');
-	if (origin) {
-		const requestUrl = new URL(event.url);
-		const originUrl = new URL(origin);
-		if (originUrl.origin !== requestUrl.origin) {
-			return new Response('Forbidden', { status: 403 });
-		}
-	}
-
 	return resolve(event);
 };
 
