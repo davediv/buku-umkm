@@ -30,7 +30,8 @@ function fakeEnv() {
 		AUTH_EMAIL_RATE_LIMITER: fakeLimiter(5),
 		AUTH_IP_RATE_LIMITER: fakeLimiter(20),
 		API_RATE_LIMITER: fakeLimiter(120),
-		HEAVY_API_RATE_LIMITER: fakeLimiter(3)
+		HEAVY_API_RATE_LIMITER: fakeLimiter(3),
+		MAIL_ADDRESS_RATE_LIMITER: fakeLimiter(1)
 	};
 }
 
@@ -109,7 +110,7 @@ describe('credential attempts', () => {
 });
 
 describe('email requests', () => {
-	it('allows five emails per address per minute on counters separate from sign-in', async () => {
+	it('allows one email per address per minute on counters separate from sign-in', async () => {
 		const env = fakeEnv();
 		const signIn = () =>
 			isCredentialAttemptAllowed({ ...request('/masuk'), platform: { env } }, 'ayu@example.com');
@@ -120,8 +121,9 @@ describe('email requests', () => {
 			);
 
 		expect(await repeat(6, signIn)).toEqual([true, true, true, true, true, false]);
-		expect(await repeat(6, reset)).toEqual([true, true, true, true, true, false]);
-		expect(env.AUTH_EMAIL_RATE_LIMITER.keys()).toEqual(['ayu@example.com', 'mail:ayu@example.com']);
+		expect(await repeat(2, reset)).toEqual([true, false]);
+		expect(env.AUTH_EMAIL_RATE_LIMITER.keys()).toEqual(['ayu@example.com']);
+		expect(env.MAIL_ADDRESS_RATE_LIMITER.keys()).toEqual(['mail:ayu@example.com']);
 		expect(env.AUTH_IP_RATE_LIMITER.keys()).toEqual(['203.0.113.7', 'mail:203.0.113.7']);
 	});
 
@@ -146,13 +148,13 @@ describe('email requests', () => {
 				user: { id: 'u1', email: 'ayu@example.com' }
 			})
 		);
-		expect(env.AUTH_EMAIL_RATE_LIMITER.keys()).toEqual(['mail:ayu@example.com']);
+		expect(env.MAIL_ADDRESS_RATE_LIMITER.keys()).toEqual(['mail:ayu@example.com']);
 		expect(env.API_RATE_LIMITER.limit).not.toHaveBeenCalled();
 	});
 
 	it("limits better-auth's reset request endpoint by the email in its body", async () => {
 		const env = fakeEnv();
-		const results = await repeat(6, () =>
+		const results = await repeat(2, () =>
 			limitRequest(
 				event(env, '/api/auth/request-password-reset', {
 					method: 'POST',
@@ -161,11 +163,11 @@ describe('email requests', () => {
 			)
 		);
 
-		const blocked = results[5] as Response;
-		expect(results.slice(0, 5)).toEqual([null, null, null, null, null]);
+		const blocked = results[1] as Response;
+		expect(results[0]).toBeNull();
 		expect(blocked.status).toBe(429);
 		expect(await blocked.json()).toMatchObject({ error: EMAIL_RATE_LIMIT_MESSAGE });
-		expect(env.AUTH_EMAIL_RATE_LIMITER.keys()).toEqual(['mail:ayu@example.com']);
+		expect(env.MAIL_ADDRESS_RATE_LIMITER.keys()).toEqual(['mail:ayu@example.com']);
 		expect(env.API_RATE_LIMITER.limit).not.toHaveBeenCalled();
 	});
 });

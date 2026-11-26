@@ -6,9 +6,10 @@
  * - Credential attempts (the /masuk and /daftar form actions and better-auth's sign-in, sign-up
  *   and password endpoints) are limited per account (normalized email) and, more loosely, per
  *   client IP: many Indonesian mobile users share one carrier IP.
- * - Requests that send an account email (a password reset or verification link) are limited the
- *   same way but on their own counters, so someone locked out by failed sign-ins can still ask
- *   for a reset link, and a stranger cannot flood one inbox faster than the per-address limit.
+ * - Requests that send an account email (a password reset or verification link) are limited on
+ *   their own counters, so someone locked out by failed sign-ins can still ask for a reset link:
+ *   one email per address per minute (MAIL_ADDRESS_RATE_LIMITER), which keeps a stranger from
+ *   flooding an inbox or spending the sending quota, plus the shared per-IP brake.
  * - Every other /api/* request is limited per signed-in user, or per IP when signed out, with a
  *   much tighter limit on backup and restore.
  */
@@ -25,7 +26,8 @@ type LimiterName =
 	| 'AUTH_EMAIL_RATE_LIMITER'
 	| 'AUTH_IP_RATE_LIMITER'
 	| 'API_RATE_LIMITER'
-	| 'HEAVY_API_RATE_LIMITER';
+	| 'HEAVY_API_RATE_LIMITER'
+	| 'MAIL_ADDRESS_RATE_LIMITER';
 
 export type RateLimitEnv = Partial<Record<LimiterName, Pick<RateLimit, 'limit'>>>;
 
@@ -124,12 +126,14 @@ function isHeavyApiPath(pathname: string): boolean {
 async function isAllowedForClientAndAccount(
 	event: RateLimitEvent,
 	email: string | null | undefined,
-	keyPrefix: string
+	kind: 'credential' | 'mail'
 ): Promise<boolean> {
 	const env = event.platform?.env;
+	const keyPrefix = kind === 'mail' ? EMAIL_KEY_PREFIX : '';
+	const accountLimiter = kind === 'mail' ? 'MAIL_ADDRESS_RATE_LIMITER' : 'AUTH_EMAIL_RATE_LIMITER';
 	const account = email ? normalizeEmail(email) : '';
 	const checks = [consume(env, 'AUTH_IP_RATE_LIMITER', keyPrefix + clientKey(event.request))];
-	if (account) checks.push(consume(env, 'AUTH_EMAIL_RATE_LIMITER', keyPrefix + account));
+	if (account) checks.push(consume(env, accountLimiter, keyPrefix + account));
 	return (await Promise.all(checks)).every(Boolean);
 }
 
@@ -141,7 +145,7 @@ export function isCredentialAttemptAllowed(
 	event: RateLimitEvent,
 	email: string | null | undefined
 ): Promise<boolean> {
-	return isAllowedForClientAndAccount(event, email, '');
+	return isAllowedForClientAndAccount(event, email, 'credential');
 }
 
 /**
@@ -153,7 +157,7 @@ export function isEmailRequestAllowed(
 	event: RateLimitEvent,
 	email: string | null | undefined
 ): Promise<boolean> {
-	return isAllowedForClientAndAccount(event, email, EMAIL_KEY_PREFIX);
+	return isAllowedForClientAndAccount(event, email, 'mail');
 }
 
 export function tooManyRequests(message: string): Response {

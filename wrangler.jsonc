@@ -60,6 +60,12 @@
 			"name": "HEAVY_API_RATE_LIMITER",
 			"namespace_id": "1004",
 			"simple": { "limit": 3, "period": 60 }
+		},
+		{
+			// Password reset and verification emails, one per address per minute.
+			"name": "MAIL_ADDRESS_RATE_LIMITER",
+			"namespace_id": "1005",
+			"simple": { "limit": 1, "period": 60 }
 		}
 	]
 }
