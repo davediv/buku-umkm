@@ -1,12 +1,42 @@
 import { json } from '@sveltejs/kit';
+import { and, eq, sql } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
+import { batchGuard, isGuardFailure, runBatch } from '$lib/server/db/batch';
 import { transactionQueries, transactionPhotoQueries } from '$lib/server/db/queries';
-import { getRequestEvent } from '$app/server';
+import { transaction, transactionPhoto } from '$lib/server/db/schema';
+import { summarizeError } from '$lib/server/error-summary';
+import {
+	declaredContentLength,
+	parseMultipart,
+	readBodyWithLimit
+} from '$lib/server/backup/request-body';
+import {
+	receiptKey,
+	receiptUrl,
+	sanitizePhotoFileName,
+	type ReceiptExtension
+} from '$lib/server/photos/receipts';
 
 const MAX_PHOTOS_PER_TRANSACTION = 3;
 const MAX_FILE_SIZE = 500 * 1024; // 500KB
+/** The file plus the multipart boundary and part headers around it. */
+const MAX_UPLOAD_BYTES = MAX_FILE_SIZE + 16 * 1024;
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
+
+const tooLarge = () =>
+	json({ error: `Ukuran file maksimal adalah ${MAX_FILE_SIZE / 1024}KB` }, { status: 413 });
+const tooMany = () =>
+	json({ error: `Maksimal ${MAX_PHOTOS_PER_TRANSACTION} foto per transaksi` }, { status: 400 });
+
+/** The image type the bytes actually are, whatever the upload claimed. */
+function imageExtension(bytes: Uint8Array): ReceiptExtension | null {
+	if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'jpg';
+	if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+		return 'png';
+	}
+	return null;
+}
 
 // GET /api/transactions/[id]/photos - Get all photos for a transaction
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -53,7 +83,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 };
 
 // POST /api/transactions/[id]/photos - Upload a new photo
-export const POST: RequestHandler = async ({ params, request, locals }) => {
+export const POST: RequestHandler = async ({ params, request, locals, platform }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
@@ -66,6 +96,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		return json({ error: 'ID transaksi diperlukan' }, { status: 400 });
 	}
 
+	// Before any other work: an oversized upload is refused without reading it.
+	const declared = declaredContentLength(request);
+	if (declared !== null && declared > MAX_UPLOAD_BYTES) return tooLarge();
+
 	const db = getDb();
 
 	try {
@@ -76,25 +110,26 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			return json({ error: 'Transaksi tidak ditemukan' }, { status: 404 });
 		}
 
-		// Check max photos limit
+		// Saves uploading a file that cannot be kept; the batch guard below is what
+		// enforces the limit when uploads race.
 		const photoCount = await transactionPhotoQueries.countByTransactionId(
 			db,
 			userId,
 			transactionId
 		);
+		if (photoCount >= MAX_PHOTOS_PER_TRANSACTION) return tooMany();
 
-		if (photoCount >= MAX_PHOTOS_PER_TRANSACTION) {
-			return json(
-				{ error: `Maksimal ${MAX_PHOTOS_PER_TRANSACTION} foto per transaksi` },
-				{ status: 400 }
-			);
-		}
+		// Counted as it streams in, so a body without (or with a false) Content-Length is
+		// never buffered past the limit the way request.formData() would.
+		const body = await readBodyWithLimit(request, MAX_UPLOAD_BYTES);
+		if (!body) return tooLarge();
+		const contentType = request.headers.get('content-type') ?? '';
+		const form = contentType.includes('multipart/form-data')
+			? await parseMultipart(body, contentType).catch(() => null)
+			: null;
+		const file = form?.get('file');
 
-		// Get the multipart form data
-		const formData = await request.formData();
-		const file = formData.get('file') as File | null;
-
-		if (!file) {
+		if (!(file instanceof File)) {
 			return json({ error: 'File foto diperlukan' }, { status: 400 });
 		}
 
@@ -103,65 +138,66 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			return json({ error: 'Format file harus JPEG atau PNG' }, { status: 400 });
 		}
 
-		// Validate file size
-		if (file.size > MAX_FILE_SIZE) {
-			return json(
-				{ error: `Ukuran file maksimal adalah ${MAX_FILE_SIZE / 1024}KB` },
-				{ status: 400 }
-			);
+		if (file.size > MAX_FILE_SIZE) return tooLarge();
+
+		// Verify actual file content is an image; its bytes, not the claim, set the type.
+		const bytes = new Uint8Array(await file.arrayBuffer());
+		const extension = imageExtension(bytes);
+		if (!extension) {
+			return json({ error: 'File bukan gambar JPEG atau PNG yang valid' }, { status: 400 });
 		}
 
-		// Get R2 bucket
-		const event = getRequestEvent();
-		const r2 = event?.platform?.env?.R2;
-
+		const r2 = platform?.env?.R2;
 		if (!r2) {
 			console.error('R2 bucket not configured');
 			return json({ error: 'Konfigurasi penyimpanan tidak tersedia' }, { status: 500 });
 		}
 
-		// Generate unique key for R2
 		const photoId = crypto.randomUUID();
-		const extension = file.type === 'image/png' ? 'png' : 'jpg';
-		const r2Key = `receipts/${userId}/${transactionId}/${photoId}.${extension}`;
-
-		// Convert file to ArrayBuffer and validate magic bytes
-		const arrayBuffer = await file.arrayBuffer();
-		const uint8Array = new Uint8Array(arrayBuffer);
-
-		// Verify actual file content matches claimed type
-		const isJPEG = uint8Array[0] === 0xff && uint8Array[1] === 0xd8 && uint8Array[2] === 0xff;
-		const isPNG =
-			uint8Array[0] === 0x89 &&
-			uint8Array[1] === 0x50 &&
-			uint8Array[2] === 0x4e &&
-			uint8Array[3] === 0x47;
-
-		if (!isJPEG && !isPNG) {
-			return json({ error: 'File bukan gambar JPEG atau PNG yang valid' }, { status: 400 });
-		}
-
-		// Upload to R2
-		await r2.put(r2Key, uint8Array, {
-			httpMetadata: {
-				contentType: file.type
-			}
-		});
-
-		// Generate public URL (assuming R2 public URL is configured)
-		// In production, you'd use R2's public URL or a custom domain
-		const r2Url = `/api/photos/${r2Key}`;
-
-		// Save to database
-		const photo = await transactionPhotoQueries.create(db, {
+		const r2Key = receiptKey(userId, transactionId, photoId, extension);
+		const photo = {
+			id: photoId,
 			userId,
 			transactionId,
-			fileName: file.name,
-			fileSize: file.size,
-			mimeType: file.type,
+			fileName: sanitizePhotoFileName(file.name, `foto.${extension}`),
+			fileSize: bytes.byteLength,
+			mimeType: extension === 'png' ? 'image/png' : 'image/jpeg',
 			r2Key,
-			r2Url
-		});
+			r2Url: receiptUrl(r2Key),
+			caption: null,
+			createdAt: new Date()
+		};
+
+		await r2.put(r2Key, bytes, { httpMetadata: { contentType: photo.mimeType } });
+
+		try {
+			await runBatch(db, [
+				// Checked inside the batch that inserts, so parallel uploads cannot all pass a
+				// count taken before any of them was saved.
+				batchGuard(
+					db,
+					sql`exists (select 1 from ${transaction} where ${and(
+						eq(transaction.userId, userId),
+						eq(transaction.id, transactionId)
+					)}) and (select count(*) from ${transactionPhoto} where ${and(
+						eq(transactionPhoto.userId, userId),
+						eq(transactionPhoto.transactionId, transactionId)
+					)}) < ${MAX_PHOTOS_PER_TRANSACTION}`
+				),
+				db.insert(transactionPhoto).values(photo)
+			]);
+		} catch (error) {
+			// The image is useless without its row.
+			await r2.delete(r2Key).catch((cleanupError: unknown) => {
+				console.error(
+					'Orphaned receipt object after a failed insert',
+					summarizeError(cleanupError)
+				);
+			});
+			if (!isGuardFailure(error)) throw error;
+			const stillThere = await transactionQueries.findById(db, userId, transactionId, true);
+			return stillThere ? tooMany() : json({ error: 'Transaksi tidak ditemukan' }, { status: 404 });
+		}
 
 		return json(
 			{
@@ -177,8 +213,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			},
 			{ status: 201 }
 		);
-	} catch {
-		console.error('Error uploading transaction photo');
+	} catch (error) {
+		console.error('Error uploading transaction photo', summarizeError(error));
 		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
