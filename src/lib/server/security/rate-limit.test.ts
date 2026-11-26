@@ -137,6 +137,19 @@ describe('email requests', () => {
 		expect(results.at(-1)).toBe(false);
 	});
 
+	it("limits a verification resend against the signed-in user's address", async () => {
+		const env = fakeEnv();
+		await limitRequest(
+			event(env, '/api/auth/send-verification-email', {
+				method: 'POST',
+				json: { email: 'Ayu@example.com' },
+				user: { id: 'u1', email: 'ayu@example.com' }
+			})
+		);
+		expect(env.AUTH_EMAIL_RATE_LIMITER.keys()).toEqual(['mail:ayu@example.com']);
+		expect(env.API_RATE_LIMITER.limit).not.toHaveBeenCalled();
+	});
+
 	it("limits better-auth's reset request endpoint by the email in its body", async () => {
 		const env = fakeEnv();
 		const results = await repeat(6, () =>
@@ -178,6 +191,7 @@ describe('request limits', () => {
 		expect(isCredentialAuthRequest('POST', '/api/auth/reset-password')).toBe(true);
 		expect(isCredentialAuthRequest('POST', '/api/auth/request-password-reset')).toBe(false);
 		expect(isEmailAuthRequest('POST', '/api/auth/request-password-reset')).toBe(true);
+		expect(isEmailAuthRequest('POST', '/api/auth/send-verification-email')).toBe(true);
 		expect(isEmailAuthRequest('GET', '/api/auth/request-password-reset')).toBe(false);
 		expect(isCredentialAuthRequest('POST', '/api/auth/sign-out')).toBe(false);
 		expect(isCredentialAuthRequest('GET', '/api/auth/get-session')).toBe(false);

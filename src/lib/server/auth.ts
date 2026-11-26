@@ -4,8 +4,8 @@ import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { getDb } from '$lib/server/db';
-import { passwordResetEmail } from '$lib/server/email/messages';
-import { sendAccountEmail } from '$lib/server/email/send';
+import { passwordResetEmail, verificationEmail } from '$lib/server/email/messages';
+import { EmailNotSentError, sendAccountEmail } from '$lib/server/email/send';
 import { enforcePasswordPolicy } from '$lib/server/security/password-policy';
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '$lib/shared/password';
 
@@ -13,6 +13,10 @@ import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '$lib/shared/password';
 export const RESET_PASSWORD_TOKEN_TTL_SECONDS = 60 * 60;
 /** The page a password reset email links to (src/routes/atur-ulang-kata-sandi). */
 const RESET_PASSWORD_PATH = '/atur-ulang-kata-sandi';
+/** How long an email verification link stays valid. */
+export const EMAIL_VERIFICATION_TTL_SECONDS = 24 * 60 * 60;
+/** The page a verification email links to (src/routes/verifikasi-email). */
+const VERIFY_EMAIL_PATH = '/verifikasi-email';
 
 /**
  * A link to one of the app's pages carrying `token`. better-auth's own `url` points at its
@@ -56,6 +60,21 @@ function createAuth() {
 						RESET_PASSWORD_TOKEN_TTL_SECONDS
 					)
 				);
+			}
+		},
+		// Verification is soft (the owner's decision): an unverified user keeps full access to
+		// their books, so requireEmailVerification stays off and sign-in never checks it.
+		emailVerification: {
+			sendOnSignUp: true,
+			autoSignInAfterVerification: true,
+			expiresIn: EMAIL_VERIFICATION_TTL_SECONDS,
+			async sendVerificationEmail({ user, url, token }) {
+				const sent = await sendAccountEmail(
+					user.email,
+					verificationEmail(pageLink(url, VERIFY_EMAIL_PATH, token), EMAIL_VERIFICATION_TTL_SECONDS)
+				);
+				// Lets the resend button in Pengaturan say so; on sign-up better-auth only logs it.
+				if (!sent) throw new EmailNotSentError('email-verification');
 			}
 		},
 		hooks: { before: enforcePasswordPolicy },

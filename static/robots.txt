@@ -9,3 +9,4 @@ Disallow: /pajak
 Disallow: /pengaturan
 Disallow: /onboarding
 Disallow: /atur-ulang-kata-sandi
+Disallow: /verifikasi-email

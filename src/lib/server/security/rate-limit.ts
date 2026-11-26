@@ -6,9 +6,9 @@
  * - Credential attempts (the /masuk and /daftar form actions and better-auth's sign-in, sign-up
  *   and password endpoints) are limited per account (normalized email) and, more loosely, per
  *   client IP: many Indonesian mobile users share one carrier IP.
- * - Requests that send an account email (a password reset link) are limited the same way but on
- *   their own counters, so someone locked out by failed sign-ins can still ask for a reset link,
- *   and a stranger cannot flood one inbox faster than the per-address limit.
+ * - Requests that send an account email (a password reset or verification link) are limited the
+ *   same way but on their own counters, so someone locked out by failed sign-ins can still ask
+ *   for a reset link, and a stranger cannot flood one inbox faster than the per-address limit.
  * - Every other /api/* request is limited per signed-in user, or per IP when signed out, with a
  *   much tighter limit on backup and restore.
  */
@@ -43,7 +43,7 @@ const AUTH_API_PREFIX = '/api/auth/';
 /** better-auth endpoints that check or set a password (trailing / = prefix). */
 const CREDENTIAL_AUTH_ENDPOINTS = ['sign-in/', 'sign-up/', 'reset-password', 'change-password'];
 /** better-auth endpoints that send an email to the address in their body. */
-const EMAIL_AUTH_ENDPOINTS = ['request-password-reset'];
+const EMAIL_AUTH_ENDPOINTS = ['request-password-reset', 'send-verification-email'];
 /** Key prefix that keeps email-sending requests on their own counters. */
 const EMAIL_KEY_PREFIX = 'mail:';
 const HEAVY_API_PATHS = ['/api/backup', '/api/restore'];

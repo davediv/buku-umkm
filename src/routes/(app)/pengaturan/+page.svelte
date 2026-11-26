@@ -1,10 +1,13 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import { invalidateAll, goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import {
 		AlertTriangle,
 		ArrowLeft,
+		BadgeCheck,
+		MailWarning,
 		Download,
 		Upload,
 		Database,
@@ -39,9 +42,9 @@
 		AlertDialogAction,
 		AlertDialogCancel
 	} from '$lib/components/ui/alert-dialog';
-	import type { PageData } from './$types';
+	import type { ActionData, PageData } from './$types';
 
-	let { data }: { data: PageData } = $props();
+	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	// Tab configuration
 	const sectionTabs: { id: SettingsSectionId; label: string; icon: typeof Store }[] = [
@@ -90,7 +93,8 @@
 		}
 	});
 
-	// Password change state
+	// Email verification resend state
+	let resendingVerification = $state(false);
 
 	// Logout state
 	let loggingOut = $state(false);
@@ -565,6 +569,66 @@
 						<Input id="email" type="email" value={data.user.email} disabled />
 						<p class="text-xs text-muted-foreground">Email tidak dapat diubah</p>
 					</div>
+
+					<!-- Email verification (soft: an unverified account works as usual) -->
+					{#if data.user.emailVerified}
+						<p class="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
+							<BadgeCheck class="w-4 h-4 shrink-0" />
+							Email sudah terverifikasi
+						</p>
+					{:else}
+						<div
+							class="p-3 space-y-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950"
+						>
+							<div class="space-y-1">
+								<p
+									class="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-200"
+								>
+									<MailWarning class="w-4 h-4 shrink-0" />
+									Email belum terverifikasi
+								</p>
+								<p class="text-sm text-amber-700 dark:text-amber-300">
+									Buka tautan yang kami kirim ke email Anda untuk memastikan alamat ini benar.
+									Tautan atur ulang kata sandi juga dikirim ke alamat ini. Anda tetap dapat memakai
+									Buku UMKM seperti biasa.
+								</p>
+							</div>
+
+							<form
+								method="post"
+								action="?bagian=akun&/resendVerification"
+								use:enhance={() => {
+									resendingVerification = true;
+									return async ({ update }) => {
+										resendingVerification = false;
+										await update();
+									};
+								}}
+							>
+								<Button
+									type="submit"
+									variant="outline"
+									size="sm"
+									class="w-full sm:w-auto"
+									disabled={resendingVerification}
+								>
+									{#if resendingVerification}
+										<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+									{/if}
+									Kirim ulang email verifikasi
+								</Button>
+							</form>
+
+							{#if form?.verification?.sent}
+								<p role="status" class="text-sm text-amber-800 dark:text-amber-200">
+									Email verifikasi telah dikirim ke {data.user.email}. Periksa kotak masuk atau
+									folder spam.
+								</p>
+							{:else if form?.verification?.error}
+								<p role="alert" class="text-sm text-destructive">{form.verification.error}</p>
+							{/if}
+						</div>
+					{/if}
 				</div>
 
 				<!-- Logout Button -->

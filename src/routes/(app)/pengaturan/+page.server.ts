@@ -1,8 +1,12 @@
-import { error as httpError, redirect } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { error as httpError, fail, redirect } from '@sveltejs/kit';
+import { APIError } from 'better-auth/api';
+import type { Actions, PageServerLoad } from './$types';
+import { getAuth } from '$lib/server/auth';
 import { getDb } from '$lib/server/db';
 import { businessProfileQueries } from '$lib/server/db/queries';
 import { decryptNPWP, formatNPWP } from '$lib/server/crypto';
+import { summarizeError } from '$lib/server/error-summary';
+import { EMAIL_RATE_LIMIT_MESSAGE, isEmailRequestAllowed } from '$lib/server/security/rate-limit';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Check authentication
@@ -36,7 +40,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	return {
 		user: {
-			email: locals.user.email
+			email: locals.user.email,
+			emailVerified: locals.user.emailVerified
 		},
 		profile: profile
 			? {
@@ -51,4 +56,48 @@ export const load: PageServerLoad = async ({ locals }) => {
 				}
 			: null
 	};
+};
+
+/** What the "Kirim ulang email verifikasi" button reports back. */
+interface VerificationOutcome {
+	sent?: boolean;
+	alreadyVerified?: boolean;
+	error?: string;
+}
+
+function verification(outcome: VerificationOutcome) {
+	return { verification: outcome };
+}
+
+export const actions: Actions = {
+	/** Sends a new verification link to the signed-in user's address. */
+	resendVerification: async (event) => {
+		const user = event.locals.user;
+		if (!user) return fail(401, verification({ error: 'Sesi berakhir. Silakan masuk kembali.' }));
+		if (user.emailVerified) return verification({ alreadyVerified: true });
+
+		if (!(await isEmailRequestAllowed(event, user.email))) {
+			return fail(429, verification({ error: EMAIL_RATE_LIMIT_MESSAGE }));
+		}
+
+		try {
+			await getAuth().api.sendVerificationEmail({
+				body: { email: user.email },
+				headers: event.request.headers
+			});
+		} catch (cause) {
+			if (cause instanceof APIError && cause.body?.code === 'EMAIL_ALREADY_VERIFIED') {
+				return verification({ alreadyVerified: true });
+			}
+			console.error('Verification email resend failed', summarizeError(cause));
+			return fail(
+				503,
+				verification({
+					error: 'Email verifikasi belum dapat dikirim. Coba lagi beberapa saat lagi.'
+				})
+			);
+		}
+
+		return verification({ sent: true });
+	}
 };

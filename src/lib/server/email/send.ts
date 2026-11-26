@@ -13,6 +13,14 @@ import type { EmailMessage } from './messages';
 
 export const EMAIL_SENDER_NAME = 'Buku UMKM';
 
+/** Thrown by callers that must report a message that was not sent; the cause is already logged. */
+export class EmailNotSentError extends Error {
+	constructor(kind: EmailMessage['kind']) {
+		super(`Email "${kind}" was not sent`);
+		this.name = 'EmailNotSentError';
+	}
+}
+
 /** The part of the `SendEmail` binding this module uses (the structured builder form). */
 export interface EmailBinding {
 	send(message: EmailMessageBuilder): Promise<unknown>;
