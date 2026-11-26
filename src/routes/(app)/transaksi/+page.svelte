@@ -120,9 +120,20 @@
 		});
 	}
 
-	/** Transfer legs and debt movements are corrected from their transfer or debt, not here. */
-	function isLinked(transaction: { toAccountId: string | null; debtId: string | null }): boolean {
-		return transaction.toAccountId !== null || transaction.debtId !== null;
+	/**
+	 * Transfer legs, debt movements and loan interest are corrected from their transfer or debt,
+	 * not here.
+	 */
+	function isLinked(transaction: {
+		toAccountId: string | null;
+		debtId: string | null;
+		interestDebtId?: string | null;
+	}): boolean {
+		return (
+			transaction.toAccountId !== null ||
+			transaction.debtId !== null ||
+			Boolean(transaction.interestDebtId)
+		);
 	}
 
 	/** White on a category's own colour, grey on the light fallback circle. */

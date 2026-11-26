@@ -47,8 +47,18 @@ export async function getTransactionPage(db: SQLiteDb, userId: string, query: Tr
 					offset: pagination.offset
 				});
 
+	// Loan-interest rows are corrected by reversing their loan payment, like debt movements.
+	const interestDebtIds = await transactionQueries.findInterestDebtIds(
+		db,
+		userId,
+		transactions.map((transaction) => transaction.id)
+	);
+
 	return {
-		transactions: transactions.map(presentTransaction),
+		transactions: transactions.map((transaction) => ({
+			...presentTransaction(transaction),
+			interestDebtId: interestDebtIds.get(transaction.id) ?? null
+		})),
 		query: { ...query, page: pagination.page },
 		pagination
 	};

@@ -21,6 +21,7 @@ import {
 	category,
 	transaction,
 	debt,
+	debtPayment,
 	taxRecord,
 	businessProfile,
 	transactionPhoto,
@@ -439,6 +440,30 @@ export const transactionQueries = {
 				columns: { debtId: true }
 			})
 			.then((row) => row?.debtId ?? null);
+	},
+
+	/**
+	 * For a page of transactions: which ones are a loan payment's interest, mapped to the
+	 * loan's id. One query for the whole page.
+	 */
+	async findInterestDebtIds(
+		db: SQLiteDb,
+		userId: string,
+		transactionIds: string[]
+	): Promise<Map<string, string>> {
+		if (transactionIds.length === 0) return new Map();
+		const rows = await db
+			.select({ transactionId: debtPayment.interestTransactionId, debtId: debtPayment.debtId })
+			.from(debtPayment)
+			.where(
+				and(
+					eq(debtPayment.userId, userId),
+					inArray(debtPayment.interestTransactionId, transactionIds)
+				)
+			);
+		return new Map(
+			rows.flatMap((row) => (row.transactionId ? [[row.transactionId, row.debtId] as const] : []))
+		);
 	},
 
 	/**

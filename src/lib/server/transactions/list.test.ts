@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SQLiteDb } from '$lib/server/db';
 import { transactionQueries } from '$lib/server/db/queries';
 import { parseTransactionQuery } from '$lib/transactions/query';
@@ -39,6 +39,10 @@ function transactionRecord() {
 	};
 }
 
+// These tests stub the page queries; the per-page loan-interest lookup has its own D1 test.
+beforeEach(() => {
+	vi.spyOn(transactionQueries, 'findInterestDebtIds').mockResolvedValue(new Map());
+});
 afterEach(() => vi.restoreAllMocks());
 
 describe('transaction list service', () => {
