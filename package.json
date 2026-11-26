@@ -18,13 +18,13 @@
 		"format": "prettier --write .",
 		"test:unit": "vitest",
 		"test": "pnpm run test:unit --run",
-		"gen": "wrangler types",
+		"gen": "pnpm cf-typegen",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate:local": "wrangler d1 migrations apply buku-umkm-db --local",
 		"db:migrate:remote": "wrangler d1 migrations apply buku-umkm-db --remote",
 		"auth:schema": "auth generate --config src/lib/server/auth.cli.ts --output src/lib/server/db/auth.schema.ts --yes",
 		"deploy": "node scripts/check-deploy-config.mjs && pnpm run build && wrangler deploy",
-		"cf-typegen": "wrangler types ./src/worker-configuration.d.ts"
+		"cf-typegen": "wrangler types ./src/worker-configuration.d.ts --include-main-module=false"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.1.1",
