@@ -3,7 +3,7 @@
 	import {
 		getRememberedNavigationOrigin,
 		shouldUseHistoryBack
-	} from '$lib/client/navigation-continuity';
+	} from '#lib/client/navigation-continuity.ts';
 
 	type Props = {
 		href: string;

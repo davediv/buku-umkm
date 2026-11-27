@@ -1,12 +1,15 @@
 import { error as httpError, fail, redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
 import type { Actions, PageServerLoad } from './$types';
-import { getAuth } from '$lib/server/auth';
-import { getDb } from '$lib/server/db';
-import { businessProfileQueries } from '$lib/server/db/queries';
-import { decryptNPWP, formatNPWP } from '$lib/server/crypto';
-import { summarizeError } from '$lib/server/error-summary';
-import { EMAIL_RATE_LIMIT_MESSAGE, isEmailRequestAllowed } from '$lib/server/security/rate-limit';
+import { getAuth } from '#lib/server/auth.ts';
+import { getDb } from '#lib/server/db/index.ts';
+import { businessProfileQueries } from '#lib/server/db/queries/index.ts';
+import { decryptNPWP, formatNPWP } from '#lib/server/crypto.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
+import {
+	EMAIL_RATE_LIMIT_MESSAGE,
+	isEmailRequestAllowed
+} from '#lib/server/security/rate-limit.ts';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Check authentication

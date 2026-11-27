@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { APIError } from 'better-auth/api';
+import { setBindings } from '#lib/server/testing/cloudflare-workers.ts';
 
 const { resetPassword, isResetPasswordTokenValid } = vi.hoisted(() => ({
 	resetPassword: vi.fn(),
 	isResetPasswordTokenValid: vi.fn()
 }));
-vi.mock('$lib/server/auth', () => ({
+vi.mock('#lib/server/auth.ts', () => ({
 	getAuth: () => ({ api: { resetPassword } }),
 	isResetPasswordTokenValid
 }));
@@ -20,14 +21,15 @@ function loadPage(search: string) {
 	} as Parameters<typeof load>[0]);
 }
 
-function submit(fields: Record<string, string>, platform?: unknown) {
+function submit(fields: Record<string, string>, bindings?: Record<string, unknown>) {
 	const formData = new FormData();
 	for (const [name, value] of Object.entries(fields)) formData.set(name, value);
 	const request = new Request('https://buku.test/atur-ulang-kata-sandi', {
 		method: 'POST',
 		body: formData
 	});
-	return actions.default!({ request, platform } as unknown as ActionEvent);
+	setBindings(bindings);
+	return actions.default!({ request } as unknown as ActionEvent);
 }
 
 const VALID = { token: 'tok-1', password: 'Rahasia123', confirmPassword: 'Rahasia123' };
@@ -87,7 +89,7 @@ describe('reset password page', () => {
 
 	it('limits reset attempts per client IP', async () => {
 		const blocked = { limit: vi.fn(async () => ({ success: false })) };
-		expect(await submit(VALID, { env: { AUTH_IP_RATE_LIMITER: blocked } })).toMatchObject({
+		expect(await submit(VALID, { AUTH_IP_RATE_LIMITER: blocked })).toMatchObject({
 			status: 429
 		});
 		expect(resetPassword).not.toHaveBeenCalled();

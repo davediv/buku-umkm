@@ -1,19 +1,19 @@
-import { MAX_TRANSACTION_AMOUNT, type BusinessType } from '$lib/constants';
-import type { SQLiteDb } from '$lib/server/db';
-import { chunkedInserts, runBatch } from '$lib/server/db/batch';
+import { MAX_TRANSACTION_AMOUNT, type BusinessType } from '#lib/constants.ts';
+import type { SQLiteDb } from '#lib/server/db/index.ts';
+import { chunkedInserts, runBatch } from '#lib/server/db/batch.ts';
 import {
 	businessProfile,
 	category,
 	chartOfAccount,
 	onboardingState,
 	transactionTemplate
-} from '$lib/server/db/schema';
+} from '#lib/server/db/schema.ts';
 import {
 	getCategoryTemplate,
 	getTransactionTemplate,
 	type BusinessType as SeedBusinessType
-} from '$lib/server/db/seed/accounts';
-import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
+} from '#lib/server/db/seed/accounts.ts';
+import { isIsoCalendarDate, todayInJakarta } from '#lib/shared/dates.ts';
 
 export type OnboardingStatus = 'completed' | 'skipped';
 export type FirstAccountType = 'kas' | 'bank' | 'ewallet';

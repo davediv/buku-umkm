@@ -9,12 +9,12 @@
 		TrendingUp,
 		Download
 	} from '@lucide/svelte';
-	import PageErrorState from '$lib/components/page-error-state.svelte';
-	import ReportNavigation from '$lib/components/reports/report-navigation.svelte';
-	import { toast } from '$lib/components/ui/toast';
-	import { formatRupiah } from '$lib/utils';
-	import { exportNeracaPDF, generatePDFFilename } from '$lib/utils/pdf-export';
-	import { todayInJakarta } from '$lib/shared/dates';
+	import PageErrorState from '#lib/components/page-error-state.svelte';
+	import ReportNavigation from '#lib/components/reports/report-navigation.svelte';
+	import { toast } from '#lib/components/ui/toast/index.ts';
+	import { formatRupiah } from '#lib/utils/index.ts';
+	import { exportNeracaPDF, generatePDFFilename } from '#lib/utils/pdf-export.ts';
+	import { todayInJakarta } from '#lib/shared/dates.ts';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -43,8 +43,8 @@
 
 		try {
 			await goto(`/laporan/neraca?date=${selectedDate}`, {
-				replaceState: true,
-				noScroll: true
+				replace: true,
+				reset: false
 			});
 		} catch (e) {
 			console.error('Error changing date:', e);

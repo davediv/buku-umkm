@@ -1,11 +1,11 @@
-import { redirect, type Handle } from '@sveltejs/kit';
-import { sequence } from '@sveltejs/kit/hooks';
-import { building } from '$app/environment';
-import { getAuth } from '$lib/server/auth';
+import { redirect } from '@sveltejs/kit';
+import { sequence, type Handle } from '@sveltejs/kit/hooks';
+import { building } from '$app/env';
+import { getAuth } from '#lib/server/auth.ts';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
-import { getLoginHref } from '$lib/navigation/return-to';
-import { isCrossSiteRequest } from '$lib/server/security/csrf';
-import { limitRequest } from '$lib/server/security/rate-limit';
+import { getLoginHref } from '#lib/navigation/return-to.ts';
+import { isCrossSiteRequest } from '#lib/server/security/csrf.ts';
+import { limitRequest } from '#lib/server/security/rate-limit.ts';
 
 // ============================================
 // Rate Limiting Handler
@@ -21,8 +21,8 @@ const handleRateLimit: Handle = async ({ event, resolve }) => {
 // Security Headers Handler
 // ============================================
 
-// The Content-Security-Policy is set by SvelteKit (kit.csp in svelte.config.js) so that pages
-// get a nonce for SvelteKit's inline scripts.
+// The Content-Security-Policy is set by SvelteKit (`csp` in the sveltekit() options in
+// vite.config.ts) so that pages get a nonce for SvelteKit's inline scripts.
 const handleSecurityHeaders: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);
 

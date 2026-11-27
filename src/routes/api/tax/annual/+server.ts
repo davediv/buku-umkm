@@ -1,16 +1,16 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { calculateMonthlyTax } from '$lib/tax/engine';
+import { getDb } from '#lib/server/db/index.ts';
+import { calculateMonthlyTax } from '#lib/tax/engine.ts';
 import {
 	getRecordedAnnualExpenseTotal,
 	getRecordedAnnualLoanInterestIncome,
 	getTaxRecordsForYear,
 	getTaxYearContext
-} from '$lib/tax/service';
-import { REVENUE_THRESHOLD_WP_OP, TAX_STATUS, TAXPAYER_TYPE } from '$lib/tax/config';
-import { INDONESIAN_MONTHS } from '$lib/tax/config';
-import { jakartaToday } from '$lib/tax/period';
+} from '#lib/tax/service.ts';
+import { REVENUE_THRESHOLD_WP_OP, TAX_STATUS, TAXPAYER_TYPE } from '#lib/tax/config.ts';
+import { INDONESIAN_MONTHS } from '#lib/tax/config.ts';
+import { jakartaToday } from '#lib/tax/period.ts';
 
 /**
  * GET /api/tax/annual?year=2024

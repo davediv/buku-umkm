@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import { onMount } from 'svelte';
-	import { toast } from '$lib/components/ui/toast';
+	import { toast } from '#lib/components/ui/toast/index.ts';
 
 	let { children } = $props();
 

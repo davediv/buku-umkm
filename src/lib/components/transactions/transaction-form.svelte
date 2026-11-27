@@ -1,11 +1,11 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { Check, Link, X } from '@lucide/svelte';
-	import { todayInJakarta } from '$lib/shared/dates';
-	import { categoryColorOrDefault } from '$lib/shared/validation/category';
-	import { formatIdr } from '$lib/utils';
-	import { Dialog } from '$lib/components/ui/dialog';
-	import CategoryIcon from '$lib/components/category-icon.svelte';
+	import { todayInJakarta } from '#lib/shared/dates.ts';
+	import { categoryColorOrDefault } from '#lib/shared/validation/category.ts';
+	import { formatIdr } from '#lib/utils/index.ts';
+	import { Dialog } from '#lib/components/ui/dialog/index.ts';
+	import CategoryIcon from '#lib/components/category-icon.svelte';
 
 	interface TransactionFormCategory {
 		id: string;

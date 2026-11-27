@@ -4,14 +4,20 @@
  * Contains reusable functions for fetching tax-related data from the database
  */
 
-import { businessProfile, debt, taxProfile, taxRecord, transaction } from '$lib/server/db/schema';
+import {
+	businessProfile,
+	debt,
+	taxProfile,
+	taxRecord,
+	transaction
+} from '#lib/server/db/schema.ts';
 import { eq, and, gte, lt, sql } from 'drizzle-orm';
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
-import type { SQLiteDb } from '$lib/server/db';
+import type { SQLiteDb } from '#lib/server/db/index.ts';
 import type { TaxEligibilityDecision, TaxProfileData } from './types';
 import { REVENUE_THRESHOLD_WP_OP, TAX_TYPE, getIndonesianMonthName } from './config';
 import { evaluateTaxEligibility } from './eligibility';
-import { decryptNPWP } from '$lib/server/crypto';
+import { decryptNPWP } from '#lib/server/crypto.ts';
 import { calculateMonthlyTax } from './engine';
 import { jakartaToday } from './period';
 import {
@@ -19,7 +25,7 @@ import {
 	profitAndLossRows,
 	tradeDebtRows,
 	turnoverRows
-} from '$lib/server/db/queries/ledger';
+} from '#lib/server/db/queries/ledger.ts';
 
 // Re-export for backward compatibility
 export { getIndonesianMonthName };

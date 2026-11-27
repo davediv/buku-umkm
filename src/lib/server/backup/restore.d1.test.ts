@@ -13,16 +13,16 @@ import {
 	transaction,
 	transactionPhoto,
 	transactionTemplate
-} from '$lib/server/db/schema';
-import { dashboardQueries } from '$lib/server/db/queries';
-import { createD1FinanceRepository } from '$lib/server/finance/repository';
-import { createFinancialMutationService } from '$lib/server/finance/commands';
-import { getBalanceSheetAsOf } from '$lib/server/reports/balance-sheet';
-import { getRecordedMonthlyRevenue } from '$lib/tax/service';
-import { MAX_RECEIPT_BYTES } from '$lib/server/photos/receipts';
-import { createTestD1 } from '$lib/server/testing/d1';
-import { createTestR2, fakeImage } from '$lib/server/testing/r2';
-import { createZipStream } from '$lib/shared/zip';
+} from '#lib/server/db/schema.ts';
+import { dashboardQueries } from '#lib/server/db/queries/index.ts';
+import { createD1FinanceRepository } from '#lib/server/finance/repository.ts';
+import { createFinancialMutationService } from '#lib/server/finance/commands.ts';
+import { getBalanceSheetAsOf } from '#lib/server/reports/balance-sheet.ts';
+import { getRecordedMonthlyRevenue } from '#lib/tax/service.ts';
+import { MAX_RECEIPT_BYTES } from '#lib/server/photos/receipts.ts';
+import { createTestD1 } from '#lib/server/testing/d1.ts';
+import { createTestR2, fakeImage } from '#lib/server/testing/r2.ts';
+import { createZipStream } from '#lib/shared/zip.ts';
 import { buildBackupArchive, buildBackupDocument } from './export';
 import { BackupError } from './parse';
 import {

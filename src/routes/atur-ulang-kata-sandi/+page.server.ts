@@ -1,13 +1,13 @@
 import { error as httpError, fail, redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
 import type { Actions, PageServerLoad } from './$types';
-import { loginNoticeHref } from '$lib/server/account/login-notice';
-import { getAuth, isResetPasswordTokenValid } from '$lib/server/auth';
-import { summarizeError } from '$lib/server/error-summary';
+import { loginNoticeHref } from '#lib/server/account/login-notice.ts';
+import { getAuth, isResetPasswordTokenValid } from '#lib/server/auth.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
 import {
 	CREDENTIAL_RATE_LIMIT_MESSAGE,
 	isCredentialAttemptAllowed
-} from '$lib/server/security/rate-limit';
+} from '#lib/server/security/rate-limit.ts';
 import { validateNewPassword, type NewPasswordErrors } from './new-password';
 
 /** better-auth error codes that mean the link can no longer be used. */

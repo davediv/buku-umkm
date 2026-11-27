@@ -1,6 +1,6 @@
 import { and, eq, notExists, or } from 'drizzle-orm';
-import type { SQLiteDb } from '$lib/server/db';
-import { chartOfAccount, transaction } from '$lib/server/db/schema';
+import type { SQLiteDb } from '#lib/server/db/index.ts';
+import { chartOfAccount, transaction } from '#lib/server/db/schema.ts';
 
 export type AccountDeactivation =
 	'deactivated' | 'not_found' | 'already_inactive' | 'has_balance' | 'has_transactions';

@@ -1,13 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { parseCreateTransaction, requireIdempotencyKey } from '$lib/server/finance/contracts';
-import { createFinancialMutationService } from '$lib/server/finance/commands';
-import { createD1FinanceRepository } from '$lib/server/finance/repository';
-import { financeErrorResponse } from '$lib/server/finance/http';
-import { presentTransaction } from '$lib/server/finance/presenters';
-import { getTransactionPage } from '$lib/server/transactions/list';
-import { parseTransactionQuery } from '$lib/transactions/query';
+import { getDb } from '#lib/server/db/index.ts';
+import { parseCreateTransaction, requireIdempotencyKey } from '#lib/server/finance/contracts.ts';
+import { createFinancialMutationService } from '#lib/server/finance/commands.ts';
+import { createD1FinanceRepository } from '#lib/server/finance/repository.ts';
+import { financeErrorResponse } from '#lib/server/finance/http.ts';
+import { presentTransaction } from '#lib/server/finance/presenters.ts';
+import { getTransactionPage } from '#lib/server/transactions/list.ts';
+import { parseTransactionQuery } from '#lib/transactions/query.ts';
 
 export const GET: RequestHandler = async ({ locals, url }) => {
 	if (!locals.user || !locals.session) {

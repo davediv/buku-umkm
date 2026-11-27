@@ -1,6 +1,6 @@
 <script lang="ts" generics="T extends { id?: string | number }">
 	import { Search, ChevronUp, ChevronDown } from '@lucide/svelte';
-	import { Input } from '$lib/components/ui/input';
+	import { Input } from '#lib/components/ui/input/index.ts';
 	import {
 		Table,
 		TableHeader,
@@ -9,8 +9,8 @@
 		TableHead,
 		TableCell,
 		TableCaption
-	} from '$lib/components/ui/table';
-	import { Button } from '$lib/components/ui/button';
+	} from '#lib/components/ui/table/index.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
 	import type { DataTableProps } from './index';
 
 	type Props<T> = DataTableProps<T>;

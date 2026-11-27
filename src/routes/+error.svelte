@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import PageErrorState from '$lib/components/page-error-state.svelte';
+	import PageErrorState from '#lib/components/page-error-state.svelte';
 
 	let message = $derived(page.error?.message || 'Terjadi kesalahan saat memuat halaman ini.');
 </script>

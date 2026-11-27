@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { ArrowLeft, ExternalLink, Save } from '@lucide/svelte';
-	import { INDONESIAN_MONTHS, TAX_LEGAL_FORM, TAX_REGIME_CHOICE } from '$lib/tax/config';
-	import { formatRupiah } from '$lib/utils';
-	import { toast } from '$lib/components/ui/toast';
-	import { MoneyInput } from '$lib/components/ui/money-input';
+	import { INDONESIAN_MONTHS, TAX_LEGAL_FORM, TAX_REGIME_CHOICE } from '#lib/tax/config.ts';
+	import { formatRupiah } from '#lib/utils/index.ts';
+	import { toast } from '#lib/components/ui/toast/index.ts';
+	import { MoneyInput } from '#lib/components/ui/money-input/index.ts';
 	import {
 		asksExpertServiceQuestion,
 		asksFounderGroupQuestion,
 		defaultFinalRegimeStartYear,
 		isBodyLegalForm
-	} from '$lib/tax/eligibility';
-	import type { TaxLegalForm } from '$lib/tax/types';
+	} from '#lib/tax/eligibility.ts';
+	import type { TaxLegalForm } from '#lib/tax/types.ts';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -98,7 +98,7 @@
 			const result = (await response.json()) as { error?: string };
 			if (!response.ok) throw new Error(result.error || 'Profil pajak gagal disimpan.');
 			toast.success('Profil pajak tersimpan', `Estimasi ${data.taxYear} telah diperbarui.`);
-			await goto('/pajak', { invalidateAll: true });
+			await goto('/pajak', { refreshAll: true });
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : 'Profil pajak gagal disimpan.';
 		} finally {

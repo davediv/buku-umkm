@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto, refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
 		ArrowLeft,
@@ -14,20 +14,20 @@
 		ArrowLeftRight,
 		RotateCcw
 	} from '@lucide/svelte';
-	import { formatRupiah } from '$lib/utils';
-	import OperationStatus from '$lib/components/operation-status.svelte';
-	import { Dialog } from '$lib/components/ui/dialog';
-	import { MoneyInput } from '$lib/components/ui/money-input';
+	import { formatRupiah } from '#lib/utils/index.ts';
+	import OperationStatus from '#lib/components/operation-status.svelte';
+	import { Dialog } from '#lib/components/ui/dialog/index.ts';
+	import { MoneyInput } from '#lib/components/ui/money-input/index.ts';
 	import {
 		AlertDialog,
 		AlertDialogTitle,
 		AlertDialogDescription,
 		AlertDialogAction,
 		AlertDialogCancel
-	} from '$lib/components/ui/alert-dialog';
-	import { getSafeTransactionReturn } from '$lib/client/transaction-return';
+	} from '#lib/components/ui/alert-dialog/index.ts';
+	import { getSafeTransactionReturn } from '#lib/client/transaction-return.ts';
 	import type { PageData } from './$types';
-	import { todayInJakarta } from '$lib/shared/dates';
+	import { todayInJakarta } from '#lib/shared/dates.ts';
 
 	let { data }: { data: PageData } = $props();
 
@@ -215,7 +215,7 @@
 			transferSuccess = result.message ?? 'Transfer berhasil dibuat';
 			setTimeout(() => {
 				closeTransferModal();
-				goto('/akun', { invalidateAll: true });
+				goto('/akun', { refreshAll: true });
 			}, 1500);
 		} catch (error) {
 			console.error('Error creating transfer:', error);
@@ -238,7 +238,7 @@
 								? result.data.message
 								: 'Kas atau rekening berhasil disimpan.'
 					};
-					await invalidateAll();
+					await refreshAll();
 					closeModal();
 					return;
 				}
@@ -264,7 +264,7 @@
 			return async ({ result }: { result: { type: string; data?: Record<string, unknown> } }) => {
 				try {
 					if (result.type === 'success') {
-						await invalidateAll();
+						await refreshAll();
 						operationStatus = {
 							kind: 'success',
 							message:
@@ -313,7 +313,7 @@
 			const resData = (await response.json()) as { error?: string; message?: string };
 
 			if (response.ok) {
-				await invalidateAll();
+				await refreshAll();
 				operationStatus = {
 					kind: 'success',
 					message: resData.message ?? 'Kas atau rekening berhasil dinonaktifkan.'

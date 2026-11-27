@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { HTMLInputAttributes } from 'svelte/elements';
-	import { formatRupiahInput, parseRupiahInput } from '$lib/client/money';
-	import { cn } from '$lib/utils';
+	import { formatRupiahInput, parseRupiahInput } from '#lib/client/money.ts';
+	import { cn } from '#lib/utils/index.ts';
 
 	type Props = Omit<HTMLInputAttributes, 'type' | 'value' | 'name'> & {
 		/** Whole Rupiah, or null while the field is empty. */

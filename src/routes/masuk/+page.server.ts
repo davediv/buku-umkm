@@ -1,18 +1,18 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getAuth } from '$lib/server/auth';
-import { getLoginNotice } from '$lib/server/account/login-notice';
+import { getAuth } from '#lib/server/auth.ts';
+import { getLoginNotice } from '#lib/server/account/login-notice.ts';
 import { APIError } from 'better-auth/api';
 import {
 	CREDENTIAL_RATE_LIMIT_MESSAGE,
 	isCredentialAttemptAllowed
-} from '$lib/server/security/rate-limit';
+} from '#lib/server/security/rate-limit.ts';
 import {
 	DEFAULT_APP_RETURN_TO,
 	getRegistrationHref,
 	getSafeAppReturnTo,
 	getSafeLoginReturnTo
-} from '$lib/navigation/return-to';
+} from '#lib/navigation/return-to.ts';
 
 export const load: PageServerLoad = async (event) => {
 	const returnTo =

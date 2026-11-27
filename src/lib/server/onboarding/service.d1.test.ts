@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
-import type { BusinessType } from '$lib/constants';
-import { category, chartOfAccount, transactionTemplate } from '$lib/server/db/schema';
-import { getCategoryTemplate, getTransactionTemplate } from '$lib/server/db/seed/accounts';
-import { createTestD1 } from '$lib/server/testing/d1';
+import type { BusinessType } from '#lib/constants.ts';
+import { category, chartOfAccount, transactionTemplate } from '#lib/server/db/schema.ts';
+import { getCategoryTemplate, getTransactionTemplate } from '#lib/server/db/seed/accounts.ts';
+import { createTestD1 } from '#lib/server/testing/d1.ts';
 import { completeOnboarding } from './service';
 
 let harness: Awaited<ReturnType<typeof createTestD1>>;

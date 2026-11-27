@@ -32,7 +32,7 @@
 		Wrench,
 		Zap
 	} from '@lucide/svelte';
-	import { isCategoryIcon, type CategoryIcon } from '$lib/shared/validation/category';
+	import { isCategoryIcon, type CategoryIcon } from '#lib/shared/validation/category.ts';
 
 	type Props = {
 		/** The stored Lucide icon name; anything outside the allowlist shows the fallback. */

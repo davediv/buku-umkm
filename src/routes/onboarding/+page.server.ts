@@ -1,19 +1,19 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
+import { getDb } from '#lib/server/db/index.ts';
 import {
 	completeOnboarding,
 	getOnboardingStatus,
 	parseOnboardingForm,
 	skipOnboarding
-} from '$lib/server/onboarding/service';
+} from '#lib/server/onboarding/service.ts';
 import {
 	DEFAULT_APP_RETURN_TO,
 	getLoginHref,
 	getOnboardingHref,
 	getSafeAppReturnTo
-} from '$lib/navigation/return-to';
-import { summarizeError } from '$lib/server/error-summary';
+} from '#lib/navigation/return-to.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
 
 export const load: PageServerLoad = async (event) => {
 	const returnTo =

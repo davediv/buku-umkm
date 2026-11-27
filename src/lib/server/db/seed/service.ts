@@ -2,7 +2,7 @@ import type { SQLiteDb } from '../index';
 import { chartOfAccount, category, transactionTemplate } from '../schema';
 import type { BusinessType } from './accounts';
 import { getAccountTemplate, getCategoryTemplate, getTransactionTemplate } from './accounts';
-import { todayInJakarta } from '$lib/shared/dates';
+import { todayInJakarta } from '#lib/shared/dates.ts';
 
 export type { BusinessType } from './accounts';
 

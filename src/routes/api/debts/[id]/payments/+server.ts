@@ -1,12 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { debtQueries } from '$lib/server/db/queries';
-import { parseDebtPayment, requireIdempotencyKey } from '$lib/server/finance/contracts';
-import { createFinancialMutationService } from '$lib/server/finance/commands';
-import { createD1FinanceRepository } from '$lib/server/finance/repository';
-import { financeErrorResponse } from '$lib/server/finance/http';
-import { presentDebt, presentPayment, presentTransaction } from '$lib/server/finance/presenters';
+import { getDb } from '#lib/server/db/index.ts';
+import { debtQueries } from '#lib/server/db/queries/index.ts';
+import { parseDebtPayment, requireIdempotencyKey } from '#lib/server/finance/contracts.ts';
+import { createFinancialMutationService } from '#lib/server/finance/commands.ts';
+import { createD1FinanceRepository } from '#lib/server/finance/repository.ts';
+import { financeErrorResponse } from '#lib/server/finance/http.ts';
+import { presentDebt, presentPayment, presentTransaction } from '#lib/server/finance/presenters.ts';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	if (!locals.user || !locals.session) {

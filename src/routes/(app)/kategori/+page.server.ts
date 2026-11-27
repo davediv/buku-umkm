@@ -1,9 +1,9 @@
 import type { PageServerLoad, Actions } from './$types';
-import { getDb } from '$lib/server/db';
-import { categoryQueries, transactionQueries } from '$lib/server/db/queries';
+import { getDb } from '#lib/server/db/index.ts';
+import { categoryQueries, transactionQueries } from '#lib/server/db/queries/index.ts';
 import { error as httpError, redirect, fail } from '@sveltejs/kit';
-import { summarizeError } from '$lib/server/error-summary';
-import { isCategoryType, validateCategoryName } from '$lib/shared/validation/category';
+import { summarizeError } from '#lib/server/error-summary.ts';
+import { isCategoryType, validateCategoryName } from '#lib/shared/validation/category.ts';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Check authentication

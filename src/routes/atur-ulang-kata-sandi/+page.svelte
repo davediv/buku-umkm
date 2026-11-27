@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import { t } from '$lib/i18n';
-	import { Button, buttonVariants } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
+	import { enhance, type SubmitFunction } from '$app/forms';
+	import { t } from '#lib/i18n/index.ts';
+	import { Button, buttonVariants } from '#lib/components/ui/button/index.ts';
+	import { Input } from '#lib/components/ui/input/index.ts';
+	import { Label } from '#lib/components/ui/label/index.ts';
 	import { ArrowLeft, KeyRound, Link2Off } from '@lucide/svelte';
-	import { PASSWORD_MIN_LENGTH } from '$lib/shared/password';
-	import type { SubmitFunction } from '@sveltejs/kit';
+	import { PASSWORD_MIN_LENGTH } from '#lib/shared/password.ts';
 	import type { ActionData, PageData } from './$types';
 	import { validateNewPassword, type NewPasswordErrors } from './new-password';
 

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { setBindings } from '#lib/server/testing/cloudflare-workers.ts';
 
 const { signInEmail } = vi.hoisted(() => ({ signInEmail: vi.fn() }));
-vi.mock('$lib/server/auth', () => ({
+vi.mock('#lib/server/auth.ts', () => ({
 	getAuth: () => ({ api: { signInEmail } })
 }));
 
@@ -90,9 +91,9 @@ describe('login rate limiting', () => {
 		const allowed = { limit: vi.fn(async () => ({ success: true })) };
 		const action = actions.signInEmail!;
 
+		setBindings({ AUTH_EMAIL_RATE_LIMITER: blocked, AUTH_IP_RATE_LIMITER: allowed });
 		const result = await action({
-			request: signInRequest('/beranda'),
-			platform: { env: { AUTH_EMAIL_RATE_LIMITER: blocked, AUTH_IP_RATE_LIMITER: allowed } }
+			request: signInRequest('/beranda')
 		} as unknown as Parameters<typeof action>[0]);
 
 		expect(result).toMatchObject({

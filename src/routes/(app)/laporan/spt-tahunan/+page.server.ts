@@ -1,9 +1,9 @@
 import { error as httpError, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
-import { businessProfileQueries } from '$lib/server/db/queries';
-import { decryptNPWP, formatNPWP } from '$lib/server/crypto';
-import { summarizeError } from '$lib/server/error-summary';
+import { getDb } from '#lib/server/db/index.ts';
+import { businessProfileQueries } from '#lib/server/db/queries/index.ts';
+import { decryptNPWP, formatNPWP } from '#lib/server/crypto.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user || !locals.session) throw redirect(302, '/masuk');

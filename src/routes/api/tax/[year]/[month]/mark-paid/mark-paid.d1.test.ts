@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { and, eq } from 'drizzle-orm';
-import { taxProfile, taxRecord } from '$lib/server/db/schema';
-import { createTestD1 } from '$lib/server/testing/d1';
-import { TAX_LEGAL_FORM, TAX_REGIME_CHOICE } from '$lib/tax/config';
+import { taxProfile, taxRecord } from '#lib/server/db/schema.ts';
+import { createTestD1 } from '#lib/server/testing/d1.ts';
+import { TAX_LEGAL_FORM, TAX_REGIME_CHOICE } from '#lib/tax/config.ts';
 
 const dbRef = vi.hoisted(() => ({ current: undefined as unknown }));
-vi.mock('$lib/server/db', () => ({ getDb: () => dbRef.current }));
+vi.mock('#lib/server/db/index.ts', () => ({ getDb: () => dbRef.current }));
 
 import { POST } from './+server';
 

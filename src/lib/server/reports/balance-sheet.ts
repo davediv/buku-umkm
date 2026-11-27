@@ -1,7 +1,7 @@
 import { and, eq, lte } from 'drizzle-orm';
-import type { SQLiteDb } from '$lib/server/db';
-import { dateFromTimestamp } from '$lib/shared/dates';
-import { formatDateLong } from '$lib/utils';
+import type { SQLiteDb } from '#lib/server/db/index.ts';
+import { dateFromTimestamp } from '#lib/shared/dates.ts';
+import { formatDateLong } from '#lib/utils/index.ts';
 
 export type HistoricalAccount = {
 	id: string;

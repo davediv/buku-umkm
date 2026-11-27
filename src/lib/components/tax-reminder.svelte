@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { AlertTriangle, Bell, Calendar, Receipt, X } from '@lucide/svelte';
-	import { formatDateLong, formatRupiah } from '$lib/utils';
-	import { getIndonesianMonthName } from '$lib/tax/config';
-	import type { OutstandingMonth } from '$lib/tax/reminder';
+	import { formatDateLong, formatRupiah } from '#lib/utils/index.ts';
+	import { getIndonesianMonthName } from '#lib/tax/config.ts';
+	import type { OutstandingMonth } from '#lib/tax/reminder.ts';
 
 	interface TaxReminderData {
 		showReminder: boolean;

@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { taxProfile } from '$lib/server/db/schema';
-import { createTestD1 } from '$lib/server/testing/d1';
-import { MAX_RUPIAH_INPUT } from '$lib/tax/payments';
+import { taxProfile } from '#lib/server/db/schema.ts';
+import { createTestD1 } from '#lib/server/testing/d1.ts';
+import { MAX_RUPIAH_INPUT } from '#lib/tax/payments.ts';
 
 const dbRef = vi.hoisted(() => ({ current: undefined as unknown }));
-vi.mock('$lib/server/db', () => ({ getDb: () => dbRef.current }));
+vi.mock('#lib/server/db/index.ts', () => ({ getDb: () => dbRef.current }));
 
 import { PUT } from './+server';
 

@@ -1,12 +1,12 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "buku-umkm",
-	"main": ".svelte-kit/cloudflare/_worker.js",
+	// No `main` or `assets.directory`: @sveltejs/adapter-cloudflare sets both in the deploy config
+	// it writes at build time (.wrangler/deploy/config.json points `wrangler deploy` at it).
 	"compatibility_date": "2026-03-10",
 	"compatibility_flags": ["nodejs_compat", "nodejs_als"],
 	"assets": {
-		"binding": "ASSETS",
-		"directory": ".svelte-kit/cloudflare"
+		"binding": "ASSETS"
 	},
 	"observability": {
 		"enabled": true

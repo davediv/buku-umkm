@@ -4,10 +4,10 @@
 // Compatible with Cloudflare Workers environment
 // ============================================================================
 
-import { env } from '$env/dynamic/private';
+import { NPWP_ENCRYPTION_KEY } from '$app/env/private';
 
 function getEncryptionSecret(): string {
-	const secret = env.NPWP_ENCRYPTION_KEY;
+	const secret = NPWP_ENCRYPTION_KEY;
 	if (!secret || secret.length < 32) {
 		throw new Error(
 			'NPWP_ENCRYPTION_KEY environment variable must be set (at least 32 characters)'

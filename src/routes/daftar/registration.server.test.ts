@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { setBindings } from '#lib/server/testing/cloudflare-workers.ts';
 
 const { signUpEmail } = vi.hoisted(() => ({ signUpEmail: vi.fn() }));
-vi.mock('$lib/server/auth', () => ({
+vi.mock('#lib/server/auth.ts', () => ({
 	getAuth: () => ({ api: { signUpEmail } })
 }));
 
@@ -9,7 +10,7 @@ import { actions } from './+page.server';
 
 type ActionEvent = Parameters<NonNullable<typeof actions.signUpEmail>>[0];
 
-function signUp(password: string, platform?: unknown) {
+function signUp(password: string, bindings?: Record<string, unknown>) {
 	const formData = new FormData();
 	formData.set('name', 'Ayu');
 	formData.set('email', 'Ayu@Example.com');
@@ -19,7 +20,8 @@ function signUp(password: string, platform?: unknown) {
 		method: 'POST',
 		body: formData
 	});
-	return actions.signUpEmail!({ request, platform } as unknown as ActionEvent);
+	setBindings(bindings);
+	return actions.signUpEmail!({ request } as unknown as ActionEvent);
 }
 
 describe('registration action', () => {
@@ -41,7 +43,8 @@ describe('registration action', () => {
 	it('answers with 429 and keeps the entered values once the limit is reached', async () => {
 		const blocked = { limit: vi.fn(async () => ({ success: false })) };
 		const result = await signUp('Rahasia123', {
-			env: { AUTH_EMAIL_RATE_LIMITER: blocked, AUTH_IP_RATE_LIMITER: blocked }
+			AUTH_EMAIL_RATE_LIMITER: blocked,
+			AUTH_IP_RATE_LIMITER: blocked
 		});
 
 		expect(result).toMatchObject({

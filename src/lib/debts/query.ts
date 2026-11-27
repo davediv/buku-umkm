@@ -85,4 +85,4 @@ export function getSafeDebtListHref(
 	if (parsed.pathname !== '/hutang-piutang') return fallback;
 	return getDebtHref(parseDebtQuery(parsed.searchParams));
 }
-import { getSafeAppReturnTo } from '$lib/navigation/return-to';
+import { getSafeAppReturnTo } from '#lib/navigation/return-to.ts';

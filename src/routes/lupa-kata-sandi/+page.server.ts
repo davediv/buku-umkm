@@ -1,9 +1,12 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getAuth, RESET_PASSWORD_TOKEN_TTL_SECONDS } from '$lib/server/auth';
-import { redactEmailAddresses } from '$lib/server/email/send';
-import { summarizeError } from '$lib/server/error-summary';
-import { EMAIL_RATE_LIMIT_MESSAGE, isEmailRequestAllowed } from '$lib/server/security/rate-limit';
+import { getAuth, RESET_PASSWORD_TOKEN_TTL_SECONDS } from '#lib/server/auth.ts';
+import { redactEmailAddresses } from '#lib/server/email/send.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
+import {
+	EMAIL_RATE_LIMIT_MESSAGE,
+	isEmailRequestAllowed
+} from '#lib/server/security/rate-limit.ts';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

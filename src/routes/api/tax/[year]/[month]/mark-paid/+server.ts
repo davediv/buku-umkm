@@ -1,13 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { taxRecord } from '$lib/server/db/schema';
-import { calculateMonthlyTax } from '$lib/tax/engine';
-import { calculateCumulativeRevenue, getTaxYearContext } from '$lib/tax/service';
-import { TAX_TYPE, TAX_STATUS } from '$lib/tax/config';
-import { jakartaToday } from '$lib/tax/period';
-import { isWholeRupiah, normalizePaymentReference } from '$lib/tax/payments';
-import { isIsoCalendarDate } from '$lib/shared/dates';
+import { getDb } from '#lib/server/db/index.ts';
+import { taxRecord } from '#lib/server/db/schema.ts';
+import { calculateMonthlyTax } from '#lib/tax/engine.ts';
+import { calculateCumulativeRevenue, getTaxYearContext } from '#lib/tax/service.ts';
+import { TAX_TYPE, TAX_STATUS } from '#lib/tax/config.ts';
+import { jakartaToday } from '#lib/tax/period.ts';
+import { isWholeRupiah, normalizePaymentReference } from '#lib/tax/payments.ts';
+import { isIsoCalendarDate } from '#lib/shared/dates.ts';
 
 /**
  * POST /api/tax/[year]/[month]/mark-paid

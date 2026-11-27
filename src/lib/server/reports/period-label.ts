@@ -1,5 +1,5 @@
-import { INDONESIAN_MONTHS } from '$lib/tax/config';
-import type { ReportPeriod } from '$lib/server/db/queries/ledger';
+import { INDONESIAN_MONTHS } from '#lib/tax/config.ts';
+import type { ReportPeriod } from '#lib/server/db/queries/ledger.ts';
 
 const QUARTERS = ['I', 'II', 'III', 'IV'];
 

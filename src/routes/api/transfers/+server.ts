@@ -1,11 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { parseCreateTransfer, requireIdempotencyKey } from '$lib/server/finance/contracts';
-import { createFinancialMutationService } from '$lib/server/finance/commands';
-import { createD1FinanceRepository } from '$lib/server/finance/repository';
-import { financeErrorResponse } from '$lib/server/finance/http';
-import { presentTransfer } from '$lib/server/finance/presenters';
+import { getDb } from '#lib/server/db/index.ts';
+import { parseCreateTransfer, requireIdempotencyKey } from '#lib/server/finance/contracts.ts';
+import { createFinancialMutationService } from '#lib/server/finance/commands.ts';
+import { createD1FinanceRepository } from '#lib/server/finance/repository.ts';
+import { financeErrorResponse } from '#lib/server/finance/http.ts';
+import { presentTransfer } from '#lib/server/finance/presenters.ts';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user || !locals.session) {

@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
-import type { SQLiteDb } from '$lib/server/db';
-import { chunkedInserts, runBatch } from '$lib/server/db/batch';
+import type { SQLiteDb } from '#lib/server/db/index.ts';
+import { chunkedInserts, runBatch } from '#lib/server/db/batch.ts';
 import {
 	businessProfile,
 	category,
@@ -14,9 +14,9 @@ import {
 	transaction,
 	transactionPhoto,
 	transactionTemplate
-} from '$lib/server/db/schema';
-import { decryptNPWP, validateNPWP } from '$lib/server/crypto';
-import { summarizeError } from '$lib/server/error-summary';
+} from '#lib/server/db/schema.ts';
+import { decryptNPWP, validateNPWP } from '#lib/server/crypto.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
 import {
 	findReceiptObjects,
 	imageExtension,
@@ -26,8 +26,8 @@ import {
 	receiptKey,
 	receiptMimeType,
 	receiptUrl
-} from '$lib/server/photos/receipts';
-import { readZip, ZipError, type ZipEntry, type ZipReadLimits } from '$lib/shared/zip';
+} from '#lib/server/photos/receipts.ts';
+import { readZip, ZipError, type ZipEntry, type ZipReadLimits } from '#lib/shared/zip.ts';
 import {
 	BACKUP_DOCUMENT_ENTRY,
 	MAX_BACKUP_ARCHIVE_BYTES,

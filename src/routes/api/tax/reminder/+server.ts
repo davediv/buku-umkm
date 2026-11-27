@@ -1,10 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { calculateAnnualTax } from '$lib/tax/engine';
-import { getTaxRecordsForYear, getTaxYearContext } from '$lib/tax/service';
-import { jakartaToday } from '$lib/tax/period';
-import { findOutstandingMonths, reminderPeriods, reminderUrgency } from '$lib/tax/reminder';
+import { getDb } from '#lib/server/db/index.ts';
+import { calculateAnnualTax } from '#lib/tax/engine.ts';
+import { getTaxRecordsForYear, getTaxYearContext } from '#lib/tax/service.ts';
+import { jakartaToday } from '#lib/tax/period.ts';
+import { findOutstandingMonths, reminderPeriods, reminderUrgency } from '#lib/tax/reminder.ts';
 
 /**
  * GET /api/tax/reminder

@@ -1,5 +1,5 @@
-import { MAX_TRANSACTION_AMOUNT } from '$lib/constants';
-import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
+import { MAX_TRANSACTION_AMOUNT } from '#lib/constants.ts';
+import { isIsoCalendarDate, todayInJakarta } from '#lib/shared/dates.ts';
 
 export class FinanceError extends Error {
 	constructor(

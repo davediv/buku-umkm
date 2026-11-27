@@ -1,8 +1,8 @@
 import { error as httpError } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
 import type { PageServerLoad } from './$types';
-import { getAuth } from '$lib/server/auth';
-import { summarizeError } from '$lib/server/error-summary';
+import { getAuth } from '#lib/server/auth.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
 
 type VerificationResult = 'verified' | 'expired' | 'invalid' | 'missing';
 

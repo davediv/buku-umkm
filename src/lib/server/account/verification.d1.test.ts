@@ -2,8 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { betterAuth } from 'better-auth/minimal';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { eq } from 'drizzle-orm';
-import { user } from '$lib/server/db/schema';
-import { createTestD1 } from '$lib/server/testing/d1';
+import { user } from '#lib/server/db/schema.ts';
+import { createTestD1 } from '#lib/server/testing/d1.ts';
 import { markEmailVerifiedAfterReset } from './verification';
 
 let harness: Awaited<ReturnType<typeof createTestD1>>;

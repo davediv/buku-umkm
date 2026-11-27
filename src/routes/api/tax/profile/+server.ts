@@ -1,12 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { TAX_LEGAL_FORM, TAX_REGIME_CHOICE } from '$lib/tax/config';
-import { getTaxProfile, upsertTaxProfile } from '$lib/tax/service';
-import type { TaxProfileData } from '$lib/tax/types';
-import { isIsoCalendarDate } from '$lib/shared/dates';
-import { jakartaToday } from '$lib/tax/period';
-import { isWholeRupiah, MAX_RUPIAH_INPUT } from '$lib/tax/payments';
+import { getDb } from '#lib/server/db/index.ts';
+import { TAX_LEGAL_FORM, TAX_REGIME_CHOICE } from '#lib/tax/config.ts';
+import { getTaxProfile, upsertTaxProfile } from '#lib/tax/service.ts';
+import type { TaxProfileData } from '#lib/tax/types.ts';
+import { isIsoCalendarDate } from '#lib/shared/dates.ts';
+import { jakartaToday } from '#lib/tax/period.ts';
+import { isWholeRupiah, MAX_RUPIAH_INPUT } from '#lib/tax/payments.ts';
 
 const LEGAL_FORMS = new Set<string>(Object.values(TAX_LEGAL_FORM));
 const REGIME_CHOICES = new Set<string>(Object.values(TAX_REGIME_CHOICE));

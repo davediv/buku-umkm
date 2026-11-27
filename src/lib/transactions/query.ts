@@ -1,5 +1,5 @@
-import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
-import { getSafeAppReturnTo } from '$lib/navigation/return-to';
+import { isIsoCalendarDate, todayInJakarta } from '#lib/shared/dates.ts';
+import { getSafeAppReturnTo } from '#lib/navigation/return-to.ts';
 
 export const TRANSACTION_TYPES = ['all', 'income', 'expense', 'transfer'] as const;
 export const TRANSACTION_DATE_RANGES = ['all', 'today', 'week', 'month', 'custom'] as const;

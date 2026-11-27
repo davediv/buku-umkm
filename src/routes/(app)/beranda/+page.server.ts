@@ -1,10 +1,10 @@
 import type { PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
-import { dashboardQueries, transactionQueries } from '$lib/server/db/queries';
+import { getDb } from '#lib/server/db/index.ts';
+import { dashboardQueries, transactionQueries } from '#lib/server/db/queries/index.ts';
 import { redirect } from '@sveltejs/kit';
-import { getTaxDashboardEstimate } from '$lib/tax/service';
-import { resolveDashboardPeriod } from '$lib/navigation/view-state';
-import { summarizeError } from '$lib/server/error-summary';
+import { getTaxDashboardEstimate } from '#lib/tax/service.ts';
+import { resolveDashboardPeriod } from '#lib/navigation/view-state.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Check authentication

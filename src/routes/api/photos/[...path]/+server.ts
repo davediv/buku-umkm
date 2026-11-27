@@ -1,13 +1,14 @@
+import { env } from 'cloudflare:workers';
 import type { RequestHandler } from './$types';
 
 // GET /api/photos/[...path] - Serve photos from R2
-export const GET: RequestHandler = async ({ params, locals, platform }) => {
+export const GET: RequestHandler = async ({ params, locals }) => {
 	// Require authentication
 	if (!locals.user || !locals.session) {
 		return new Response('Unauthorized', { status: 401 });
 	}
 
-	const r2 = platform?.env?.R2;
+	const r2 = env.R2;
 
 	if (!r2) {
 		return new Response('Storage not configured', { status: 500 });

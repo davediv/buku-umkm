@@ -1,13 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { transactionTemplateQueries } from '$lib/server/db/queries';
-import { resolveTemplateCategory } from '$lib/server/templates/category';
+import { getDb } from '#lib/server/db/index.ts';
+import { transactionTemplateQueries } from '#lib/server/db/queries/index.ts';
+import { resolveTemplateCategory } from '#lib/server/templates/category.ts';
 import {
 	isCategoryType,
 	validateTemplateDescription,
 	validateTemplateName
-} from '$lib/shared/validation/category';
+} from '#lib/shared/validation/category.ts';
 
 interface UpdateTemplateBody {
 	name?: unknown;

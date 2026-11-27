@@ -1,5 +1,9 @@
-import type { DebtRecord, PaymentRecord, TransactionRecord } from '$lib/server/finance/repository';
-import type { TransferRecord } from '$lib/server/finance/commands';
+import type {
+	DebtRecord,
+	PaymentRecord,
+	TransactionRecord
+} from '#lib/server/finance/repository.ts';
+import type { TransferRecord } from '#lib/server/finance/commands.ts';
 
 function timestamp(value: Date | number | string): string {
 	return value instanceof Date ? value.toISOString() : new Date(value).toISOString();

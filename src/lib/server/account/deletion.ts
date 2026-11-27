@@ -1,9 +1,9 @@
 import { APIError } from 'better-auth/api';
 import { eq } from 'drizzle-orm';
-import type { SQLiteDb } from '$lib/server/db';
-import { verification } from '$lib/server/db/schema';
-import { summarizeError } from '$lib/server/error-summary';
-import { receiptPrefix } from '$lib/server/photos/receipts';
+import type { SQLiteDb } from '#lib/server/db/index.ts';
+import { verification } from '#lib/server/db/schema.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
+import { receiptPrefix } from '#lib/server/photos/receipts.ts';
 
 /**
  * Account deletion, wired into better-auth's `user.deleteUser` (see $lib/server/auth).

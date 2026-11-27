@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { chartOfAccount } from '$lib/server/db/schema';
-import { dashboardQueries } from '$lib/server/db/queries';
-import { getBalanceSheetAsOf } from '$lib/server/reports/balance-sheet';
-import { createTestD1 } from '$lib/server/testing/d1';
-import { parseAccountName } from '$lib/shared/account-types';
-import { todayInJakarta } from '$lib/shared/dates';
+import { chartOfAccount } from '#lib/server/db/schema.ts';
+import { dashboardQueries } from '#lib/server/db/queries/index.ts';
+import { getBalanceSheetAsOf } from '#lib/server/reports/balance-sheet.ts';
+import { createTestD1 } from '#lib/server/testing/d1.ts';
+import { parseAccountName } from '#lib/shared/account-types.ts';
+import { todayInJakarta } from '#lib/shared/dates.ts';
 import { deactivateAccount, reactivateAccount } from './accounts';
 import { createFinancialMutationService } from './commands';
 import { createD1FinanceRepository } from './repository';

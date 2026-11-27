@@ -1,5 +1,5 @@
 import { APIError, createAuthMiddleware } from 'better-auth/api';
-import { getPasswordError } from '$lib/shared/password';
+import { getPasswordError } from '#lib/shared/password.ts';
 
 /** better-auth endpoints that set a password, and the body field that carries it. */
 const PASSWORD_FIELD_BY_PATH: Record<string, string> = {

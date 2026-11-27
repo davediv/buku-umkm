@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { categoryQueries, transactionQueries } from '$lib/server/db/queries';
-import { validateCategoryName } from '$lib/shared/validation/category';
+import { getDb } from '#lib/server/db/index.ts';
+import { categoryQueries, transactionQueries } from '#lib/server/db/queries/index.ts';
+import { validateCategoryName } from '#lib/shared/validation/category.ts';
 
 interface UpdateCategoryBody {
 	name?: unknown;

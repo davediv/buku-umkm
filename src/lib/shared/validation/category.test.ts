@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryTemplates } from '$lib/server/db/seed/accounts';
+import { categoryTemplates } from '#lib/server/db/seed/accounts.ts';
 import {
 	CATEGORY_ICONS,
 	CATEGORY_NAME_MAX_LENGTH,

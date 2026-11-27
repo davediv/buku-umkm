@@ -14,6 +14,7 @@ export default defineConfig({
 					include: ['src/**/*.{test,spec}.{js,ts}'],
 					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}'],
 					environment: 'node',
+					setupFiles: ['src/lib/server/testing/vitest-setup.ts'],
 					// *.d1.test.ts files run real batches on a local workerd D1; under a full parallel
 					// run (or a slow CI runner) the heaviest take longer than Vitest's 5 s default.
 					testTimeout: 30_000
@@ -35,7 +36,8 @@ export default defineConfig({
 	},
 	resolve: {
 		alias: {
-			$lib: '/src/lib'
+			// Tests run in Node, not workerd; the stub lets them set the Worker's bindings.
+			'cloudflare:workers': '/src/lib/server/testing/cloudflare-workers.ts'
 		}
 	}
 });

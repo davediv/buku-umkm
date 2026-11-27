@@ -2,18 +2,18 @@
 	import { beforeNavigate, goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { AlertTriangle, ArrowLeft, Camera, CheckCircle2, Image, Trash2 } from '@lucide/svelte';
-	import { uploadAttachments } from '$lib/client/transaction-attachments';
+	import { uploadAttachments } from '#lib/client/transaction-attachments.ts';
 	import {
 		clearTransactionDraft,
 		loadTransactionDraft,
 		saveTransactionDraft
-	} from '$lib/client/transaction-draft';
-	import { validateTransactionForm } from '$lib/client/transaction-form';
-	import TransactionForm from '$lib/components/transactions/transaction-form.svelte';
-	import { Dialog } from '$lib/components/ui/dialog';
-	import { toast } from '$lib/components/ui/toast';
-	import { todayInJakarta } from '$lib/shared/dates';
-	import { compressImage } from '$lib/utils';
+	} from '#lib/client/transaction-draft.ts';
+	import { validateTransactionForm } from '#lib/client/transaction-form.ts';
+	import TransactionForm from '#lib/components/transactions/transaction-form.svelte';
+	import { Dialog } from '#lib/components/ui/dialog/index.ts';
+	import { toast } from '#lib/components/ui/toast/index.ts';
+	import { todayInJakarta } from '#lib/shared/dates.ts';
+	import { compressImage } from '#lib/utils/index.ts';
 	import type { PageData } from './$types';
 
 	type PendingPhoto = {
@@ -61,7 +61,8 @@
 		};
 	}
 
-	beforeNavigate(() => {
+	beforeNavigate(({ shallow, type }) => {
+		if (shallow && type === 'goto') return;
 		if (draftReady && !savedTransactionId) saveTransactionDraft(data.user.id, currentDraft());
 	});
 
@@ -455,22 +456,25 @@
 			type="button"
 			onclick={openCamera}
 			class="flex min-h-16 w-full items-center gap-3 rounded-lg border p-4 text-left hover:bg-secondary"
-			><Camera class="h-5 w-5 text-primary" /><span
-				><span class="block font-medium">Kamera</span><span
-					class="block text-xs text-muted-foreground">Ambil foto langsung</span
-				></span
-			></button
 		>
+			<Camera class="h-5 w-5 text-primary" /><span>
+				<span class="block font-medium">Kamera</span><span
+					class="block text-xs text-muted-foreground">Ambil foto langsung</span
+				>
+			</span>
+		</button>
+
 		<button
 			type="button"
 			onclick={openGallery}
 			class="flex min-h-16 w-full items-center gap-3 rounded-lg border p-4 text-left hover:bg-secondary"
-			><Image class="h-5 w-5 text-primary" /><span
-				><span class="block font-medium">Galeri</span><span
-					class="block text-xs text-muted-foreground">Pilih dari galeri</span
-				></span
-			></button
 		>
+			<Image class="h-5 w-5 text-primary" /><span>
+				<span class="block font-medium">Galeri</span><span
+					class="block text-xs text-muted-foreground">Pilih dari galeri</span
+				>
+			</span>
+		</button>
 	</div>
 	<button
 		type="button"

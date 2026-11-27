@@ -1,14 +1,14 @@
 import type { PageServerLoad, Actions } from './$types';
-import { getDb } from '$lib/server/db';
-import { categoryQueries, transactionTemplateQueries } from '$lib/server/db/queries';
+import { getDb } from '#lib/server/db/index.ts';
+import { categoryQueries, transactionTemplateQueries } from '#lib/server/db/queries/index.ts';
 import { error as httpError, redirect, fail } from '@sveltejs/kit';
-import { summarizeError } from '$lib/server/error-summary';
-import { resolveTemplateCategory } from '$lib/server/templates/category';
+import { summarizeError } from '#lib/server/error-summary.ts';
+import { resolveTemplateCategory } from '#lib/server/templates/category.ts';
 import {
 	isCategoryType,
 	validateTemplateDescription,
 	validateTemplateName
-} from '$lib/shared/validation/category';
+} from '#lib/shared/validation/category.ts';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Check authentication

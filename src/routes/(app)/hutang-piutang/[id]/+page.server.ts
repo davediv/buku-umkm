@@ -1,9 +1,9 @@
 import { error, isHttpError, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
-import { debtQueries, chartOfAccountQueries } from '$lib/server/db/queries';
-import { todayInJakarta } from '$lib/shared/dates';
-import { summarizeError } from '$lib/server/error-summary';
+import { getDb } from '#lib/server/db/index.ts';
+import { debtQueries, chartOfAccountQueries } from '#lib/server/db/queries/index.ts';
+import { todayInJakarta } from '#lib/shared/dates.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	// Check authentication

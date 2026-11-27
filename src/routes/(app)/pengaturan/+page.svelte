@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { invalidateAll, goto } from '$app/navigation';
+	import { refreshAll, goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import {
@@ -29,25 +29,25 @@
 		BUSINESS_TYPES,
 		MAX_BACKUP_ARCHIVE_BYTES,
 		MAX_BACKUP_BYTES
-	} from '$lib/constants';
-	import { getBusinessTypeLabel, formatDateTime } from '$lib/utils';
+	} from '#lib/constants.ts';
+	import { getBusinessTypeLabel, formatDateTime } from '#lib/utils/index.ts';
 	import {
 		getSettingsHref,
 		resolveSettingsSection,
 		type SettingsSectionId
-	} from '$lib/settings-navigation';
-	import { toast } from '$lib/components/ui/toast';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import { TabList } from '$lib/components/ui/tabs';
+	} from '#lib/settings-navigation.ts';
+	import { toast } from '#lib/components/ui/toast/index.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import { Input } from '#lib/components/ui/input/index.ts';
+	import { Label } from '#lib/components/ui/label/index.ts';
+	import { TabList } from '#lib/components/ui/tabs/index.ts';
 	import {
 		AlertDialog,
 		AlertDialogTitle,
 		AlertDialogDescription,
 		AlertDialogAction,
 		AlertDialogCancel
-	} from '$lib/components/ui/alert-dialog';
+	} from '#lib/components/ui/alert-dialog/index.ts';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -171,7 +171,7 @@
 
 			profileSuccess = true;
 			isEditingProfile = false;
-			await invalidateAll();
+			await refreshAll();
 
 			setTimeout(() => {
 				profileSuccess = false;
@@ -296,7 +296,7 @@
 		if (typeof DecompressionStream === 'undefined') {
 			throw new Error('Browser ini belum dapat membuka file .zip. Perbarui browser Anda.');
 		}
-		const { readZip, ZipError } = await import('$lib/shared/zip');
+		const { readZip, ZipError } = await import('#lib/shared/zip.ts');
 		const entries = readZip(file.stream(), {
 			maxArchiveBytes: file.size,
 			maxEntries: 1,
@@ -373,7 +373,7 @@
 			}
 
 			// Invalidate all data
-			await invalidateAll();
+			await refreshAll();
 
 			const summary = result.summary;
 			const restored = summary?.restored;
@@ -457,7 +457,7 @@
 		}
 
 		// Clear after navigating: leaving this page records its URL as the navigation origin.
-		await goto('/masuk', { invalidateAll: true, replaceState: true }).finally(clearDeviceStorage);
+		await goto('/masuk', { refreshAll: true, replace: true }).finally(clearDeviceStorage);
 	}
 
 	function openDeleteDialog() {
@@ -508,9 +508,7 @@
 
 		deletePassword = '';
 		// The account and every session are gone; leave the way sign-out does.
-		await goto('/akun-dihapus', { invalidateAll: true, replaceState: true }).finally(
-			clearDeviceStorage
-		);
+		await goto('/akun-dihapus', { refreshAll: true, replace: true }).finally(clearDeviceStorage);
 	}
 </script>
 

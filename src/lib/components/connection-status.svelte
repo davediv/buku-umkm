@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { refreshAll } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { Cloud, RefreshCw, TriangleAlert, WifiOff } from '@lucide/svelte';
 
@@ -22,7 +22,7 @@
 
 		state = 'refreshing';
 		try {
-			await invalidateAll();
+			await refreshAll();
 			state = 'online';
 		} catch {
 			state = 'stale';

@@ -1,9 +1,9 @@
 import type { PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
+import { getDb } from '#lib/server/db/index.ts';
 import { error as httpError, redirect } from '@sveltejs/kit';
-import { getTransactionPage } from '$lib/server/transactions/list';
-import { getTransactionHref, parseTransactionQuery } from '$lib/transactions/query';
-import { summarizeError } from '$lib/server/error-summary';
+import { getTransactionPage } from '#lib/server/transactions/list.ts';
+import { getTransactionHref, parseTransactionQuery } from '#lib/transactions/query.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Check authentication

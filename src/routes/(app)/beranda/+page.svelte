@@ -11,9 +11,9 @@
 		ChevronRight,
 		Plus
 	} from '@lucide/svelte';
-	import PageErrorState from '$lib/components/page-error-state.svelte';
-	import { CashFlowChart } from '$lib/components/ui/charts';
-	import { formatRupiah, formatDateSlash } from '$lib/utils';
+	import PageErrorState from '#lib/components/page-error-state.svelte';
+	import { CashFlowChart } from '#lib/components/ui/charts/index.ts';
+	import { formatRupiah, formatDateSlash } from '#lib/utils/index.ts';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -36,8 +36,8 @@
 
 		try {
 			await goto(`/beranda?period=${period}`, {
-				replaceState: true,
-				noScroll: true
+				replace: true,
+				reset: false
 			});
 		} catch (e) {
 			console.error('Error changing period:', e);

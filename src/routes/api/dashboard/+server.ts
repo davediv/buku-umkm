@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { dashboardQueries, transactionQueries } from '$lib/server/db/queries';
-import { getTaxDashboardEstimate } from '$lib/tax/service';
-import { summarizeError } from '$lib/server/error-summary';
+import { getDb } from '#lib/server/db/index.ts';
+import { dashboardQueries, transactionQueries } from '#lib/server/db/queries/index.ts';
+import { getTaxDashboardEstimate } from '#lib/tax/service.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
 
 type PeriodParam = 'daily' | 'weekly' | 'monthly';
 

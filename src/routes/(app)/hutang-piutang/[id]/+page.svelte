@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
 		ArrowLeft,
@@ -17,22 +17,22 @@
 		Plus,
 		Undo2
 	} from '@lucide/svelte';
-	import OperationStatus from '$lib/components/operation-status.svelte';
-	import ContextBackLink from '$lib/components/context-back-link.svelte';
+	import OperationStatus from '#lib/components/operation-status.svelte';
+	import ContextBackLink from '#lib/components/context-back-link.svelte';
 	import {
 		AlertDialog,
 		AlertDialogAction,
 		AlertDialogCancel,
 		AlertDialogDescription,
 		AlertDialogTitle
-	} from '$lib/components/ui/alert-dialog';
-	import { Dialog } from '$lib/components/ui/dialog';
-	import { MoneyInput } from '$lib/components/ui/money-input';
-	import { debtKindLabel } from '$lib/debts/kind';
-	import { getDebtDueState } from '$lib/debts/list';
-	import { getSafeDebtListHref } from '$lib/debts/query';
-	import { todayInJakarta } from '$lib/shared/dates';
-	import { formatRupiah, formatDate } from '$lib/utils';
+	} from '#lib/components/ui/alert-dialog/index.ts';
+	import { Dialog } from '#lib/components/ui/dialog/index.ts';
+	import { MoneyInput } from '#lib/components/ui/money-input/index.ts';
+	import { debtKindLabel } from '#lib/debts/kind.ts';
+	import { getDebtDueState } from '#lib/debts/list.ts';
+	import { getSafeDebtListHref } from '#lib/debts/query.ts';
+	import { todayInJakarta } from '#lib/shared/dates.ts';
+	import { formatRupiah, formatDate } from '#lib/utils/index.ts';
 
 	let { data } = $props();
 
@@ -144,7 +144,7 @@
 				return;
 			}
 			success = result.message ?? 'Pembayaran dibatalkan.';
-			await invalidateAll();
+			await refreshAll();
 		} catch (err) {
 			console.error(err);
 			pageError = 'Tidak dapat terhubung ke server. Pembayaran belum dibatalkan.';
@@ -235,7 +235,7 @@
 
 			success = result.message ?? null;
 			closePaymentModal();
-			await invalidateAll();
+			await refreshAll();
 		} catch (err) {
 			error = 'Terjadi kesalahan server';
 			console.error(err);

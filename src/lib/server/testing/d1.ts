@@ -2,8 +2,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { drizzle } from 'drizzle-orm/d1';
 import { getPlatformProxy } from 'wrangler';
-import type { SQLiteDb } from '$lib/server/db';
-import * as schema from '$lib/server/db/schema';
+import type { SQLiteDb } from '#lib/server/db/index.ts';
+import * as schema from '#lib/server/db/schema.ts';
 
 const MIGRATIONS_DIR = 'drizzle';
 

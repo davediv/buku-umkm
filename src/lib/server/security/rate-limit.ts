@@ -14,6 +14,8 @@
  *   much tighter limit on backup and restore.
  */
 
+import { env } from 'cloudflare:workers';
+
 /** The `simple.period` every binding in wrangler.jsonc uses. */
 export const RATE_LIMIT_PERIOD_SECONDS = 60;
 
@@ -33,7 +35,6 @@ export type RateLimitEnv = Partial<Record<LimiterName, Pick<RateLimit, 'limit'>>
 
 interface RateLimitEvent {
 	request: Request;
-	platform?: { env?: RateLimitEnv };
 }
 
 interface RateLimitRequestEvent extends RateLimitEvent {
@@ -59,12 +60,9 @@ const HEAVY_API_PATHS = ['/api/backup', '/api/restore'];
 const reportedMissing = new Set<LimiterName>();
 
 /** Returns whether the request may proceed; a missing or failing binding never blocks it. */
-async function consume(
-	env: RateLimitEnv | undefined,
-	name: LimiterName,
-	key: string
-): Promise<boolean> {
-	const limiter = env?.[name];
+async function consume(name: LimiterName, key: string): Promise<boolean> {
+	const limiters: RateLimitEnv = env;
+	const limiter = limiters[name];
 	if (!limiter) {
 		if (!reportedMissing.has(name)) {
 			reportedMissing.add(name);
@@ -128,12 +126,11 @@ async function isAllowedForClientAndAccount(
 	email: string | null | undefined,
 	kind: 'credential' | 'mail'
 ): Promise<boolean> {
-	const env = event.platform?.env;
 	const keyPrefix = kind === 'mail' ? EMAIL_KEY_PREFIX : '';
 	const accountLimiter = kind === 'mail' ? 'MAIL_ADDRESS_RATE_LIMITER' : 'AUTH_EMAIL_RATE_LIMITER';
 	const account = email ? normalizeEmail(email) : '';
-	const checks = [consume(env, 'AUTH_IP_RATE_LIMITER', keyPrefix + clientKey(event.request))];
-	if (account) checks.push(consume(env, accountLimiter, keyPrefix + account));
+	const checks = [consume('AUTH_IP_RATE_LIMITER', keyPrefix + clientKey(event.request))];
+	if (account) checks.push(consume(accountLimiter, keyPrefix + account));
 	return (await Promise.all(checks)).every(Boolean);
 }
 
@@ -213,7 +210,6 @@ export async function limitRequest(event: RateLimitRequestEvent): Promise<Respon
 	if (!pathname.startsWith('/api/')) return null;
 	const userId = event.locals.user?.id;
 	const allowed = await consume(
-		event.platform?.env,
 		isHeavyApiPath(pathname) ? 'HEAVY_API_RATE_LIMITER' : 'API_RATE_LIMITER',
 		userId ? `user:${userId}` : `ip:${clientKey(event.request)}`
 	);

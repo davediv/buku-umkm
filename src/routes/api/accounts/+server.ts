@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { chartOfAccount } from '$lib/server/db/schema';
-import { chartOfAccountQueries } from '$lib/server/db/queries';
+import { getDb } from '#lib/server/db/index.ts';
+import { chartOfAccount } from '#lib/server/db/schema.ts';
+import { chartOfAccountQueries } from '#lib/server/db/queries/index.ts';
 import {
 	VALID_ACCOUNT_TYPES,
 	isValidAccountType,
@@ -10,10 +10,10 @@ import {
 	mapSchemaToApiType,
 	filterActiveAccounts,
 	parseAccountName
-} from '$lib/shared/account-types';
-import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
-import { MAX_TRANSACTION_AMOUNT } from '$lib/constants';
-import { summarizeError } from '$lib/server/error-summary';
+} from '#lib/shared/account-types.ts';
+import { isIsoCalendarDate, todayInJakarta } from '#lib/shared/dates.ts';
+import { MAX_TRANSACTION_AMOUNT } from '#lib/constants.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
 
 // GET /api/accounts - Returns all accounts for authenticated user
 export const GET: RequestHandler = async ({ locals }) => {

@@ -1,8 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
-import { getOnboardingStatus } from '$lib/server/onboarding/service';
-import { getLoginHref, getOnboardingHref } from '$lib/navigation/return-to';
+import { getDb } from '#lib/server/db/index.ts';
+import { getOnboardingStatus } from '#lib/server/onboarding/service.ts';
+import { getLoginHref, getOnboardingHref } from '#lib/navigation/return-to.ts';
 
 export const load: LayoutServerLoad = async ({ locals, untrack, url }) => {
 	// The destination is only needed for redirects. Do not make this persistent

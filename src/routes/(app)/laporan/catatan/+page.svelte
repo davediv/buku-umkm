@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { Download, FileText, ChevronLeft, Printer } from '@lucide/svelte';
-	import PageErrorState from '$lib/components/page-error-state.svelte';
-	import ReportNavigation from '$lib/components/reports/report-navigation.svelte';
-	import { toast } from '$lib/components/ui/toast';
-	import { formatDateLong } from '$lib/utils';
-	import { todayInJakarta } from '$lib/shared/dates';
-	import { exportCatatanPDF, generatePDFFilename } from '$lib/utils/pdf-export';
+	import PageErrorState from '#lib/components/page-error-state.svelte';
+	import ReportNavigation from '#lib/components/reports/report-navigation.svelte';
+	import { toast } from '#lib/components/ui/toast/index.ts';
+	import { formatDateLong } from '#lib/utils/index.ts';
+	import { todayInJakarta } from '#lib/shared/dates.ts';
+	import { exportCatatanPDF, generatePDFFilename } from '#lib/utils/pdf-export.ts';
 	import type { PageData } from './$types';
 
 	type Period = 'monthly' | 'quarterly' | 'yearly';
@@ -38,8 +38,8 @@
 
 		try {
 			await goto(`/laporan/catatan?period=${period}`, {
-				replaceState: true,
-				noScroll: true
+				replace: true,
+				reset: false
 			});
 		} catch (e) {
 			console.error('Error changing period:', e);

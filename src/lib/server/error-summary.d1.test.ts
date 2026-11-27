@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DrizzleQueryError } from 'drizzle-orm';
-import { businessProfile, onboardingState } from '$lib/server/db/schema';
-import { createTestD1 } from '$lib/server/testing/d1';
+import { businessProfile, onboardingState } from '#lib/server/db/schema.ts';
+import { createTestD1 } from '#lib/server/testing/d1.ts';
 import { summarizeError } from './error-summary';
 
 let harness: Awaited<ReturnType<typeof createTestD1>>;

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SQLiteDb } from '$lib/server/db';
-import { transactionQueries } from '$lib/server/db/queries';
-import { parseTransactionQuery } from '$lib/transactions/query';
+import type { SQLiteDb } from '#lib/server/db/index.ts';
+import { transactionQueries } from '#lib/server/db/queries/index.ts';
+import { parseTransactionQuery } from '#lib/transactions/query.ts';
 import { getTransactionPage, getTransactionsForExport } from './list';
 
 const db = {} as SQLiteDb;

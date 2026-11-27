@@ -1,15 +1,15 @@
-import { LOAN_INTEREST_CATEGORY_CODES } from '$lib/debts/interest';
+import { LOAN_INTEREST_CATEGORY_CODES } from '#lib/debts/interest.ts';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { categoryQueries } from '$lib/server/db/queries';
+import { getDb } from '#lib/server/db/index.ts';
+import { categoryQueries } from '#lib/server/db/queries/index.ts';
 import {
 	isCategoryType,
 	validateCategoryCode,
 	validateCategoryColor,
 	validateCategoryIcon,
 	validateCategoryName
-} from '$lib/shared/validation/category';
+} from '#lib/shared/validation/category.ts';
 
 interface CreateCategoryBody {
 	name?: unknown;

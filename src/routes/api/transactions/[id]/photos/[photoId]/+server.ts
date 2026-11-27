@@ -1,12 +1,13 @@
+import { env } from 'cloudflare:workers';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { transactionPhotoQueries } from '$lib/server/db/queries';
-import { summarizeError } from '$lib/server/error-summary';
-import { isOwnReceiptKey } from '$lib/server/photos/receipts';
+import { getDb } from '#lib/server/db/index.ts';
+import { transactionPhotoQueries } from '#lib/server/db/queries/index.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
+import { isOwnReceiptKey } from '#lib/server/photos/receipts.ts';
 
 // DELETE /api/transactions/[id]/photos/[photoId] - Delete a photo
-export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
+export const DELETE: RequestHandler = async ({ params, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
@@ -48,8 +49,8 @@ export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
 		// the row must never delete that.
 		if (!isOwnReceiptKey(userId, photo.r2Key)) {
 			console.warn('Photo row removed without deleting its object: key outside the owner prefix');
-		} else if (platform?.env?.R2) {
-			await platform.env.R2.delete(photo.r2Key);
+		} else if (env.R2) {
+			await env.R2.delete(photo.r2Key);
 		}
 
 		return json({

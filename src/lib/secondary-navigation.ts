@@ -11,7 +11,7 @@ import {
 	UserRound,
 	Wallet
 } from '@lucide/svelte';
-import { getSettingsHref } from '$lib/settings-navigation';
+import { getSettingsHref } from '#lib/settings-navigation.ts';
 
 export interface SecondaryNavigationItem {
 	title: string;

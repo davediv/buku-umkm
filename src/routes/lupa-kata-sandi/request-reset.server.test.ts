@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setBindings } from '#lib/server/testing/cloudflare-workers.ts';
 
 const { requestPasswordReset } = vi.hoisted(() => ({ requestPasswordReset: vi.fn() }));
-vi.mock('$lib/server/auth', () => ({
+vi.mock('#lib/server/auth.ts', () => ({
 	getAuth: () => ({ api: { requestPasswordReset } }),
 	RESET_PASSWORD_TOKEN_TTL_SECONDS: 3600
 }));
@@ -10,7 +11,7 @@ import { actions, load } from './+page.server';
 
 type ActionEvent = Parameters<NonNullable<typeof actions.default>>[0];
 
-function requestReset(email: string, platform?: unknown) {
+function requestReset(email: string, bindings?: Record<string, unknown>) {
 	const formData = new FormData();
 	formData.set('email', email);
 	const request = new Request('https://buku.test/lupa-kata-sandi', {
@@ -18,7 +19,8 @@ function requestReset(email: string, platform?: unknown) {
 		body: formData,
 		headers: { 'CF-Connecting-IP': '203.0.113.9' }
 	});
-	return actions.default!({ request, platform } as unknown as ActionEvent);
+	setBindings(bindings);
+	return actions.default!({ request } as unknown as ActionEvent);
 }
 
 beforeEach(() => {
@@ -69,7 +71,8 @@ describe('forgot password page', () => {
 		const allowed = { limit: vi.fn(async () => ({ success: true })) };
 
 		const result = await requestReset('Ayu@Example.com', {
-			env: { MAIL_ADDRESS_RATE_LIMITER: blocked, AUTH_IP_RATE_LIMITER: allowed }
+			MAIL_ADDRESS_RATE_LIMITER: blocked,
+			AUTH_IP_RATE_LIMITER: allowed
 		});
 
 		expect(result).toMatchObject({

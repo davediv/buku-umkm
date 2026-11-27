@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto, refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
 		ArrowLeftRight,
@@ -22,26 +22,31 @@
 		AlertDialogCancel,
 		AlertDialogDescription,
 		AlertDialogTitle
-	} from '$lib/components/ui/alert-dialog';
-	import CategoryIcon from '$lib/components/category-icon.svelte';
-	import { isTransferLeg, transactionCategoryLabel } from '$lib/transactions/labels';
-	import OperationStatus from '$lib/components/operation-status.svelte';
-	import { toast } from '$lib/components/ui/toast';
+	} from '#lib/components/ui/alert-dialog/index.ts';
+	import CategoryIcon from '#lib/components/category-icon.svelte';
+	import { isTransferLeg, transactionCategoryLabel } from '#lib/transactions/labels.ts';
+	import OperationStatus from '#lib/components/operation-status.svelte';
+	import { toast } from '#lib/components/ui/toast/index.ts';
 	import {
 		getTransactionDetailHref,
 		getTransactionHref,
 		toTransactionSearchParams,
 		type TransactionDateRange,
 		type TransactionTypeFilter
-	} from '$lib/transactions/query';
+	} from '#lib/transactions/query.ts';
 	import {
 		exportTransactions,
 		generateExportFilename,
 		type ExportFormat,
 		type TransactionForExport
-	} from '$lib/utils/export';
-	import { categoryColorOrDefault, isCategoryColor } from '$lib/shared/validation/category';
-	import { formatDate, formatDateShort, formatRupiah, formatTransactionAmount } from '$lib/utils';
+	} from '#lib/utils/export.ts';
+	import { categoryColorOrDefault, isCategoryColor } from '#lib/shared/validation/category.ts';
+	import {
+		formatDate,
+		formatDateShort,
+		formatRupiah,
+		formatTransactionAmount
+	} from '#lib/utils/index.ts';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -148,7 +153,7 @@
 
 	async function changePageSize(event: Event) {
 		const pageSize = Number((event.currentTarget as HTMLSelectElement).value) as 10 | 25 | 50;
-		await goto(getTransactionHref(query, { pageSize, page: 1 }), { noScroll: true });
+		await goto(getTransactionHref(query, { pageSize, page: 1 }), { reset: false });
 	}
 
 	async function handleDelete(transactionId: string) {
@@ -160,9 +165,9 @@
 			if (!response.ok) throw new Error(result.error || 'Gagal menghapus transaksi');
 
 			if (data.transactions.length === 1 && pagination.page > 1) {
-				await goto(getTransactionHref(query, { page: pagination.page - 1 }), { noScroll: true });
+				await goto(getTransactionHref(query, { page: pagination.page - 1 }), { reset: false });
 			} else {
-				await invalidateAll();
+				await refreshAll();
 			}
 			operationStatus = {
 				kind: 'success',

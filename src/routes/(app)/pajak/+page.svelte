@@ -9,7 +9,7 @@
 		Receipt,
 		Settings2
 	} from '@lucide/svelte';
-	import PageErrorState from '$lib/components/page-error-state.svelte';
+	import PageErrorState from '#lib/components/page-error-state.svelte';
 	import {
 		Table,
 		TableBody,
@@ -17,21 +17,21 @@
 		TableHead,
 		TableHeader,
 		TableRow
-	} from '$lib/components/ui/table';
-	import { TAX_STATUS, TAXPAYER_TYPE, getIndonesianMonthName } from '$lib/tax/config';
-	import { formatPercent, formatRupiah } from '$lib/utils';
-	import { toast } from '$lib/components/ui/toast';
+	} from '#lib/components/ui/table/index.ts';
+	import { TAX_STATUS, TAXPAYER_TYPE, getIndonesianMonthName } from '#lib/tax/config.ts';
+	import { formatPercent, formatRupiah } from '#lib/utils/index.ts';
+	import { toast } from '#lib/components/ui/toast/index.ts';
 	import {
 		AlertDialog,
 		AlertDialogTitle,
 		AlertDialogDescription,
 		AlertDialogAction,
 		AlertDialogCancel
-	} from '$lib/components/ui/alert-dialog';
-	import type { TaxEligibilityDecision, TaxpayerType } from '$lib/tax/types';
-	import type { PaymentStatus } from '$lib/tax/payments';
-	import { jakartaToday } from '$lib/tax/period';
-	import { MoneyInput } from '$lib/components/ui/money-input';
+	} from '#lib/components/ui/alert-dialog/index.ts';
+	import type { TaxEligibilityDecision, TaxpayerType } from '#lib/tax/types.ts';
+	import type { PaymentStatus } from '#lib/tax/payments.ts';
+	import { jakartaToday } from '#lib/tax/period.ts';
+	import { MoneyInput } from '#lib/components/ui/money-input/index.ts';
 
 	interface TaxSummary {
 		year: number;
@@ -187,7 +187,7 @@
 
 			payTarget = null;
 			// Refresh page data - the page will reload with updated payment status
-			await goto('/pajak', { invalidateAll: true });
+			await goto('/pajak', { refreshAll: true });
 		} catch (err) {
 			console.error('Error marking tax as paid:', err);
 			const errorMessage = err instanceof Error ? err.message : 'Pembayaran gagal disimpan.';

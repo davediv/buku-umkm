@@ -13,8 +13,8 @@ import {
 	getThresholdAlertLevel,
 	getThresholdColor,
 	formatRupiah
-} from '$lib/tax/engine';
-import { TAXPAYER_TYPE } from '$lib/tax/config';
+} from '#lib/tax/engine.ts';
+import { TAXPAYER_TYPE } from '#lib/tax/config.ts';
 
 describe('Tax Engine', () => {
 	describe('calculateMonthlyTax', () => {

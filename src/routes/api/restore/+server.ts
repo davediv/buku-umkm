@@ -1,19 +1,20 @@
+import { env, waitUntil } from 'cloudflare:workers';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { summarizeError } from '$lib/server/error-summary';
+import { getDb } from '#lib/server/db/index.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
 import {
 	MAX_BACKUP_ARCHIVE_BYTES,
 	MAX_BACKUP_BYTES,
 	MULTIPART_OVERHEAD_BYTES
-} from '$lib/server/backup/format';
-import { BackupError } from '$lib/server/backup/parse';
+} from '#lib/server/backup/format.ts';
+import { BackupError } from '#lib/server/backup/parse.ts';
 import {
 	declaredContentLength,
 	parseMultipart,
 	readBodyWithLimit
-} from '$lib/server/backup/request-body';
-import { restoreBackup, restoreBackupArchive } from '$lib/server/backup/restore';
+} from '#lib/server/backup/request-body.ts';
+import { restoreBackup, restoreBackupArchive } from '#lib/server/backup/restore.ts';
 
 const TOO_LARGE = `Ukuran file backup terlalu besar (maks ${MAX_BACKUP_BYTES / 1024 / 1024} MB)`;
 const ARCHIVE_TOO_LARGE = `Ukuran file backup .zip terlalu besar untuk dipulihkan sekaligus (maks ${MAX_BACKUP_ARCHIVE_BYTES / 1024 / 1024} MB)`;
@@ -48,7 +49,7 @@ async function readBackupText(request: Request): Promise<string | Response> {
 }
 
 // POST /api/restore - Replace the caller's data with the contents of a backup file
-export const POST: RequestHandler = async ({ request, locals, platform }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user || !locals.session) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
 	}
@@ -62,10 +63,9 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 				return failure(ARCHIVE_TOO_LARGE, 413, 'BACKUP_TOO_LARGE');
 			}
 			if (!request.body) return failure('File backup kosong', 400);
-			const ctx = platform?.ctx;
 			const summary = await restoreBackupArchive(getDb(), locals.user.id, request.body, {
-				receipts: platform?.env?.R2 ?? null,
-				waitUntil: ctx ? (promise) => ctx.waitUntil(promise) : undefined
+				receipts: env.R2 ?? null,
+				waitUntil
 			});
 			return json({ success: true, message: RESTORED, summary });
 		}
@@ -81,7 +81,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		}
 
 		const summary = await restoreBackup(getDb(), locals.user.id, file, {
-			receipts: platform?.env?.R2 ?? null
+			receipts: env.R2 ?? null
 		});
 		return json({ success: true, message: RESTORED, summary });
 	} catch (error) {

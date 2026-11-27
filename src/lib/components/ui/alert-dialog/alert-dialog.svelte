@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Dialog } from '$lib/components/ui/dialog';
+	import { Dialog } from '#lib/components/ui/dialog/index.ts';
 	import { setContext } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
 	import type { Snippet } from 'svelte';

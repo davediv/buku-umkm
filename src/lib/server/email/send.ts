@@ -1,5 +1,5 @@
-import { env } from '$env/dynamic/private';
-import { getRequestEvent } from '$app/server';
+import { env } from 'cloudflare:workers';
+import { EMAIL_FROM } from '$app/env/private';
 import type { EmailMessage } from './messages';
 
 /**
@@ -86,15 +86,9 @@ export async function sendEmail(
 	}
 }
 
-/** The binding and sender of the request being handled. */
+/** The Worker's `EMAIL` binding and sender. */
 export function requestEmailTransport(): EmailTransport {
-	let binding: SendEmail | undefined;
-	try {
-		binding = getRequestEvent().platform?.env?.EMAIL;
-	} catch {
-		// Outside a request (scripts, tests) there is no platform, so no binding.
-	}
-	return { binding, from: env.EMAIL_FROM };
+	return { binding: env.EMAIL, from: EMAIL_FROM };
 }
 
 /** Sends `message` to `to` with the current request's binding and sender. */

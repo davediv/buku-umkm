@@ -1,11 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { calculateAnnualTax, getThresholdInfo } from '$lib/tax/engine';
-import { getTaxRecordsForYear, getTaxYearContext } from '$lib/tax/service';
-import { TAX_STATUS } from '$lib/tax/config';
-import { jakartaToday } from '$lib/tax/period';
-import { reconcilePayment } from '$lib/tax/payments';
+import { getDb } from '#lib/server/db/index.ts';
+import { calculateAnnualTax, getThresholdInfo } from '#lib/tax/engine.ts';
+import { getTaxRecordsForYear, getTaxYearContext } from '#lib/tax/service.ts';
+import { TAX_STATUS } from '#lib/tax/config.ts';
+import { jakartaToday } from '#lib/tax/period.ts';
+import { reconcilePayment } from '#lib/tax/payments.ts';
 
 /**
  * GET /api/tax/history

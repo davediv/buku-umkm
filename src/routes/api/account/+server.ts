@@ -1,14 +1,14 @@
 import { json } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
 import type { RequestHandler } from './$types';
-import { RECEIPTS_NOT_DELETED } from '$lib/server/account/deletion';
-import { getAuth } from '$lib/server/auth';
-import { summarizeError } from '$lib/server/error-summary';
+import { RECEIPTS_NOT_DELETED } from '#lib/server/account/deletion.ts';
+import { getAuth } from '#lib/server/auth.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
 import {
 	CREDENTIAL_RATE_LIMIT_MESSAGE,
 	isCredentialAttemptAllowed,
 	tooManyRequests
-} from '$lib/server/security/rate-limit';
+} from '#lib/server/security/rate-limit.ts';
 
 /** The word the user types to confirm, as shown in Pengaturan > Hapus akun. */
 const CONFIRMATION_WORD = 'HAPUS';

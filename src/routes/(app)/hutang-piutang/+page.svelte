@@ -10,14 +10,14 @@
 		Search,
 		X
 	} from '@lucide/svelte';
-	import OperationStatus from '$lib/components/operation-status.svelte';
-	import { Dialog } from '$lib/components/ui/dialog';
-	import { MoneyInput } from '$lib/components/ui/money-input';
-	import { debtKindLabel, type DebtKind } from '$lib/debts/kind';
-	import { getDebtDueState } from '$lib/debts/list';
-	import { getDebtDetailHref, getDebtHref } from '$lib/debts/query';
-	import { todayInJakarta } from '$lib/shared/dates';
-	import { formatDate, formatRupiah } from '$lib/utils';
+	import OperationStatus from '#lib/components/operation-status.svelte';
+	import { Dialog } from '#lib/components/ui/dialog/index.ts';
+	import { MoneyInput } from '#lib/components/ui/money-input/index.ts';
+	import { debtKindLabel, type DebtKind } from '#lib/debts/kind.ts';
+	import { getDebtDueState } from '#lib/debts/list.ts';
+	import { getDebtDetailHref, getDebtHref } from '#lib/debts/query.ts';
+	import { todayInJakarta } from '#lib/shared/dates.ts';
+	import { formatDate, formatRupiah } from '#lib/utils/index.ts';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -145,7 +145,7 @@
 					q: '',
 					sort: 'urgency'
 				}),
-				{ invalidateAll: true }
+				{ refreshAll: true }
 			);
 		} catch (error) {
 			console.error('Error creating debt:', error);

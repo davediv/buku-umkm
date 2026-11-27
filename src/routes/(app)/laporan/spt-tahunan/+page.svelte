@@ -10,17 +10,17 @@
 		Loader2,
 		Wallet
 	} from '@lucide/svelte';
-	import ReportNavigation from '$lib/components/reports/report-navigation.svelte';
-	import { toast } from '$lib/components/ui/toast';
-	import { todayInJakarta } from '$lib/shared/dates';
-	import { formatRupiah } from '$lib/utils';
+	import ReportNavigation from '#lib/components/reports/report-navigation.svelte';
+	import { toast } from '#lib/components/ui/toast/index.ts';
+	import { todayInJakarta } from '#lib/shared/dates.ts';
+	import { formatRupiah } from '#lib/utils/index.ts';
 	import {
 		exportSPTToExcel,
 		exportSPTToPDF,
 		generateSPTFilename,
 		type SPTBusinessProfile,
 		type SPTTaxData
-	} from '$lib/utils/spt-export';
+	} from '#lib/utils/spt-export.ts';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -67,7 +67,7 @@
 
 	async function changeYear(event: Event) {
 		const year = Number((event.currentTarget as HTMLSelectElement).value);
-		await goto(`/laporan/spt-tahunan?year=${year}`, { replaceState: true, noScroll: true });
+		await goto(`/laporan/spt-tahunan?year=${year}`, { replace: true, reset: false });
 	}
 
 	function getBusinessProfile(taxpayerType: string): SPTBusinessProfile {

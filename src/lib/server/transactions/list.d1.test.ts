@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { chartOfAccount } from '$lib/server/db/schema';
-import { createFinancialMutationService } from '$lib/server/finance/commands';
-import { createD1FinanceRepository } from '$lib/server/finance/repository';
-import { createTestD1 } from '$lib/server/testing/d1';
-import { parseTransactionQuery } from '$lib/transactions/query';
+import { chartOfAccount } from '#lib/server/db/schema.ts';
+import { createFinancialMutationService } from '#lib/server/finance/commands.ts';
+import { createD1FinanceRepository } from '#lib/server/finance/repository.ts';
+import { createTestD1 } from '#lib/server/testing/d1.ts';
+import { parseTransactionQuery } from '#lib/transactions/query.ts';
 import { getTransactionPage } from './list';
 
 let harness: Awaited<ReturnType<typeof createTestD1>>;

@@ -1,8 +1,8 @@
 import { getTableColumns, sql, type SQL } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
-import type { SQLiteDb } from '$lib/server/db';
-import { financeGuard } from '$lib/server/db/schema';
+import type { SQLiteDb } from '#lib/server/db/index.ts';
+import { financeGuard } from '#lib/server/db/schema.ts';
 
 /** D1 rejects statements that bind more than 100 parameters. */
 export const D1_MAX_BOUND_PARAMETERS = 100;

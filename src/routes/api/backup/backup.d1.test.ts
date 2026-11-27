@@ -8,14 +8,15 @@ import {
 	taxProfile,
 	transaction,
 	transactionPhoto
-} from '$lib/server/db/schema';
-import { BACKUP_SCHEMA_VERSION, type BackupDocument } from '$lib/server/backup/format';
-import { createTestD1 } from '$lib/server/testing/d1';
-import { createTestR2, fakeImage } from '$lib/server/testing/r2';
-import { readZip, type ZipEntry } from '$lib/shared/zip';
+} from '#lib/server/db/schema.ts';
+import { BACKUP_SCHEMA_VERSION, type BackupDocument } from '#lib/server/backup/format.ts';
+import { createTestD1 } from '#lib/server/testing/d1.ts';
+import { setBindings } from '#lib/server/testing/cloudflare-workers.ts';
+import { createTestR2, fakeImage } from '#lib/server/testing/r2.ts';
+import { readZip, type ZipEntry } from '#lib/shared/zip.ts';
 
 const dbRef = vi.hoisted(() => ({ current: undefined as unknown }));
-vi.mock('$lib/server/db', () => ({ getDb: () => dbRef.current }));
+vi.mock('#lib/server/db/index.ts', () => ({ getDb: () => dbRef.current }));
 
 import { POST } from './+server';
 import { POST as restore } from '../restore/+server';
@@ -31,9 +32,9 @@ const IMAGE = fakeImage('jpg', 3000);
 const r2 = createTestR2();
 
 function download(locals: object = session(OWNER), bucket: R2Bucket | null = r2.bucket) {
+	setBindings({ R2: bucket });
 	return POST({
 		locals,
-		platform: { env: { R2: bucket } },
 		request: new Request('https://buku.test/api/backup', { method: 'POST' })
 	} as unknown as Parameters<typeof POST>[0]);
 }
@@ -217,9 +218,9 @@ describe('POST /api/backup', () => {
 		const fresh = 'backup-fresh';
 		await harness.createUser(fresh);
 
+		setBindings({ R2: r2.bucket });
 		const response = await restore({
 			locals: session(fresh),
-			platform: { env: { R2: r2.bucket } },
 			request: new Request('https://buku.test/api/restore', {
 				method: 'POST',
 				body: zip,
@@ -243,7 +244,6 @@ describe('POST /api/backup', () => {
 
 		const served = await servePhoto({
 			locals: session(fresh),
-			platform: { env: { R2: r2.bucket } },
 			params: { path: photo.r2Key }
 		} as unknown as Parameters<typeof servePhoto>[0]);
 		expect(served.status).toBe(200);

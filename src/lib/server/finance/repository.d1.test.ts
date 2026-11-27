@@ -7,8 +7,8 @@ import {
 	debtPayment,
 	financialCommand,
 	transaction
-} from '$lib/server/db/schema';
-import { createTestD1 } from '$lib/server/testing/d1';
+} from '#lib/server/db/schema.ts';
+import { createTestD1 } from '#lib/server/testing/d1.ts';
 import { createFinancialMutationService } from './commands';
 import { createD1FinanceRepository } from './repository';
 

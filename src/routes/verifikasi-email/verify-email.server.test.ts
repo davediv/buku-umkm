@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { APIError } from 'better-auth/api';
 
 const { verifyEmail } = vi.hoisted(() => ({ verifyEmail: vi.fn() }));
-vi.mock('$lib/server/auth', () => ({ getAuth: () => ({ api: { verifyEmail } }) }));
+vi.mock('#lib/server/auth.ts', () => ({ getAuth: () => ({ api: { verifyEmail } }) }));
 
 import { load } from './+page.server';
 

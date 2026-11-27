@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { createFinancialMutationService } from '$lib/server/finance/commands';
-import { createD1FinanceRepository } from '$lib/server/finance/repository';
-import { financeErrorResponse } from '$lib/server/finance/http';
+import { getDb } from '#lib/server/db/index.ts';
+import { createFinancialMutationService } from '#lib/server/finance/commands.ts';
+import { createD1FinanceRepository } from '#lib/server/finance/repository.ts';
+import { financeErrorResponse } from '#lib/server/finance/http.ts';
 
 // DELETE /api/transfers/[id] - Reverse a transfer made by mistake (id: the transfer id
 // both legs carry as their reference number)

@@ -14,8 +14,8 @@ import {
 	sql
 } from 'drizzle-orm';
 import type { SQLiteDb } from '../index';
-import { LOAN_INTEREST_CATEGORY_CODES } from '$lib/debts/interest';
-import { todayInJakarta } from '$lib/shared/dates';
+import { LOAN_INTEREST_CATEGORY_CODES } from '#lib/debts/interest.ts';
+import { todayInJakarta } from '#lib/shared/dates.ts';
 import {
 	chartOfAccount,
 	category,

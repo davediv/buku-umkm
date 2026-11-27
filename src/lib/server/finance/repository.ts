@@ -1,6 +1,6 @@
 import { and, eq, gte, inArray, isNotNull, ne, sql } from 'drizzle-orm';
-import type { SQLiteDb } from '$lib/server/db';
-import { batchGuard, isGuardFailure, runBatch } from '$lib/server/db/batch';
+import type { SQLiteDb } from '#lib/server/db/index.ts';
+import { batchGuard, isGuardFailure, runBatch } from '#lib/server/db/batch.ts';
 import {
 	category,
 	chartOfAccount,
@@ -8,7 +8,7 @@ import {
 	debtPayment,
 	financialCommand,
 	transaction
-} from '$lib/server/db/schema';
+} from '#lib/server/db/schema.ts';
 import { FinanceError } from './contracts';
 
 export type AccountRecord = typeof chartOfAccount.$inferSelect;

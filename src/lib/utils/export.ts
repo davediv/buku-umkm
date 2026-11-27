@@ -1,5 +1,5 @@
-import { formatDateLong } from '$lib/utils';
-import { transactionCategoryLabel, transactionKindLabel } from '$lib/transactions/labels';
+import { formatDateLong } from '#lib/utils/index.ts';
+import { transactionCategoryLabel, transactionKindLabel } from '#lib/transactions/labels.ts';
 
 export type ExportFormat = 'xlsx' | 'csv';
 

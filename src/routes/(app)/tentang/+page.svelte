@@ -6,7 +6,7 @@
 		Calculator,
 		FileBarChart
 	} from '@lucide/svelte';
-	import { APP_VERSION } from '$lib/constants';
+	import { APP_VERSION } from '#lib/constants.ts';
 </script>
 
 <svelte:head>

@@ -2,9 +2,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { betterAuth } from 'better-auth/minimal';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { eq } from 'drizzle-orm';
-import * as schema from '$lib/server/db/schema';
-import { createTestD1 } from '$lib/server/testing/d1';
-import { enforcePasswordPolicy } from '$lib/server/security/password-policy';
+import * as schema from '#lib/server/db/schema.ts';
+import { createTestD1 } from '#lib/server/testing/d1.ts';
+import { enforcePasswordPolicy } from '#lib/server/security/password-policy.ts';
 import { deleteUserOptions, deleteUserReceipts, type ReceiptBucket } from './deletion';
 
 let harness: Awaited<ReturnType<typeof createTestD1>>;

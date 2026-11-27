@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { APIError } from 'better-auth/api';
+import { setBindings } from '#lib/server/testing/cloudflare-workers.ts';
 
 const { deleteUser } = vi.hoisted(() => ({ deleteUser: vi.fn() }));
-vi.mock('$lib/server/auth', () => ({ getAuth: () => ({ api: { deleteUser } }) }));
+vi.mock('#lib/server/auth.ts', () => ({ getAuth: () => ({ api: { deleteUser } }) }));
 
 import { DELETE } from './+server';
 
@@ -12,16 +13,16 @@ const USER = { id: 'u1', email: 'ayu@example.com' };
 
 function remove(
 	body: unknown,
-	{ signedIn = true, platform }: { signedIn?: boolean; platform?: unknown } = {}
+	{ signedIn = true, bindings }: { signedIn?: boolean; bindings?: Record<string, unknown> } = {}
 ) {
 	const request = new Request('https://buku.test/api/account', {
 		method: 'DELETE',
 		headers: { 'Content-Type': 'application/json', cookie: 'better-auth.session_token=abc' },
 		body: JSON.stringify(body)
 	});
+	setBindings(bindings);
 	return DELETE({
 		request,
-		platform,
 		locals: signedIn ? { user: USER, session: { id: 's1' } } : {}
 	} as unknown as Event);
 }
@@ -92,7 +93,7 @@ describe('DELETE /api/account', () => {
 		const allowed = { limit: vi.fn(async () => ({ success: true })) };
 		const response = await remove(
 			{ password: 'Rahasia123', confirmation: 'HAPUS' },
-			{ platform: { env: { AUTH_EMAIL_RATE_LIMITER: blocked, AUTH_IP_RATE_LIMITER: allowed } } }
+			{ bindings: { AUTH_EMAIL_RATE_LIMITER: blocked, AUTH_IP_RATE_LIMITER: allowed } }
 		);
 
 		expect(response.status).toBe(429);

@@ -1,13 +1,13 @@
 import type { PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
-import { businessProfileQueries } from '$lib/server/db/queries';
+import { getDb } from '#lib/server/db/index.ts';
+import { businessProfileQueries } from '#lib/server/db/queries/index.ts';
 import { redirect } from '@sveltejs/kit';
-import { businessTypeLabel } from '$lib/constants';
-import { getIndonesianMonthName } from '$lib/tax/config';
-import { reportPeriodRanges } from '$lib/server/db/queries/ledger';
-import { todayInJakarta } from '$lib/shared/dates';
-import { summarizeError } from '$lib/server/error-summary';
-import { decryptNPWP, formatNPWP } from '$lib/server/crypto';
+import { businessTypeLabel } from '#lib/constants.ts';
+import { getIndonesianMonthName } from '#lib/tax/config.ts';
+import { reportPeriodRanges } from '#lib/server/db/queries/ledger.ts';
+import { todayInJakarta } from '#lib/shared/dates.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
+import { decryptNPWP, formatNPWP } from '#lib/server/crypto.ts';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Check authentication

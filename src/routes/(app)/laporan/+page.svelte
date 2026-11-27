@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { ArrowLeft, ChevronRight, FileText } from '@lucide/svelte';
-	import ReportNavigation from '$lib/components/reports/report-navigation.svelte';
-	import { REPORT_DEFINITIONS } from '$lib/reports/navigation';
+	import ReportNavigation from '#lib/components/reports/report-navigation.svelte';
+	import { REPORT_DEFINITIONS } from '#lib/reports/navigation.ts';
 </script>
 
 <svelte:head>

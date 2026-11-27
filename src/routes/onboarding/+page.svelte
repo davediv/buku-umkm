@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { applyAction, deserialize } from '$app/forms';
-	import { t } from '$lib/i18n';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { MoneyInput } from '$lib/components/ui/money-input';
-	import { Label } from '$lib/components/ui/label';
+	import { t } from '#lib/i18n/index.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import { Input } from '#lib/components/ui/input/index.ts';
+	import { MoneyInput } from '#lib/components/ui/money-input/index.ts';
+	import { Label } from '#lib/components/ui/label/index.ts';
 	import {
 		ArrowLeft,
 		Check,
@@ -17,9 +17,9 @@
 		ShoppingCart,
 		MoreHorizontal
 	} from '@lucide/svelte';
-	import { getBusinessTypeLabel } from '$lib/utils';
-	import { todayInJakarta } from '$lib/shared/dates';
-	import { MAX_TRANSACTION_AMOUNT } from '$lib/constants';
+	import { getBusinessTypeLabel } from '#lib/utils/index.ts';
+	import { todayInJakarta } from '#lib/shared/dates.ts';
+	import { MAX_TRANSACTION_AMOUNT } from '#lib/constants.ts';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

@@ -18,7 +18,7 @@ Built for UMKM (Usaha Mikro, Kecil, dan Menengah): business owners can manage th
 
 ## Tech Stack
 
-- **Framework**: [SvelteKit](https://svelte.dev/) 2 (Svelte 5)
+- **Framework**: [SvelteKit](https://svelte.dev/) 3 (Svelte 5)
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) + [shadcn-svelte](https://next.shadcn-svelte.com/)
 - **Database**: [Cloudflare D1](https://developers.cloudflare.com/d1/) (SQLite) via [Drizzle ORM](https://orm.drizzle.team/)
 - **Auth**: [Better Auth](https://www.better-auth.com/) (email/password)
@@ -58,7 +58,7 @@ To run the production build on the Workers runtime instead, copy `.dev.vars.exam
 | `pnpm dev`                | Start the dev server                                           |
 | `pnpm build`              | Build for production                                           |
 | `pnpm preview`            | Build and run the Worker locally with Wrangler                 |
-| `pnpm check`              | Run Svelte type checking                                       |
+| `pnpm check`              | Type-check the app and the service worker                      |
 | `pnpm lint`               | Run Prettier and ESLint                                        |
 | `pnpm format`             | Format code with Prettier                                      |
 | `pnpm test`               | Run all tests (unit, local D1 and browser)                     |
@@ -67,7 +67,7 @@ To run the production build on the Workers runtime instead, copy `.dev.vars.exam
 | `pnpm db:migrate:remote`  | Apply migrations to the production D1 database                 |
 | `pnpm db:migrate:staging` | Apply migrations to the staging D1 database                    |
 | `pnpm run deploy`         | Check the config, build and deploy to production               |
-| `pnpm run deploy:staging` | Check the config, build and deploy to staging                  |
+| `pnpm run deploy:staging` | Check the config, build for staging and deploy                 |
 | `pnpm cf-typegen`         | Regenerate `src/worker-configuration.d.ts` from wrangler.jsonc |
 | `pnpm auth:schema`        | Regenerate the Better Auth tables in `auth.schema.ts`          |
 
@@ -137,6 +137,8 @@ pnpm db:migrate:staging
 pnpm run deploy:staging
 ```
 
+`deploy:staging` builds with `CLOUDFLARE_ENV=staging`: the adapter writes the Worker's name and bindings into the deploy config at build time, so `wrangler deploy --env staging` after a plain `pnpm build` would ship the production configuration.
+
 D1 keeps point-in-time history ([Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/)), so the database can be restored to an earlier minute if a release goes wrong.
 
 ## Testing
@@ -160,14 +162,13 @@ pnpm exec vitest run --project browser <path>         # one component test
 ## Security Notes
 
 - Every query is scoped to the signed-in user, including relation loads; restore remaps all ids and never accepts storage keys from a file. Images in a .zip backup are checked by their bytes (JPEG or PNG, at most 500 KB, 3 per transaction) and stored under fresh keys in the restoring user's prefix.
-- Content Security Policy with per-request nonces (`kit.csp` in `svelte.config.js`); static assets get their headers from `_headers`.
+- Content Security Policy with per-request nonces (`csp` in the `sveltekit()` options in `vite.config.ts`); static assets get their headers from `_headers`.
 - State-changing requests need a matching `Origin` header (or `Sec-Fetch-Site: same-origin`).
 - NPWP is encrypted at rest with AES-256-GCM. Receipt photos are served `private, no-store` and only to their owner.
 - Error logs leave out SQL parameters and personal data.
 
 ## Known Limitations
 
-- **SvelteKit 3:** `pnpm audit` still lists SvelteKit 2.x advisories. The high and moderate ones affect only remote functions, which this app does not use; the low ones are fixed only in SvelteKit 3. The migration is planned as a separate change.
 - **A .zip backup over 95 MB cannot bring its photos back in one go.** Cloudflare refuses request bodies over 100 MB on Free and Pro zones, so for a larger file the settings page offers to restore the data without photos (it sends only the backup.json inside). A chunked restore that uploads the photos in parts is a possible follow-up.
 - **Old .json backups contain no photo images.** Their photo rows come back only when restoring into the account that made the backup while the images are still stored.
 - **Restore leaves the replaced book's images in R2** (a .zip restore stores fresh copies), so unreferenced photos accumulate until a cleanup job exists.
@@ -196,12 +197,13 @@ src/
 │   │   ├── account/           # Account deletion, verification
 │   │   ├── email/             # Cloudflare Email Service messages
 │   │   ├── security/          # Rate limiting, CSRF, password policy
-│   │   └── testing/           # Local D1 test harness
+│   │   └── testing/           # Local D1 and R2 harnesses, cloudflare:workers stub
 │   ├── tax/                   # PPh Final engine, eligibility, deadlines, reminders
 │   ├── components/            # Svelte components (shadcn-svelte)
 │   └── utils/                 # Formatting and export utilities (PDF, Excel, CSV, SPT)
+├── env.ts                     # Environment variables ($app/env/private)
 ├── hooks.server.ts            # Auth, rate limiting, CSRF and security headers
-└── service-worker.ts          # PWA shell cache and offline fallback
+└── service-worker/            # PWA shell cache and offline fallback
 drizzle/                       # SQL migrations
 scripts/check-deploy-config.mjs
 ```

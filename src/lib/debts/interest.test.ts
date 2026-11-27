@@ -4,7 +4,7 @@ import {
 	validateCategoryColor,
 	validateCategoryIcon,
 	validateCategoryName
-} from '$lib/shared/validation/category';
+} from '#lib/shared/validation/category.ts';
 import { LOAN_INTEREST_CATEGORIES, loanInterestDescription } from './interest';
 
 describe('loan interest categories', () => {

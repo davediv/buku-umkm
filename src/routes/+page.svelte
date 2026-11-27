@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { buttonVariants } from '$lib/components/ui/button';
-	import { cn } from '$lib/utils';
+	import { buttonVariants } from '#lib/components/ui/button/index.ts';
+	import { cn } from '#lib/utils/index.ts';
 	import {
 		ArrowRight,
 		BookOpen,

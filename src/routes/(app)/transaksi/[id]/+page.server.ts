@@ -1,13 +1,13 @@
 import type { PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
+import { getDb } from '#lib/server/db/index.ts';
 import {
 	transactionQueries,
 	categoryQueries,
 	chartOfAccountQueries,
 	transactionPhotoQueries
-} from '$lib/server/db/queries';
+} from '#lib/server/db/queries/index.ts';
 import { error as httpError, isHttpError, redirect } from '@sveltejs/kit';
-import { summarizeError } from '$lib/server/error-summary';
+import { summarizeError } from '#lib/server/error-summary.ts';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	// Check authentication

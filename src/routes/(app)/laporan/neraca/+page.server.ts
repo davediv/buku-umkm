@@ -1,9 +1,9 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
-import { getBalanceSheetAsOf } from '$lib/server/reports/balance-sheet';
-import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
-import { summarizeError } from '$lib/server/error-summary';
+import { getDb } from '#lib/server/db/index.ts';
+import { getBalanceSheetAsOf } from '#lib/server/reports/balance-sheet.ts';
+import { isIsoCalendarDate, todayInJakarta } from '#lib/shared/dates.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user || !locals.session) throw redirect(302, '/masuk');

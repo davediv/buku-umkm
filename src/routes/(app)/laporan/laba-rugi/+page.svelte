@@ -10,11 +10,16 @@
 		Download,
 		Receipt
 	} from '@lucide/svelte';
-	import PageErrorState from '$lib/components/page-error-state.svelte';
-	import ReportNavigation from '$lib/components/reports/report-navigation.svelte';
-	import { toast } from '$lib/components/ui/toast';
-	import { formatPercent, formatRupiah, getComparisonText, getMaxCategoryValue } from '$lib/utils';
-	import { exportLabaRugiPDF, generatePDFFilename } from '$lib/utils/pdf-export';
+	import PageErrorState from '#lib/components/page-error-state.svelte';
+	import ReportNavigation from '#lib/components/reports/report-navigation.svelte';
+	import { toast } from '#lib/components/ui/toast/index.ts';
+	import {
+		formatPercent,
+		formatRupiah,
+		getComparisonText,
+		getMaxCategoryValue
+	} from '#lib/utils/index.ts';
+	import { exportLabaRugiPDF, generatePDFFilename } from '#lib/utils/pdf-export.ts';
 	import type { PageData } from './$types';
 
 	type Period = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
@@ -67,8 +72,8 @@
 
 		try {
 			await goto(`/laporan/laba-rugi?period=${period}`, {
-				replaceState: true,
-				noScroll: true
+				replace: true,
+				reset: false
 			});
 		} catch (e) {
 			console.error('Error changing period:', e);

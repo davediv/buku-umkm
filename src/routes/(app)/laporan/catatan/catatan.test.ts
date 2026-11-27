@@ -1,18 +1,18 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-vi.mock('$env/dynamic/private', () => ({
-	env: { NPWP_ENCRYPTION_KEY: 'test-only-npwp-key-0123456789abcdef' }
+vi.mock('$app/env/private', () => ({
+	NPWP_ENCRYPTION_KEY: 'test-only-npwp-key-0123456789abcdef'
 }));
-vi.mock('$lib/server/db', () => ({ getDb: () => ({}) }));
+vi.mock('#lib/server/db/index.ts', () => ({ getDb: () => ({}) }));
 const profileRef = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }));
-vi.mock('$lib/server/db/queries', () => ({
+vi.mock('#lib/server/db/queries/index.ts', () => ({
 	businessProfileQueries: { findByUserId: async () => profileRef.current }
 }));
 
 // The Workers runtime exposes Web Crypto on `self`; Node only on globalThis.
 vi.stubGlobal('self', globalThis);
 
-const { encryptNPWP } = await import('$lib/server/crypto');
+const { encryptNPWP } = await import('#lib/server/crypto.ts');
 const { load } = await import('./+page.server');
 
 type LoadResult = {

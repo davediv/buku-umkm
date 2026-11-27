@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { debt } from '$lib/server/db/schema';
-import { createTestD1 } from '$lib/server/testing/d1';
+import { debt } from '#lib/server/db/schema.ts';
+import { createTestD1 } from '#lib/server/testing/d1.ts';
 import { FinanceError } from './contracts';
 import { financeErrorResponse } from './http';
 

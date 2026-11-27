@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { APIError } from 'better-auth/api';
-import { EmailNotSentError } from '$lib/server/email/send';
+import { EmailNotSentError } from '#lib/server/email/send.ts';
+import { setBindings } from '#lib/server/testing/cloudflare-workers.ts';
 
 const { sendVerificationEmail } = vi.hoisted(() => ({ sendVerificationEmail: vi.fn() }));
-vi.mock('$lib/server/auth', () => ({ getAuth: () => ({ api: { sendVerificationEmail } }) }));
+vi.mock('#lib/server/auth.ts', () => ({ getAuth: () => ({ api: { sendVerificationEmail } }) }));
 
 import { actions } from './+page.server';
 
@@ -11,14 +12,14 @@ type ActionEvent = Parameters<NonNullable<typeof actions.resendVerification>>[0]
 
 const USER = { id: 'u1', email: 'ayu@example.com', emailVerified: false };
 
-function resend(user: Partial<typeof USER> | null = USER, platform?: unknown) {
+function resend(user: Partial<typeof USER> | null = USER, bindings?: Record<string, unknown>) {
 	const request = new Request('https://buku.test/pengaturan?bagian=akun&/resendVerification', {
 		method: 'POST',
 		headers: { cookie: 'better-auth.session_token=abc', 'CF-Connecting-IP': '203.0.113.5' }
 	});
+	setBindings(bindings);
 	return actions.resendVerification!({
 		request,
-		platform,
 		locals: { user: user ?? undefined }
 	} as unknown as ActionEvent);
 }
@@ -55,9 +56,7 @@ describe('resend verification email', () => {
 		const allowed = { limit: vi.fn(async () => ({ success: true })) };
 
 		expect(
-			await resend(USER, {
-				env: { MAIL_ADDRESS_RATE_LIMITER: blocked, AUTH_IP_RATE_LIMITER: allowed }
-			})
+			await resend(USER, { MAIL_ADDRESS_RATE_LIMITER: blocked, AUTH_IP_RATE_LIMITER: allowed })
 		).toMatchObject({ status: 429 });
 		expect(blocked.limit).toHaveBeenCalledWith({ key: 'mail:ayu@example.com' });
 		expect(sendVerificationEmail).not.toHaveBeenCalled();

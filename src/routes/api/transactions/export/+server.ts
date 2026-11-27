@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { financeErrorResponse } from '$lib/server/finance/http';
-import { getTransactionsForExport } from '$lib/server/transactions/list';
-import { parseTransactionQuery } from '$lib/transactions/query';
+import { getDb } from '#lib/server/db/index.ts';
+import { financeErrorResponse } from '#lib/server/finance/http.ts';
+import { getTransactionsForExport } from '#lib/server/transactions/list.ts';
+import { parseTransactionQuery } from '#lib/transactions/query.ts';
 
 export const GET: RequestHandler = async ({ locals, url }) => {
 	if (!locals.user || !locals.session) {

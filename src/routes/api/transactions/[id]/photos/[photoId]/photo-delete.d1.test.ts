@@ -1,10 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { chartOfAccount, transaction, transactionPhoto } from '$lib/server/db/schema';
-import { createTestD1 } from '$lib/server/testing/d1';
+import { chartOfAccount, transaction, transactionPhoto } from '#lib/server/db/schema.ts';
+import { createTestD1 } from '#lib/server/testing/d1.ts';
+import { setBindings } from '#lib/server/testing/cloudflare-workers.ts';
 
 const dbRef = vi.hoisted(() => ({ current: undefined as unknown }));
-vi.mock('$lib/server/db', () => ({ getDb: () => dbRef.current }));
+vi.mock('#lib/server/db/index.ts', () => ({ getDb: () => dbRef.current }));
 
 import { DELETE } from './+server';
 
@@ -17,10 +18,10 @@ const deleted: string[] = [];
 const r2 = { delete: async (key: string) => void deleted.push(key) };
 
 function remove(photoId: string) {
+	setBindings({ R2: r2 });
 	return DELETE({
 		params: { id: 'txn', photoId },
-		locals: { user: { id: OWNER }, session: { id: 'session' } },
-		platform: { env: { R2: r2 } }
+		locals: { user: { id: OWNER }, session: { id: 'session' } }
 	} as unknown as Parameters<typeof DELETE>[0]);
 }
 

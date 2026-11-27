@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { cn } from '$lib/utils';
+	import { cn } from '#lib/utils/index.ts';
 	import type { HTMLTableAttributes } from 'svelte/elements';
 	import type { Snippet } from 'svelte';
 

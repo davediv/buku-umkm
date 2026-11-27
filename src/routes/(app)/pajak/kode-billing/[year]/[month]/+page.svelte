@@ -2,8 +2,8 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { ArrowLeft, Copy, FileDown, AlertCircle, CheckCircle2 } from '@lucide/svelte';
-	import { formatRupiah } from '$lib/utils';
-	import { copyToast } from '$lib/components/ui/toast';
+	import { formatRupiah } from '#lib/utils/index.ts';
+	import { copyToast } from '#lib/components/ui/toast/index.ts';
 
 	// Get year and month from URL params
 	const year = $derived(parseInt(page.params.year || '0'));

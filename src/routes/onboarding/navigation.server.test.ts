@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { getOnboardingStatus } = vi.hoisted(() => ({ getOnboardingStatus: vi.fn() }));
-vi.mock('$lib/server/db', () => ({ getDb: () => ({}) }));
-vi.mock('$lib/server/onboarding/service', () => ({
+vi.mock('#lib/server/db/index.ts', () => ({ getDb: () => ({}) }));
+vi.mock('#lib/server/onboarding/service.ts', () => ({
 	completeOnboarding: vi.fn(),
 	getOnboardingStatus,
 	parseOnboardingForm: vi.fn(),

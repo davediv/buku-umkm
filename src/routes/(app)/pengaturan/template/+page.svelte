@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
+	import { refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
 		FileText,
@@ -13,22 +13,25 @@
 		Shield,
 		ArrowLeft
 	} from '@lucide/svelte';
-	import OperationStatus from '$lib/components/operation-status.svelte';
-	import { Dialog } from '$lib/components/ui/dialog';
-	import { TabList } from '$lib/components/ui/tabs';
+	import OperationStatus from '#lib/components/operation-status.svelte';
+	import { Dialog } from '#lib/components/ui/dialog/index.ts';
+	import { TabList } from '#lib/components/ui/tabs/index.ts';
 	import {
 		AlertDialog,
 		AlertDialogTitle,
 		AlertDialogDescription,
 		AlertDialogAction,
 		AlertDialogCancel
-	} from '$lib/components/ui/alert-dialog';
-	import { getSafeTransactionReturn } from '$lib/client/transaction-return';
-	import { getIncomeExpenseViewHref, resolveIncomeExpenseView } from '$lib/navigation/view-state';
+	} from '#lib/components/ui/alert-dialog/index.ts';
+	import { getSafeTransactionReturn } from '#lib/client/transaction-return.ts';
+	import {
+		getIncomeExpenseViewHref,
+		resolveIncomeExpenseView
+	} from '#lib/navigation/view-state.ts';
 	import {
 		TEMPLATE_DESCRIPTION_MAX_LENGTH,
 		TEMPLATE_NAME_MAX_LENGTH
-	} from '$lib/shared/validation/category';
+	} from '#lib/shared/validation/category.ts';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -134,7 +137,7 @@
 								? result.data.message
 								: 'Template berhasil disimpan.'
 					};
-					await invalidateAll();
+					await refreshAll();
 					closeModal();
 					return;
 				}
@@ -164,7 +167,7 @@
 			const resData = (await response.json()) as { error?: string; message?: string };
 
 			if (response.ok) {
-				await invalidateAll();
+				await refreshAll();
 				operationStatus = {
 					kind: 'success',
 					message:
@@ -212,7 +215,7 @@
 			const resData = (await response.json()) as { error?: string; message?: string };
 
 			if (response.ok) {
-				await invalidateAll();
+				await refreshAll();
 				operationStatus = {
 					kind: 'success',
 					message: resData.message ?? 'Template berhasil dihapus.'

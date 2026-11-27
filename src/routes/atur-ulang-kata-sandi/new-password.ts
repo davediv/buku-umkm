@@ -1,4 +1,4 @@
-import { getPasswordError } from '$lib/shared/password';
+import { getPasswordError } from '#lib/shared/password.ts';
 
 export interface NewPasswordErrors {
 	password?: string;

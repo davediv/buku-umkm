@@ -1,15 +1,16 @@
+import { env, waitUntil } from 'cloudflare:workers';
 import { betterAuth } from 'better-auth/minimal';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
-import { env } from '$env/dynamic/private';
+import { ORIGIN, BETTER_AUTH_SECRET } from '$app/env/private';
 import { getRequestEvent } from '$app/server';
-import { deleteUserOptions } from '$lib/server/account/deletion';
-import { markEmailVerifiedAfterReset } from '$lib/server/account/verification';
-import { getDb } from '$lib/server/db';
-import { passwordResetEmail, verificationEmail } from '$lib/server/email/messages';
-import { EmailNotSentError, sendAccountEmail } from '$lib/server/email/send';
-import { enforcePasswordPolicy } from '$lib/server/security/password-policy';
-import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '$lib/shared/password';
+import { deleteUserOptions } from '#lib/server/account/deletion.ts';
+import { markEmailVerifiedAfterReset } from '#lib/server/account/verification.ts';
+import { getDb } from '#lib/server/db/index.ts';
+import { passwordResetEmail, verificationEmail } from '#lib/server/email/messages.ts';
+import { EmailNotSentError, sendAccountEmail } from '#lib/server/email/send.ts';
+import { enforcePasswordPolicy } from '#lib/server/security/password-policy.ts';
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '#lib/shared/password.ts';
 
 /** How long a password reset link stays valid. */
 export const RESET_PASSWORD_TOKEN_TTL_SECONDS = 60 * 60;
@@ -30,22 +31,10 @@ function pageLink(authUrl: string, pathname: string, token: string): string {
 	return link.href;
 }
 
-/**
- * Lets better-auth send mail after the response (Workers `waitUntil`): a reset request then
- * answers equally fast whether or not the address has an account.
- */
-function runAfterResponse(task: Promise<unknown>): void {
-	try {
-		getRequestEvent().platform?.ctx.waitUntil(task);
-	} catch {
-		// Outside a request there is nothing to extend; the task still runs to completion.
-	}
-}
-
 function createAuth() {
 	return betterAuth({
-		baseURL: env.ORIGIN,
-		secret: env.BETTER_AUTH_SECRET,
+		baseURL: ORIGIN,
+		secret: BETTER_AUTH_SECRET,
 		database: drizzleAdapter(getDb(), { provider: 'sqlite' }),
 		emailAndPassword: {
 			enabled: true,
@@ -87,12 +76,14 @@ function createAuth() {
 		// enforcePasswordPolicy); the hooks delete the user's receipt photos from R2.
 		user: {
 			deleteUser: deleteUserOptions({
-				getBucket: () => getRequestEvent().platform?.env?.R2,
+				getBucket: () => env.R2,
 				getDb
 			})
 		},
 		hooks: { before: enforcePasswordPolicy },
-		advanced: { backgroundTasks: { handler: runAfterResponse } },
+		// better-auth sends mail after the response (Workers `waitUntil`): a reset request then
+		// answers equally fast whether or not the address has an account.
+		advanced: { backgroundTasks: { handler: waitUntil } },
 		plugins: [sveltekitCookies(getRequestEvent)]
 	});
 }

@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
-import type { SQLiteDb } from '$lib/server/db';
-import { user } from '$lib/server/db/schema';
+import type { SQLiteDb } from '#lib/server/db/index.ts';
+import { user } from '#lib/server/db/schema.ts';
 
 /**
  * Completing a password reset proves the user reads the account's address, so the

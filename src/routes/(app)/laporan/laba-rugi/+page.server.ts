@@ -1,11 +1,11 @@
 import type { PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
-import { dashboardQueries, chartOfAccountQueries } from '$lib/server/db/queries';
-import { reportPeriodRanges, type ReportPeriod } from '$lib/server/db/queries/ledger';
-import { describeReportPeriod } from '$lib/server/reports/period-label';
-import { todayInJakarta } from '$lib/shared/dates';
+import { getDb } from '#lib/server/db/index.ts';
+import { dashboardQueries, chartOfAccountQueries } from '#lib/server/db/queries/index.ts';
+import { reportPeriodRanges, type ReportPeriod } from '#lib/server/db/queries/ledger.ts';
+import { describeReportPeriod } from '#lib/server/reports/period-label.ts';
+import { todayInJakarta } from '#lib/shared/dates.ts';
 import { redirect } from '@sveltejs/kit';
-import { summarizeError } from '$lib/server/error-summary';
+import { summarizeError } from '#lib/server/error-summary.ts';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Check authentication

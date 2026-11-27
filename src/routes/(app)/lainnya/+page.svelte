@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { ArrowRight } from '@lucide/svelte';
-	import { APP_VERSION } from '$lib/constants';
-	import { secondaryNavigationGroups } from '$lib/secondary-navigation';
+	import { APP_VERSION } from '#lib/constants.ts';
+	import { secondaryNavigationGroups } from '#lib/secondary-navigation.ts';
 </script>
 
 <svelte:head>

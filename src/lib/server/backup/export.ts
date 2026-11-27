@@ -1,6 +1,6 @@
 import { asc, eq } from 'drizzle-orm';
-import { APP_VERSION } from '$lib/constants';
-import type { SQLiteDb } from '$lib/server/db';
+import { APP_VERSION } from '#lib/constants.ts';
+import type { SQLiteDb } from '#lib/server/db/index.ts';
 import {
 	businessProfile,
 	category,
@@ -13,10 +13,14 @@ import {
 	transaction,
 	transactionPhoto,
 	transactionTemplate
-} from '$lib/server/db/schema';
-import { summarizeError } from '$lib/server/error-summary';
-import { findReceiptObjects, isOwnReceiptKey, receiptMimeType } from '$lib/server/photos/receipts';
-import { createZipStream, type ZipEntrySource } from '$lib/shared/zip';
+} from '#lib/server/db/schema.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
+import {
+	findReceiptObjects,
+	isOwnReceiptKey,
+	receiptMimeType
+} from '#lib/server/photos/receipts.ts';
+import { createZipStream, type ZipEntrySource } from '#lib/shared/zip.ts';
 import {
 	BACKUP_DOCUMENT_ENTRY,
 	BACKUP_FORMAT,

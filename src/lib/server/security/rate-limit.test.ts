@@ -11,6 +11,7 @@ import {
 	limitRequest,
 	type RateLimitEnv
 } from './rate-limit';
+import { setBindings } from '#lib/server/testing/cloudflare-workers.ts';
 
 /** A binding that allows `limit` calls per key, like Workers Rate Limiting within one period. */
 function fakeLimiter(limit: number) {
@@ -56,12 +57,14 @@ function request(
 	};
 }
 
+/** A request to `path`, handled by a Worker whose bindings are `env`. */
 function event(
 	env: RateLimitEnv | undefined,
 	path: string,
 	options: Parameters<typeof request>[1] & { user?: { id: string; email: string } } = {}
 ) {
-	return { ...request(path, options), locals: { user: options.user }, platform: { env } };
+	setBindings(env);
+	return { ...request(path, options), locals: { user: options.user } };
 }
 
 async function repeat<T>(times: number, attempt: () => Promise<T>): Promise<T[]> {
@@ -76,7 +79,7 @@ describe('credential attempts', () => {
 	it('allows five attempts per account per minute and blocks the sixth', async () => {
 		const env = fakeEnv();
 		const results = await repeat(6, () =>
-			isCredentialAttemptAllowed({ ...request('/masuk'), platform: { env } }, 'ayu@example.com')
+			isCredentialAttemptAllowed(event(env, '/masuk'), 'ayu@example.com')
 		);
 		expect(results).toEqual([true, true, true, true, true, false]);
 	});
@@ -84,7 +87,7 @@ describe('credential attempts', () => {
 	it('counts the account by normalized email so case and spaces do not reset it', async () => {
 		const env = fakeEnv();
 		for (const email of ['Ayu@Example.com', ' ayu@example.com ', 'AYU@EXAMPLE.COM']) {
-			await isCredentialAttemptAllowed({ ...request('/masuk'), platform: { env } }, email);
+			await isCredentialAttemptAllowed(event(env, '/masuk'), email);
 		}
 		expect(env.AUTH_EMAIL_RATE_LIMITER.keys()).toEqual(['ayu@example.com']);
 	});
@@ -92,10 +95,7 @@ describe('credential attempts', () => {
 	it('limits one IP across many accounts more loosely than one account', async () => {
 		const env = fakeEnv();
 		const results = await repeat(21, async () =>
-			isCredentialAttemptAllowed(
-				{ ...request('/masuk'), platform: { env } },
-				`user${Math.random()}@example.com`
-			)
+			isCredentialAttemptAllowed(event(env, '/masuk'), `user${Math.random()}@example.com`)
 		);
 		expect(results.filter(Boolean)).toHaveLength(20);
 		expect(results.at(-1)).toBe(false);
@@ -103,7 +103,7 @@ describe('credential attempts', () => {
 
 	it('still limits by IP when the request carries no email', async () => {
 		const env = fakeEnv();
-		await isCredentialAttemptAllowed({ ...request('/masuk'), platform: { env } }, null);
+		await isCredentialAttemptAllowed(event(env, '/masuk'), null);
 		expect(env.AUTH_IP_RATE_LIMITER.limit).toHaveBeenCalledWith({ key: '203.0.113.7' });
 		expect(env.AUTH_EMAIL_RATE_LIMITER.limit).not.toHaveBeenCalled();
 	});
@@ -112,13 +112,8 @@ describe('credential attempts', () => {
 describe('email requests', () => {
 	it('allows one email per address per minute on counters separate from sign-in', async () => {
 		const env = fakeEnv();
-		const signIn = () =>
-			isCredentialAttemptAllowed({ ...request('/masuk'), platform: { env } }, 'ayu@example.com');
-		const reset = () =>
-			isEmailRequestAllowed(
-				{ ...request('/lupa-kata-sandi'), platform: { env } },
-				'Ayu@Example.com'
-			);
+		const signIn = () => isCredentialAttemptAllowed(event(env, '/masuk'), 'ayu@example.com');
+		const reset = () => isEmailRequestAllowed(event(env, '/lupa-kata-sandi'), 'Ayu@Example.com');
 
 		expect(await repeat(6, signIn)).toEqual([true, true, true, true, true, false]);
 		expect(await repeat(2, reset)).toEqual([true, false]);
@@ -130,10 +125,7 @@ describe('email requests', () => {
 	it('limits one IP asking for links to many addresses', async () => {
 		const env = fakeEnv();
 		const results = await repeat(21, () =>
-			isEmailRequestAllowed(
-				{ ...request('/lupa-kata-sandi'), platform: { env } },
-				`user${Math.random()}@example.com`
-			)
+			isEmailRequestAllowed(event(env, '/lupa-kata-sandi'), `user${Math.random()}@example.com`)
 		);
 		expect(results.filter(Boolean)).toHaveLength(20);
 		expect(results.at(-1)).toBe(false);
@@ -287,8 +279,6 @@ describe('missing or failing bindings', () => {
 			AUTH_IP_RATE_LIMITER: { limit: vi.fn().mockRejectedValue(new Error('unavailable')) },
 			AUTH_EMAIL_RATE_LIMITER: { limit: vi.fn().mockRejectedValue(new Error('unavailable')) }
 		};
-		expect(
-			await isCredentialAttemptAllowed({ ...request('/masuk'), platform: { env } }, 'a@b.co')
-		).toBe(true);
+		expect(await isCredentialAttemptAllowed(event(env, '/masuk'), 'a@b.co')).toBe(true);
 	});
 });

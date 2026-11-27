@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { category } from '$lib/server/db/schema';
-import { createTestD1 } from '$lib/server/testing/d1';
+import { category } from '#lib/server/db/schema.ts';
+import { createTestD1 } from '#lib/server/testing/d1.ts';
 import { resolveTemplateCategory } from './category';
 
 let harness: Awaited<ReturnType<typeof createTestD1>>;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reportPeriodRanges } from '$lib/server/db/queries/ledger';
+import { reportPeriodRanges } from '#lib/server/db/queries/ledger.ts';
 import { describeReportPeriod } from './period-label';
 
 const label = (period: Parameters<typeof describeReportPeriod>[0], today: string) =>

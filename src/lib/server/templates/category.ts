@@ -1,6 +1,6 @@
-import type { SQLiteDb } from '$lib/server/db';
-import { categoryQueries } from '$lib/server/db/queries';
-import type { CategoryType } from '$lib/shared/validation/category';
+import type { SQLiteDb } from '#lib/server/db/index.ts';
+import { categoryQueries } from '#lib/server/db/queries/index.ts';
+import type { CategoryType } from '#lib/shared/validation/category.ts';
 
 export type TemplateType = CategoryType;
 

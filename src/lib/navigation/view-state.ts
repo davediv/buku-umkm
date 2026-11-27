@@ -1,3 +1,5 @@
+import type { ReadonlyURLSearchParams } from '$app/state';
+
 export type IncomeExpenseView = 'income' | 'expense';
 export type DashboardPeriod = 'daily' | 'weekly' | 'monthly';
 
@@ -11,10 +13,10 @@ export function resolveIncomeExpenseView(value: string | null): IncomeExpenseVie
 
 export function getIncomeExpenseViewHref(
 	pathname: '/kategori' | '/pengaturan/template',
-	searchParams: URLSearchParams,
+	searchParams: ReadonlyURLSearchParams,
 	type: IncomeExpenseView
 ): string {
-	const next = new URLSearchParams(searchParams);
+	const next = new URLSearchParams(searchParams.toString());
 	next.set('type', type);
 	return `${pathname}?${next.toString()}`;
 }

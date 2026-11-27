@@ -1,16 +1,17 @@
+import { env } from 'cloudflare:workers';
 import { json } from '@sveltejs/kit';
 import { and, eq, sql } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { batchGuard, isGuardFailure, runBatch } from '$lib/server/db/batch';
-import { transactionQueries, transactionPhotoQueries } from '$lib/server/db/queries';
-import { transaction, transactionPhoto } from '$lib/server/db/schema';
-import { summarizeError } from '$lib/server/error-summary';
+import { getDb } from '#lib/server/db/index.ts';
+import { batchGuard, isGuardFailure, runBatch } from '#lib/server/db/batch.ts';
+import { transactionQueries, transactionPhotoQueries } from '#lib/server/db/queries/index.ts';
+import { transaction, transactionPhoto } from '#lib/server/db/schema.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
 import {
 	declaredContentLength,
 	parseMultipart,
 	readBodyWithLimit
-} from '$lib/server/backup/request-body';
+} from '#lib/server/backup/request-body.ts';
 import {
 	imageExtension,
 	MAX_PHOTOS_PER_TRANSACTION,
@@ -18,7 +19,7 @@ import {
 	receiptKey,
 	receiptUrl,
 	sanitizePhotoFileName
-} from '$lib/server/photos/receipts';
+} from '#lib/server/photos/receipts.ts';
 
 /** The file plus the multipart boundary and part headers around it. */
 const MAX_UPLOAD_BYTES = MAX_RECEIPT_BYTES + 16 * 1024;
@@ -74,7 +75,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 };
 
 // POST /api/transactions/[id]/photos - Upload a new photo
-export const POST: RequestHandler = async ({ params, request, locals, platform }) => {
+export const POST: RequestHandler = async ({ params, request, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
@@ -138,7 +139,7 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
 			return json({ error: 'File bukan gambar JPEG atau PNG yang valid' }, { status: 400 });
 		}
 
-		const r2 = platform?.env?.R2;
+		const r2 = env.R2;
 		if (!r2) {
 			console.error('R2 bucket not configured');
 			return json({ error: 'Konfigurasi penyimpanan tidak tersedia' }, { status: 500 });

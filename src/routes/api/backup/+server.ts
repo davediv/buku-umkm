@@ -1,24 +1,20 @@
+import { env } from 'cloudflare:workers';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { summarizeError } from '$lib/server/error-summary';
-import { buildBackupArchive } from '$lib/server/backup/export';
-import { todayInJakarta } from '$lib/shared/dates';
+import { getDb } from '#lib/server/db/index.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
+import { buildBackupArchive } from '#lib/server/backup/export.ts';
+import { todayInJakarta } from '#lib/shared/dates.ts';
 
 // POST /api/backup - Download every row the signed-in user owns, and their receipt images, as a .zip
-export const POST: RequestHandler = async ({ locals, platform }) => {
+export const POST: RequestHandler = async ({ locals }) => {
 	if (!locals.user || !locals.session) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	try {
 		const now = new Date();
-		const archive = await buildBackupArchive(
-			getDb(),
-			locals.user.id,
-			platform?.env?.R2 ?? null,
-			now
-		);
+		const archive = await buildBackupArchive(getDb(), locals.user.id, env.R2 ?? null, now);
 		const name = archive.businessName.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 		return new Response(archive.stream, {

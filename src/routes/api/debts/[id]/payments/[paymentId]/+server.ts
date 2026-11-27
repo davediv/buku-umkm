@@ -1,10 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { createFinancialMutationService } from '$lib/server/finance/commands';
-import { createD1FinanceRepository } from '$lib/server/finance/repository';
-import { financeErrorResponse } from '$lib/server/finance/http';
-import { presentDebt } from '$lib/server/finance/presenters';
+import { getDb } from '#lib/server/db/index.ts';
+import { createFinancialMutationService } from '#lib/server/finance/commands.ts';
+import { createD1FinanceRepository } from '#lib/server/finance/repository.ts';
+import { financeErrorResponse } from '#lib/server/finance/http.ts';
+import { presentDebt } from '#lib/server/finance/presenters.ts';
 
 // DELETE /api/debts/[id]/payments/[paymentId] - Reverse a payment recorded by mistake
 export const DELETE: RequestHandler = async ({ params, locals }) => {

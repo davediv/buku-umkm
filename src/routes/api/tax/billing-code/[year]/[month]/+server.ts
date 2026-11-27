@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { calculateMonthlyTax } from '$lib/tax/engine';
+import { getDb } from '#lib/server/db/index.ts';
+import { calculateMonthlyTax } from '#lib/tax/engine.ts';
 import {
 	calculateCumulativeRevenue,
 	getTaxRecordForMonth,
@@ -9,8 +9,8 @@ import {
 	getIndonesianMonthName,
 	formatMasaPajak,
 	getTaxYearContext
-} from '$lib/tax/service';
-import { TAX_STATUS } from '$lib/tax/config';
+} from '#lib/tax/service.ts';
+import { TAX_STATUS } from '#lib/tax/config.ts';
 
 /**
  * GET /api/tax/billing-code/[year]/[month]

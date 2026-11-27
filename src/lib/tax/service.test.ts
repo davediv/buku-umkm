@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { SQLiteDb } from '$lib/server/db';
+import type { SQLiteDb } from '#lib/server/db/index.ts';
 import { getRecordedMonthlyRevenue, getTaxYearContext } from './service';
 
 function deferred<T>() {

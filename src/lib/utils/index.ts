@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { BUSINESS_TYPES } from '$lib/constants';
-import { INDONESIAN_MONTHS } from '$lib/tax/config';
+import { BUSINESS_TYPES } from '#lib/constants.ts';
+import { INDONESIAN_MONTHS } from '#lib/tax/config.ts';
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
@@ -19,7 +19,7 @@ export function getBusinessTypeLabel(type: string): string {
 // ============================================================================
 
 // Re-export canonical formatRupiah from tax engine
-export { formatRupiah } from '$lib/tax/engine';
+export { formatRupiah } from '#lib/tax/engine.ts';
 
 /**
  * Format a number as Indonesian Rupiah (plain number, no "Rp" prefix)

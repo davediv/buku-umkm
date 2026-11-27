@@ -1,11 +1,11 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
-import { chartOfAccountQueries, debtQueries } from '$lib/server/db/queries';
-import { filterActiveAccounts } from '$lib/shared/account-types';
-import { getDebtList } from '$lib/debts/list';
-import { parseDebtQuery } from '$lib/debts/query';
-import { todayInJakarta } from '$lib/shared/dates';
+import { getDb } from '#lib/server/db/index.ts';
+import { chartOfAccountQueries, debtQueries } from '#lib/server/db/queries/index.ts';
+import { filterActiveAccounts } from '#lib/shared/account-types.ts';
+import { getDebtList } from '#lib/debts/list.ts';
+import { parseDebtQuery } from '#lib/debts/query.ts';
+import { todayInJakarta } from '#lib/shared/dates.ts';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user || !locals.session) {

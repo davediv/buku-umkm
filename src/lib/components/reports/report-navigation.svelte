@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { REPORT_DEFINITIONS } from '$lib/reports/navigation';
+	import { REPORT_DEFINITIONS } from '#lib/reports/navigation.ts';
 </script>
 
 <nav aria-label="Jenis laporan" class="print:hidden">

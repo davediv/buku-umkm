@@ -22,7 +22,7 @@ import {
 	LOAN_INTEREST_CATEGORIES,
 	loanInterestDescription,
 	type InterestType
-} from '$lib/debts/interest';
+} from '#lib/debts/interest.ts';
 
 type CommandKind = 'transaction.create' | 'transfer.create' | 'debt.create' | 'debt.payment';
 

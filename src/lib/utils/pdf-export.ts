@@ -1,5 +1,5 @@
-import { formatPercent, formatRupiah, formatDateLong } from '$lib/utils';
-import { todayInJakarta } from '$lib/shared/dates';
+import { formatPercent, formatRupiah, formatDateLong } from '#lib/utils/index.ts';
+import { todayInJakarta } from '#lib/shared/dates.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type JsPDFAny = any;
@@ -676,4 +676,4 @@ export async function exportCatatanPDF(
 }
 
 // Re-export from shared utility for backward compatibility
-export { generateExportFilename as generatePDFFilename } from '$lib/utils/export';
+export { generateExportFilename as generatePDFFilename } from '#lib/utils/export.ts';

@@ -1,4 +1,4 @@
-import { todayInJakarta } from '$lib/shared/dates';
+import { todayInJakarta } from '#lib/shared/dates.ts';
 
 export interface CalendarDay {
 	/** ISO date, YYYY-MM-DD. */

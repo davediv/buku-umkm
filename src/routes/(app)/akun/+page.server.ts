@@ -1,18 +1,18 @@
 import type { PageServerLoad, Actions } from './$types';
-import { getDb } from '$lib/server/db';
-import { chartOfAccountQueries } from '$lib/server/db/queries';
+import { getDb } from '#lib/server/db/index.ts';
+import { chartOfAccountQueries } from '#lib/server/db/queries/index.ts';
 import { error as httpError, redirect, fail } from '@sveltejs/kit';
-import { chartOfAccount } from '$lib/server/db/schema';
+import { chartOfAccount } from '#lib/server/db/schema.ts';
 import {
 	ACCOUNT_TYPE_MAP,
 	mapSchemaToApiType,
 	isValidAccountType,
 	parseAccountName
-} from '$lib/shared/account-types';
-import { reactivateAccount } from '$lib/server/finance/accounts';
-import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
-import { MAX_TRANSACTION_AMOUNT } from '$lib/constants';
-import { summarizeError } from '$lib/server/error-summary';
+} from '#lib/shared/account-types.ts';
+import { reactivateAccount } from '#lib/server/finance/accounts.ts';
+import { isIsoCalendarDate, todayInJakarta } from '#lib/shared/dates.ts';
+import { MAX_TRANSACTION_AMOUNT } from '#lib/constants.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Check authentication

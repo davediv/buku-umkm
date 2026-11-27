@@ -1,16 +1,16 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { chartOfAccountQueries } from '$lib/server/db/queries';
-import { deactivateAccount, type AccountDeactivation } from '$lib/server/finance/accounts';
+import { getDb } from '#lib/server/db/index.ts';
+import { chartOfAccountQueries } from '#lib/server/db/queries/index.ts';
+import { deactivateAccount, type AccountDeactivation } from '#lib/server/finance/accounts.ts';
 import {
 	VALID_ACCOUNT_TYPES,
 	isValidAccountType,
 	mapAccountType,
 	mapSchemaToApiType,
 	parseAccountName
-} from '$lib/shared/account-types';
-import { summarizeError } from '$lib/server/error-summary';
+} from '#lib/shared/account-types.ts';
+import { summarizeError } from '#lib/server/error-summary.ts';
 
 const DEACTIVATION_ERRORS: Record<Exclude<AccountDeactivation, 'deactivated'>, [string, number]> = {
 	not_found: ['Akun tidak ditemukan', 404],

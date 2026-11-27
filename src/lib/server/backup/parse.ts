@@ -1,4 +1,4 @@
-import { BUSINESS_TYPES, MAX_TRANSACTION_AMOUNT } from '$lib/constants';
+import { BUSINESS_TYPES, MAX_TRANSACTION_AMOUNT } from '#lib/constants.ts';
 import type {
 	businessProfile,
 	category,
@@ -10,9 +10,9 @@ import type {
 	taxRecord,
 	transaction,
 	transactionTemplate
-} from '$lib/server/db/schema';
-import { sanitizePhotoFileName } from '$lib/server/photos/receipts';
-import { isIsoCalendarDate, todayInJakarta } from '$lib/shared/dates';
+} from '#lib/server/db/schema.ts';
+import { sanitizePhotoFileName } from '#lib/server/photos/receipts.ts';
+import { isIsoCalendarDate, todayInJakarta } from '#lib/shared/dates.ts';
 import {
 	isCategoryType,
 	validateCategoryCode,
@@ -22,8 +22,8 @@ import {
 	validateTemplateDescription,
 	validateTemplateName,
 	type FieldResult
-} from '$lib/shared/validation/category';
-import { TAX_LEGAL_FORM, TAX_REGIME_CHOICE, TAX_STATUS, TAX_TYPE } from '$lib/tax/config';
+} from '#lib/shared/validation/category.ts';
+import { TAX_LEGAL_FORM, TAX_REGIME_CHOICE, TAX_STATUS, TAX_TYPE } from '#lib/tax/config.ts';
 import {
 	BACKUP_FORMAT,
 	MAX_RESTORE_ROWS,

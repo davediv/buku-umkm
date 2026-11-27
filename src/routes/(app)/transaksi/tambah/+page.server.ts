@@ -1,10 +1,10 @@
 import type { PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
+import { getDb } from '#lib/server/db/index.ts';
 import {
 	categoryQueries,
 	chartOfAccountQueries,
 	transactionTemplateQueries
-} from '$lib/server/db/queries';
+} from '#lib/server/db/queries/index.ts';
 import { error as httpError, redirect } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals }) => {

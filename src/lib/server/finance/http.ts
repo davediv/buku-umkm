@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { FinanceError } from './contracts';
-import { summarizeError } from '$lib/server/error-summary';
+import { summarizeError } from '#lib/server/error-summary.ts';
 
 export function financeErrorResponse(error: unknown, operation: string): Response {
 	if (error instanceof FinanceError) {

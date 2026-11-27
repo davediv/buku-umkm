@@ -5,10 +5,10 @@
  * Based on F-004 tax calculations
  */
 
-import type { TaxpayerType } from '$lib/tax/types';
-import { getTaxStatusLabel, getTaxpayerTypeLabel, TAXPAYER_TYPE } from '$lib/tax/config';
-import { formatRupiah, formatDateLong } from '$lib/utils';
-import { todayInJakarta } from '$lib/shared/dates';
+import type { TaxpayerType } from '#lib/tax/types.ts';
+import { getTaxStatusLabel, getTaxpayerTypeLabel, TAXPAYER_TYPE } from '#lib/tax/config.ts';
+import { formatRupiah, formatDateLong } from '#lib/utils/index.ts';
+import { todayInJakarta } from '#lib/shared/dates.ts';
 
 export type SPTExportFormat = 'xlsx' | 'pdf';
 

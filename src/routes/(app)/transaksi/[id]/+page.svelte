@@ -1,22 +1,25 @@
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto, refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { ArrowLeft, Camera, Image, Trash2, Undo2, X } from '@lucide/svelte';
-	import ContextBackLink from '$lib/components/context-back-link.svelte';
-	import OperationStatus from '$lib/components/operation-status.svelte';
-	import TransactionForm from '$lib/components/transactions/transaction-form.svelte';
-	import { Dialog } from '$lib/components/ui/dialog';
-	import { validateTransactionForm } from '$lib/client/transaction-form';
+	import ContextBackLink from '#lib/components/context-back-link.svelte';
+	import OperationStatus from '#lib/components/operation-status.svelte';
+	import TransactionForm from '#lib/components/transactions/transaction-form.svelte';
+	import { Dialog } from '#lib/components/ui/dialog/index.ts';
+	import { validateTransactionForm } from '#lib/client/transaction-form.ts';
 	import {
 		AlertDialog,
 		AlertDialogAction,
 		AlertDialogCancel,
 		AlertDialogDescription,
 		AlertDialogTitle
-	} from '$lib/components/ui/alert-dialog';
-	import { toast } from '$lib/components/ui/toast';
-	import { compressImage, formatDate, formatRupiah } from '$lib/utils';
-	import { getSafeTransactionListHref, getTransactionOutcomeHref } from '$lib/transactions/query';
+	} from '#lib/components/ui/alert-dialog/index.ts';
+	import { toast } from '#lib/components/ui/toast/index.ts';
+	import { compressImage, formatDate, formatRupiah } from '#lib/utils/index.ts';
+	import {
+		getSafeTransactionListHref,
+		getTransactionOutcomeHref
+	} from '#lib/transactions/query.ts';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -97,7 +100,7 @@
 				return;
 			}
 			reversalStatus = { kind: 'success', message: result.message ?? 'Transfer dibatalkan.' };
-			await invalidateAll();
+			await refreshAll();
 		} catch (reverseError) {
 			console.error('Error reversing transfer:', reverseError);
 			reversalStatus = {

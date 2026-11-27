@@ -1,17 +1,18 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { chartOfAccount, transaction, transactionPhoto } from '$lib/server/db/schema';
+import { chartOfAccount, transaction, transactionPhoto } from '#lib/server/db/schema.ts';
 import {
 	BACKUP_DOCUMENT_ENTRY,
 	MAX_BACKUP_ARCHIVE_BYTES,
 	MAX_BACKUP_BYTES
-} from '$lib/server/backup/format';
-import { createTestD1 } from '$lib/server/testing/d1';
-import { createTestR2, fakeImage } from '$lib/server/testing/r2';
-import { createZipStream } from '$lib/shared/zip';
+} from '#lib/server/backup/format.ts';
+import { setBindings } from '#lib/server/testing/cloudflare-workers.ts';
+import { createTestD1 } from '#lib/server/testing/d1.ts';
+import { createTestR2, fakeImage } from '#lib/server/testing/r2.ts';
+import { createZipStream } from '#lib/shared/zip.ts';
 
 const dbRef = vi.hoisted(() => ({ current: undefined as unknown }));
-vi.mock('$lib/server/db', () => ({ getDb: () => dbRef.current }));
+vi.mock('#lib/server/db/index.ts', () => ({ getDb: () => dbRef.current }));
 
 import { POST } from './+server';
 
@@ -65,8 +66,9 @@ function backupFile(transactions = 3) {
 	};
 }
 
-function call(request: Request, user = locals, platform?: object) {
-	return POST({ request, locals: user, platform } as unknown as Parameters<typeof POST>[0]);
+function call(request: Request, user = locals, bindings?: Record<string, unknown>) {
+	setBindings(bindings);
+	return POST({ request, locals: user } as unknown as Parameters<typeof POST>[0]);
 }
 
 /** A body that fails the test if anything reads it. */
@@ -268,7 +270,7 @@ describe('POST /api/restore', () => {
 				headers: { 'content-type': 'application/x-zip-compressed' }
 			} as RequestInit),
 			locals,
-			{ env: { R2: r2.bucket } }
+			{ R2: r2.bucket }
 		);
 
 		expect(response.status).toBe(200);

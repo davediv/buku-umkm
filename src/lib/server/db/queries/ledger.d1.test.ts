@@ -1,14 +1,14 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { chartOfAccount } from '$lib/server/db/schema';
-import { createTestD1 } from '$lib/server/testing/d1';
-import { createFinancialMutationService } from '$lib/server/finance/commands';
-import { createD1FinanceRepository } from '$lib/server/finance/repository';
-import { getBalanceSheetAsOf } from '$lib/server/reports/balance-sheet';
+import { chartOfAccount } from '#lib/server/db/schema.ts';
+import { createTestD1 } from '#lib/server/testing/d1.ts';
+import { createFinancialMutationService } from '#lib/server/finance/commands.ts';
+import { createD1FinanceRepository } from '#lib/server/finance/repository.ts';
+import { getBalanceSheetAsOf } from '#lib/server/reports/balance-sheet.ts';
 import {
 	getRecordedAnnualExpenseTotal,
 	getRecordedAnnualLoanInterestIncome,
 	getRecordedMonthlyRevenue
-} from '$lib/tax/service';
+} from '#lib/tax/service.ts';
 import { dashboardQueries, transactionQueries } from './index';
 
 let harness: Awaited<ReturnType<typeof createTestD1>>;

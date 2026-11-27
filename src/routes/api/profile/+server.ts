@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { businessProfileQueries } from '$lib/server/db/queries';
-import { encryptNPWP, decryptNPWP, validateNPWP, formatNPWP } from '$lib/server/crypto';
-import type { businessProfile } from '$lib/server/db/schema';
+import { getDb } from '#lib/server/db/index.ts';
+import { businessProfileQueries } from '#lib/server/db/queries/index.ts';
+import { encryptNPWP, decryptNPWP, validateNPWP, formatNPWP } from '#lib/server/crypto.ts';
+import type { businessProfile } from '#lib/server/db/schema.ts';
 
 interface UpdateProfileBody {
 	name?: string;

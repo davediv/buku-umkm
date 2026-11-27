@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { jakartaToday } from '$lib/tax/period';
+import { jakartaToday } from '#lib/tax/period.ts';
 
 interface TaxApiResponse<T> {
 	data?: T;

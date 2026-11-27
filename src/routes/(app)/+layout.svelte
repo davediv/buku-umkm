@@ -2,16 +2,16 @@
 	import { beforeNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { BookOpen } from '@lucide/svelte';
-	import TaxReminder from '$lib/components/tax-reminder.svelte';
-	import ConnectionStatus from '$lib/components/connection-status.svelte';
-	import Toast from '$lib/components/ui/toast/toast.svelte';
+	import TaxReminder from '#lib/components/tax-reminder.svelte';
+	import ConnectionStatus from '#lib/components/connection-status.svelte';
+	import Toast from '#lib/components/ui/toast/toast.svelte';
 	import {
 		desktopCreateAction,
 		desktopNavigationGroups,
 		isNavigationItemActive,
 		mobileNavigation
-	} from '$lib/navigation';
-	import { rememberNavigationOrigin } from '$lib/client/navigation-continuity';
+	} from '#lib/navigation.ts';
+	import { rememberNavigationOrigin } from '#lib/client/navigation-continuity.ts';
 	import type { LayoutData } from './$types';
 
 	let { children, data }: { children: import('svelte').Snippet; data: LayoutData } = $props();
@@ -20,6 +20,8 @@
 	);
 
 	beforeNavigate((navigation) => {
+		if (navigation.shallow && navigation.type === 'goto') return;
+
 		if (
 			navigation.type === 'popstate' ||
 			!navigation.from?.url ||
