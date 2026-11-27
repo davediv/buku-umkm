@@ -149,7 +149,7 @@ pnpm exec vitest run --project browser <path>         # one component test
 
 - Tests named `*.d1.test.ts` run against an in-memory local D1 on the real Workers runtime (`src/lib/server/testing/d1.ts`), so they enforce D1's own rules: no `BEGIN`/`SAVEPOINT` transactions, at most 100 bound parameters per statement, and atomic batches.
 - Browser component tests (`*.svelte.spec.ts`) drive the installed Google Chrome through Playwright.
-- CI (`.github/workflows/ci.yml`) runs lint, type check, all tests and the build on every push and pull request.
+- There is no CI. Run `pnpm lint`, `pnpm check`, `pnpm test` and `pnpm build` locally before deploying.
 
 ## Bookkeeping and Tax Notes
 
