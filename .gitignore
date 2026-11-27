@@ -21,6 +21,8 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+# Vitest reports, attachments and failure screenshots
+/.vitest
 # Cloudflare Types
 /worker-configuration.d.ts
 # SQLite

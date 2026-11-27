@@ -5,11 +5,11 @@ import OperationStatus from './operation-status.svelte';
 
 describe('OperationStatus', () => {
 	it('announces errors assertively and success politely', async () => {
-		const view = render(OperationStatus, { kind: 'error', message: 'Data belum disimpan.' });
-		await expect.element(page.getByRole('alert')).toHaveTextContent('Tindakan gagal');
+		const view = await render(OperationStatus, { kind: 'error', message: 'Data belum disimpan.' });
+		await expect.element(page.getByRole('alert')).toMatchTextContent('Tindakan gagal');
 		view.unmount();
 
-		render(OperationStatus, { kind: 'success', message: 'Data berhasil disimpan.' });
-		await expect.element(page.getByRole('status')).toHaveTextContent('Berhasil');
+		await render(OperationStatus, { kind: 'success', message: 'Data berhasil disimpan.' });
+		await expect.element(page.getByRole('status')).toMatchTextContent('Berhasil');
 	});
 });

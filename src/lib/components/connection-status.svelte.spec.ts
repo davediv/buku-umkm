@@ -5,13 +5,13 @@ import ConnectionStatus from './connection-status.svelte';
 
 describe('ConnectionStatus', () => {
 	it('announces online and offline-stale states', async () => {
-		render(ConnectionStatus, { loadedAt: '2026-08-30T08:00:00.000Z' });
+		await render(ConnectionStatus, { loadedAt: '2026-08-30T08:00:00.000Z' });
 
 		const status = page.getByRole('status');
-		await expect.element(status).toHaveTextContent('Online · perubahan tersimpan ke akun Anda');
+		await expect.element(status).toMatchTextContent('Online · perubahan tersimpan ke akun Anda');
 
 		window.dispatchEvent(new Event('offline'));
-		await expect.element(status).toHaveTextContent(/Offline · data dari pukul .* mungkin usang/);
-		await expect.element(status).toHaveTextContent('perubahan belum dapat disimpan');
+		await expect.element(status).toMatchTextContent(/Offline · data dari pukul .* mungkin usang/);
+		await expect.element(status).toMatchTextContent('perubahan belum dapat disimpan');
 	});
 });

@@ -5,7 +5,7 @@ import CashFlowChart from './cash-flow-chart.svelte';
 
 describe('CashFlowChart', () => {
 	it('renders an accessible pair of bars for every month', async () => {
-		render(CashFlowChart, {
+		await render(CashFlowChart, {
 			data: [
 				{ month: 7, year: 2026, income: 5_000_000, expense: 3_000_000 },
 				{ month: 8, year: 2026, income: 7_500_000, expense: 4_000_000 }
@@ -26,7 +26,7 @@ describe('CashFlowChart', () => {
 	});
 
 	it('names each bar with a readable month and year', async () => {
-		render(CashFlowChart, {
+		await render(CashFlowChart, {
 			data: [{ month: 7, year: 2026, income: 5_000_000, expense: 3_000_000 }]
 		});
 
@@ -38,7 +38,7 @@ describe('CashFlowChart', () => {
 	});
 
 	it('keeps the axis on whole Rupiah and draws only 0 when nothing moved', async () => {
-		const small = render(CashFlowChart, {
+		const small = await render(CashFlowChart, {
 			data: [{ month: 7, year: 2026, income: 5, expense: 0 }]
 		});
 		const smallTicks = [...document.querySelectorAll('svg text')]
@@ -47,7 +47,7 @@ describe('CashFlowChart', () => {
 		expect(smallTicks).toEqual(['0', '2', '4', '6', '8']);
 		small.unmount();
 
-		render(CashFlowChart, { data: [{ month: 7, year: 2026, income: 0, expense: 0 }] });
+		await render(CashFlowChart, { data: [{ month: 7, year: 2026, income: 0, expense: 0 }] });
 		const emptyTicks = [...document.querySelectorAll('svg text')]
 			.map((text) => text.textContent?.trim())
 			.filter((text) => text && /^\d/.test(text));

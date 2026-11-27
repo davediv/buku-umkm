@@ -5,7 +5,7 @@ import ContextBackLink from './context-back-link.svelte';
 
 describe('ContextBackLink', () => {
 	it('keeps an addressable fallback destination', async () => {
-		render(ContextBackLink, {
+		await render(ContextBackLink, {
 			href: '/transaksi?q=kopi&page=3',
 			label: 'Kembali ke daftar transaksi'
 		});

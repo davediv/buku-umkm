@@ -5,7 +5,7 @@ import AlertDialogTestHost from './alert-dialog-test-host.svelte';
 
 describe('AlertDialog', () => {
 	it('focuses the safe action and lets cancel close the parent dialog', async () => {
-		render(AlertDialogTestHost);
+		await render(AlertDialogTestHost);
 
 		await page.getByRole('button', { name: 'Hapus data' }).click();
 		const dialog = page.getByRole('alertdialog', { name: 'Hapus data?' });

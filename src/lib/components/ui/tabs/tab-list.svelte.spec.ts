@@ -5,7 +5,7 @@ import TabListTestHost from './tab-list-test-host.svelte';
 
 describe('TabList', () => {
 	it('exposes tab semantics and supports arrow, Home, and End navigation', async () => {
-		render(TabListTestHost);
+		await render(TabListTestHost);
 
 		const income = page.getByRole('tab', { name: 'Pemasukan' });
 		const expense = page.getByRole('tab', { name: 'Pengeluaran' });

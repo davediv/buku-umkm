@@ -5,7 +5,7 @@ import DialogTestHost from './dialog-test-host.svelte';
 
 describe('Dialog', () => {
 	it('manages initial focus, traps focus, closes with Escape, and restores focus', async () => {
-		render(DialogTestHost);
+		await render(DialogTestHost);
 
 		const trigger = page.getByRole('button', { name: 'Buka dialog' });
 		await trigger.click();
