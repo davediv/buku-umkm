@@ -80,9 +80,9 @@ self.addEventListener('fetch', (event) => {
 
 		const networkResponse = await fetch(event.request);
 		if (networkResponse.ok) {
-			cacheWrite = caches
-				.open(CACHE_NAME)
-				.then((cache) => cache.put(event.request, networkResponse.clone()));
+			// Clone now: once respondWith() starts reading the body, clone() throws.
+			const copy = networkResponse.clone();
+			cacheWrite = caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
 		}
 		return networkResponse;
 	});
