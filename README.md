@@ -38,7 +38,7 @@ Built for UMKM (Usaha Mikro, Kecil, dan Menengah): business owners can manage th
 ## Getting Started
 
 ```bash
-git clone https://github.com/<your-username>/buku-umkm.git
+git clone https://github.com/davediv/buku-umkm.git
 cd buku-umkm
 pnpm install
 
