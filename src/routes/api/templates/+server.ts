@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { transactionTemplateQueries } from '#lib/server/db/queries/index.ts';
@@ -20,7 +19,7 @@ interface CreateTemplateBody {
 export const GET: RequestHandler = async ({ locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
@@ -42,10 +41,10 @@ export const GET: RequestHandler = async ({ locals }) => {
 			updatedAt: tmpl.updatedAt
 		}));
 
-		return json({ templates: mappedTemplates });
+		return Response.json({ templates: mappedTemplates });
 	} catch {
 		console.error('Error fetching templates:');
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
 
@@ -53,7 +52,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
@@ -64,24 +63,27 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Validate fields
 		const name = validateTemplateName(body.name);
 		if (!name.ok) {
-			return json({ error: name.error }, { status: 400 });
+			return Response.json({ error: name.error }, { status: 400 });
 		}
 
 		if (!isCategoryType(body.type)) {
-			return json({ error: 'Tipe transaksi wajib dipilih (income/expense)' }, { status: 400 });
+			return Response.json(
+				{ error: 'Tipe transaksi wajib dipilih (income/expense)' },
+				{ status: 400 }
+			);
 		}
 		const type = body.type;
 
 		const description = validateTemplateDescription(body.description);
 		if (!description.ok) {
-			return json({ error: description.error }, { status: 400 });
+			return Response.json({ error: description.error }, { status: 400 });
 		}
 
 		const db = getDb();
 
 		const categoryCheck = await resolveTemplateCategory(db, userId, body.categoryId, type);
 		if (!categoryCheck.ok) {
-			return json({ error: categoryCheck.error }, { status: 400 });
+			return Response.json({ error: categoryCheck.error }, { status: 400 });
 		}
 
 		// Create the template
@@ -94,7 +96,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			isSystem: false
 		});
 
-		return json(
+		return Response.json(
 			{
 				message: 'Template berhasil dibuat',
 				template: createdTemplate
@@ -103,6 +105,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		);
 	} catch {
 		console.error('Error creating template:');
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

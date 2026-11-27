@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { calculateMonthlyTax } from '#lib/tax/engine.ts';
@@ -24,7 +23,7 @@ import { jakartaToday } from '#lib/tax/period.ts';
 export const GET: RequestHandler = async ({ locals, url }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
@@ -36,14 +35,14 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		: jakartaToday().year;
 
 	if (isNaN(year) || year < 2000 || year > 2100) {
-		return json({ error: 'Invalid year parameter' }, { status: 400 });
+		return Response.json({ error: 'Invalid year parameter' }, { status: 400 });
 	}
 
 	try {
 		const context = await getTaxYearContext(db, userId, year);
 		const taxpayerType = context.eligibility.taxpayerType;
 		if (context.eligibility.status !== 'eligible' || !taxpayerType) {
-			return json(
+			return Response.json(
 				{
 					error: context.eligibility.reasons[0] || 'Estimasi pajak tidak tersedia.',
 					eligibility: context.eligibility
@@ -148,9 +147,9 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			generatedAt: new Date().toISOString()
 		};
 
-		return json({ data: response });
+		return Response.json({ data: response });
 	} catch {
 		console.error('Error in GET /api/tax/annual:');
-		return json({ error: 'Failed to fetch annual tax data' }, { status: 500 });
+		return Response.json({ error: 'Failed to fetch annual tax data' }, { status: 500 });
 	}
 };

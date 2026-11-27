@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { chartOfAccount } from '#lib/server/db/schema.ts';
@@ -19,7 +18,7 @@ import { summarizeError } from '#lib/server/error-summary.ts';
 export const GET: RequestHandler = async ({ locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
@@ -42,10 +41,10 @@ export const GET: RequestHandler = async ({ locals }) => {
 			updatedAt: account.updatedAt
 		}));
 
-		return json({ accounts: mappedAccounts });
+		return Response.json({ accounts: mappedAccounts });
 	} catch (cause) {
 		console.error('Error fetching accounts:', summarizeError(cause));
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
 
@@ -53,7 +52,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
@@ -61,16 +60,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const body: unknown = await request.json().catch(() => null);
 		if (!body || typeof body !== 'object' || Array.isArray(body)) {
-			return json({ error: 'Format permintaan tidak valid' }, { status: 400 });
+			return Response.json({ error: 'Format permintaan tidak valid' }, { status: 400 });
 		}
 		const input = body as Record<string, unknown>;
 
 		const name = parseAccountName(input.name);
-		if (!name.ok) return json({ error: name.error }, { status: 400 });
+		if (!name.ok) return Response.json({ error: name.error }, { status: 400 });
 
 		// Validate account type
 		if (typeof input.type !== 'string' || !isValidAccountType(input.type)) {
-			return json(
+			return Response.json(
 				{
 					error: `Tipe akun tidak valid. Jenis yang diperbolehkan: ${VALID_ACCOUNT_TYPES.join(', ')}`
 				},
@@ -86,7 +85,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			openingBalance < 0 ||
 			openingBalance > MAX_TRANSACTION_AMOUNT
 		) {
-			return json({ error: 'Saldo awal tidak valid' }, { status: 400 });
+			return Response.json({ error: 'Saldo awal tidak valid' }, { status: 400 });
 		}
 		const openingDate = input.opening_date ?? todayInJakarta();
 		if (
@@ -94,7 +93,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			!isIsoCalendarDate(openingDate) ||
 			openingDate > todayInJakarta()
 		) {
-			return json({ error: 'Tanggal saldo awal tidak valid' }, { status: 400 });
+			return Response.json({ error: 'Tanggal saldo awal tidak valid' }, { status: 400 });
 		}
 
 		const db = getDb();
@@ -131,7 +130,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			})
 			.returning();
 
-		return json(
+		return Response.json(
 			{
 				message: 'Akun berhasil dibuat',
 				account: {
@@ -143,6 +142,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		);
 	} catch (cause) {
 		console.error('Error creating account:', summarizeError(cause));
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { calculateAnnualTax } from '#lib/tax/engine.ts';
@@ -22,7 +21,7 @@ import { findOutstandingMonths, reminderPeriods, reminderUrgency } from '#lib/ta
  */
 export const GET: RequestHandler = async ({ locals }) => {
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
@@ -63,7 +62,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 		const current = years[years.length - 1];
 		const eligibleYears = years.filter((entry) => entry.taxpayerType);
 		if (eligibleYears.length === 0) {
-			return json({
+			return Response.json({
 				data: {
 					showReminder: false,
 					reason: 'tax_estimate_unavailable',
@@ -74,10 +73,10 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 		const items = years.flatMap((entry) => entry.items);
 		if (items.length === 0) {
-			return json({ data: { showReminder: false, reason: 'nothing_outstanding' } });
+			return Response.json({ data: { showReminder: false, reason: 'nothing_outstanding' } });
 		}
 
-		return json({
+		return Response.json({
 			data: {
 				showReminder: true,
 				items,
@@ -89,6 +88,6 @@ export const GET: RequestHandler = async ({ locals }) => {
 		});
 	} catch {
 		console.error('Error in GET /api/tax/reminder:');
-		return json({ error: 'Failed to fetch tax reminder' }, { status: 500 });
+		return Response.json({ error: 'Failed to fetch tax reminder' }, { status: 500 });
 	}
 };

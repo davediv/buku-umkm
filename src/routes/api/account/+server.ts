@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
 import type { RequestHandler } from './$types';
 import { RECEIPTS_NOT_DELETED } from '#lib/server/account/deletion.ts';
@@ -16,7 +15,7 @@ const CONFIRMATION_WORD = 'HAPUS';
 type Field = 'password' | 'confirmation';
 
 function refuse(status: number, error: string, field?: Field) {
-	return json(field ? { error, field } : { error }, { status });
+	return Response.json(field ? { error, field } : { error }, { status });
 }
 
 /**
@@ -57,5 +56,5 @@ export const DELETE: RequestHandler = async (event) => {
 		return refuse(500, 'Akun belum dihapus karena terjadi kesalahan server. Coba lagi.');
 	}
 
-	return json({ success: true });
+	return Response.json({ success: true });
 };

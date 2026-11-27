@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { dashboardQueries, transactionQueries } from '#lib/server/db/queries/index.ts';
@@ -11,7 +10,7 @@ type PeriodParam = 'daily' | 'weekly' | 'monthly';
 export const GET: RequestHandler = async ({ locals, url }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
@@ -47,7 +46,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			categoryName: t.category?.name ?? null
 		}));
 
-		return json({
+		return Response.json({
 			data: {
 				// Total balance across all asset accounts
 				totalBalance: summary.totalAssets,
@@ -84,6 +83,6 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		});
 	} catch (cause) {
 		console.error('Error fetching dashboard data:', summarizeError(cause));
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

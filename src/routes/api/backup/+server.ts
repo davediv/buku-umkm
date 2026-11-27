@@ -1,5 +1,4 @@
 import { env } from 'cloudflare:workers';
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { summarizeError } from '#lib/server/error-summary.ts';
@@ -9,7 +8,7 @@ import { todayInJakarta } from '#lib/shared/dates.ts';
 // POST /api/backup - Download every row the signed-in user owns, and their receipt images, as a .zip
 export const POST: RequestHandler = async ({ locals }) => {
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	try {
@@ -35,6 +34,6 @@ export const POST: RequestHandler = async ({ locals }) => {
 		});
 	} catch (error) {
 		console.error('Backup failed', summarizeError(error));
-		return json({ error: 'Terjadi kesalahan saat membuat cadangan' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan saat membuat cadangan' }, { status: 500 });
 	}
 };

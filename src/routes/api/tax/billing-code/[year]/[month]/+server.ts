@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { calculateMonthlyTax } from '#lib/tax/engine.ts';
@@ -32,7 +31,7 @@ const KJS = '420';
 export const GET: RequestHandler = async ({ locals, params }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
@@ -45,10 +44,10 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 		// Validate year and month
 		if (isNaN(year) || year < 2000 || year > 2100) {
-			return json({ error: 'Invalid year parameter' }, { status: 400 });
+			return Response.json({ error: 'Invalid year parameter' }, { status: 400 });
 		}
 		if (isNaN(month) || month < 1 || month > 12) {
-			return json({ error: 'Invalid month parameter' }, { status: 400 });
+			return Response.json({ error: 'Invalid month parameter' }, { status: 400 });
 		}
 
 		// Profile data and monthly totals are independent and can share one D1 round-trip wave.
@@ -58,7 +57,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		]);
 		const taxpayerType = context.eligibility.taxpayerType;
 		if (context.eligibility.status !== 'eligible' || !taxpayerType) {
-			return json(
+			return Response.json(
 				{
 					error: context.eligibility.reasons[0] || 'Estimasi pajak tidak tersedia.',
 					eligibility: context.eligibility
@@ -112,9 +111,9 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 			officialBillingUrl: 'https://coretaxdjp.pajak.go.id/'
 		};
 
-		return json({ data: response });
+		return Response.json({ data: response });
 	} catch {
 		console.error('Error in GET /api/tax/billing-code/[year]/[month]:');
-		return json({ error: 'Failed to fetch billing code data' }, { status: 500 });
+		return Response.json({ error: 'Failed to fetch billing code data' }, { status: 500 });
 	}
 };

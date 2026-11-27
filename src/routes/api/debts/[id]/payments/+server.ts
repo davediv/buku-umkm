@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { debtQueries } from '#lib/server/db/queries/index.ts';
@@ -10,15 +9,15 @@ import { presentDebt, presentPayment, presentTransaction } from '#lib/server/fin
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
-	if (!params.id) return json({ error: 'ID hutang/piutang diperlukan' }, { status: 400 });
+	if (!params.id) return Response.json({ error: 'ID hutang/piutang diperlukan' }, { status: 400 });
 
 	try {
 		const item = await debtQueries.findById(getDb(), locals.user.id, params.id);
-		if (!item) return json({ error: 'Hutang/piutang tidak ditemukan' }, { status: 404 });
+		if (!item) return Response.json({ error: 'Hutang/piutang tidak ditemukan' }, { status: 404 });
 		const presented = presentDebt(item);
-		return json({ debt: presented, payments: presented.payments });
+		return Response.json({ debt: presented, payments: presented.payments });
 	} catch (error) {
 		return financeErrorResponse(error, 'list debt payments');
 	}
@@ -26,9 +25,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
-	if (!params.id) return json({ error: 'ID hutang/piutang diperlukan' }, { status: 400 });
+	if (!params.id) return Response.json({ error: 'ID hutang/piutang diperlukan' }, { status: 400 });
 
 	try {
 		const service = createFinancialMutationService(createD1FinanceRepository(getDb()));
@@ -38,7 +37,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			requireIdempotencyKey(request),
 			parseDebtPayment(await request.json())
 		);
-		return json(
+		return Response.json(
 			{
 				message: result.replayed
 					? 'Pembayaran sudah tersimpan sebelumnya'

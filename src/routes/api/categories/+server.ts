@@ -1,5 +1,4 @@
 import { LOAN_INTEREST_CATEGORY_CODES } from '#lib/debts/interest.ts';
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { categoryQueries } from '#lib/server/db/queries/index.ts';
@@ -23,7 +22,7 @@ interface CreateCategoryBody {
 export const GET: RequestHandler = async ({ locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
@@ -46,10 +45,10 @@ export const GET: RequestHandler = async ({ locals }) => {
 			updatedAt: cat.updatedAt
 		}));
 
-		return json({ categories: mappedCategories });
+		return Response.json({ categories: mappedCategories });
 	} catch {
 		console.error('Error fetching categories:');
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
 
@@ -57,7 +56,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
@@ -68,21 +67,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Validate fields
 		const name = validateCategoryName(body.name);
 		if (!name.ok) {
-			return json({ error: name.error }, { status: 400 });
+			return Response.json({ error: name.error }, { status: 400 });
 		}
 
 		if (!isCategoryType(body.type)) {
-			return json({ error: 'Tipe kategori wajib dipilih (income/expense)' }, { status: 400 });
+			return Response.json(
+				{ error: 'Tipe kategori wajib dipilih (income/expense)' },
+				{ status: 400 }
+			);
 		}
 		const type = body.type;
 
 		const customCode = validateCategoryCode(body.code, type);
 		if (!customCode.ok) {
-			return json({ error: customCode.error }, { status: 400 });
+			return Response.json({ error: customCode.error }, { status: 400 });
 		}
 		// The loan interest categories are found by these codes; a custom one must not take them.
 		if (customCode.value && LOAN_INTEREST_CATEGORY_CODES.has(customCode.value)) {
-			return json(
+			return Response.json(
 				{
 					error: `Kode ${customCode.value} disediakan untuk kategori bunga pinjaman. Pilih kode lain.`
 				},
@@ -92,12 +94,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const icon = validateCategoryIcon(body.icon);
 		if (!icon.ok) {
-			return json({ error: icon.error }, { status: 400 });
+			return Response.json({ error: icon.error }, { status: 400 });
 		}
 
 		const color = validateCategoryColor(body.color);
 		if (!color.ok) {
-			return json({ error: color.error }, { status: 400 });
+			return Response.json({ error: color.error }, { status: 400 });
 		}
 
 		const db = getDb();
@@ -110,7 +112,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		} else {
 			const existing = await categoryQueries.findByCode(db, userId, code);
 			if (existing) {
-				return json({ error: 'Kode kategori sudah digunakan' }, { status: 400 });
+				return Response.json({ error: 'Kode kategori sudah digunakan' }, { status: 400 });
 			}
 		}
 
@@ -124,7 +126,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			color: color.value
 		});
 
-		return json(
+		return Response.json(
 			{
 				message: 'Kategori berhasil dibuat',
 				category: createdCategory
@@ -133,6 +135,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		);
 	} catch {
 		console.error('Error creating category:');
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

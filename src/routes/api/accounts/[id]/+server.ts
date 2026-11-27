@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { chartOfAccountQueries } from '#lib/server/db/queries/index.ts';
@@ -26,14 +25,14 @@ const DEACTIVATION_ERRORS: Record<Exclude<AccountDeactivation, 'deactivated'>, [
 export const GET: RequestHandler = async ({ params, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
 	const accountId = params.id;
 
 	if (!accountId) {
-		return json({ error: 'ID akun diperlukan' }, { status: 400 });
+		return Response.json({ error: 'ID akun diperlukan' }, { status: 400 });
 	}
 
 	const db = getDb();
@@ -42,10 +41,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const account = await chartOfAccountQueries.findById(db, userId, accountId);
 
 		if (!account) {
-			return json({ error: 'Akun tidak ditemukan' }, { status: 404 });
+			return Response.json({ error: 'Akun tidak ditemukan' }, { status: 404 });
 		}
 
-		return json({
+		return Response.json({
 			account: {
 				id: account.id,
 				name: account.name,
@@ -59,7 +58,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (cause) {
 		console.error('Error fetching account:', summarizeError(cause));
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
 
@@ -67,20 +66,20 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
 	const accountId = params.id;
 
 	if (!accountId) {
-		return json({ error: 'ID akun diperlukan' }, { status: 400 });
+		return Response.json({ error: 'ID akun diperlukan' }, { status: 400 });
 	}
 
 	try {
 		const body: unknown = await request.json().catch(() => null);
 		if (!body || typeof body !== 'object' || Array.isArray(body)) {
-			return json({ error: 'Format permintaan tidak valid' }, { status: 400 });
+			return Response.json({ error: 'Format permintaan tidak valid' }, { status: 400 });
 		}
 		const input = body as Record<string, unknown>;
 		const db = getDb();
@@ -89,19 +88,19 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const existingAccount = await chartOfAccountQueries.findById(db, userId, accountId);
 
 		if (!existingAccount) {
-			return json({ error: 'Akun tidak ditemukan' }, { status: 404 });
+			return Response.json({ error: 'Akun tidak ditemukan' }, { status: 404 });
 		}
 
 		// Validate name (if provided)
 		const name = input.name === undefined ? undefined : parseAccountName(input.name);
-		if (name && !name.ok) return json({ error: name.error }, { status: 400 });
+		if (name && !name.ok) return Response.json({ error: name.error }, { status: 400 });
 
 		// Validate account type (if provided)
 		if (
 			input.type !== undefined &&
 			(typeof input.type !== 'string' || !isValidAccountType(input.type))
 		) {
-			return json(
+			return Response.json(
 				{
 					error: `Tipe akun tidak valid. Jenis yang diperbolehkan: ${VALID_ACCOUNT_TYPES.join(', ')}`
 				},
@@ -127,7 +126,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		if (Object.keys(updateData).length === 0) {
-			return json({ error: 'Tidak ada perubahan untuk disimpan' }, { status: 400 });
+			return Response.json({ error: 'Tidak ada perubahan untuk disimpan' }, { status: 400 });
 		}
 
 		// Update the account
@@ -135,10 +134,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		const updatedAccount = await chartOfAccountQueries.findById(db, userId, accountId);
 		if (!updatedAccount) {
-			return json({ error: 'Akun gagal dimuat setelah diperbarui' }, { status: 500 });
+			return Response.json({ error: 'Akun gagal dimuat setelah diperbarui' }, { status: 500 });
 		}
 
-		return json({
+		return Response.json({
 			message: 'Akun berhasil diperbarui',
 			account: {
 				...updatedAccount,
@@ -147,7 +146,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		});
 	} catch (cause) {
 		console.error('Error updating account:', summarizeError(cause));
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
 
@@ -155,14 +154,14 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 export const DELETE: RequestHandler = async ({ params, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
 	const accountId = params.id;
 
 	if (!accountId) {
-		return json({ error: 'ID akun diperlukan' }, { status: 400 });
+		return Response.json({ error: 'ID akun diperlukan' }, { status: 400 });
 	}
 
 	const db = getDb();
@@ -171,14 +170,14 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		const outcome = await deactivateAccount(db, userId, accountId);
 		if (outcome !== 'deactivated') {
 			const [error, status] = DEACTIVATION_ERRORS[outcome];
-			return json({ error }, { status });
+			return Response.json({ error }, { status });
 		}
 
-		return json({
+		return Response.json({
 			message: 'Akun berhasil dinonaktifkan'
 		});
 	} catch (cause) {
 		console.error('Error deleting account:', summarizeError(cause));
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

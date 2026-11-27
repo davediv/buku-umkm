@@ -1,5 +1,4 @@
 import { env } from 'cloudflare:workers';
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { transactionPhotoQueries } from '#lib/server/db/queries/index.ts';
@@ -10,7 +9,7 @@ import { isOwnReceiptKey } from '#lib/server/photos/receipts.ts';
 export const DELETE: RequestHandler = async ({ params, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
@@ -18,11 +17,11 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 	const photoId = params.photoId;
 
 	if (!transactionId) {
-		return json({ error: 'ID transaksi diperlukan' }, { status: 400 });
+		return Response.json({ error: 'ID transaksi diperlukan' }, { status: 400 });
 	}
 
 	if (!photoId) {
-		return json({ error: 'ID foto diperlukan' }, { status: 400 });
+		return Response.json({ error: 'ID foto diperlukan' }, { status: 400 });
 	}
 
 	const db = getDb();
@@ -32,12 +31,12 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		const photo = await transactionPhotoQueries.findById(db, userId, photoId);
 
 		if (!photo) {
-			return json({ error: 'Foto tidak ditemukan' }, { status: 404 });
+			return Response.json({ error: 'Foto tidak ditemukan' }, { status: 404 });
 		}
 
 		// Verify photo belongs to the specified transaction
 		if (photo.transactionId !== transactionId) {
-			return json({ error: 'Foto tidak terkait dengan transaksi ini' }, { status: 400 });
+			return Response.json({ error: 'Foto tidak terkait dengan transaksi ini' }, { status: 400 });
 		}
 
 		// The row first: if the object delete then fails, an unreferenced image is left in
@@ -53,11 +52,11 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			await env.R2.delete(photo.r2Key);
 		}
 
-		return json({
+		return Response.json({
 			message: 'Foto berhasil dihapus'
 		});
 	} catch (error) {
 		console.error('Error deleting transaction photo', summarizeError(error));
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

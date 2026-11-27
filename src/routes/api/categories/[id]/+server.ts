@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { categoryQueries, transactionQueries } from '#lib/server/db/queries/index.ts';
@@ -12,14 +11,14 @@ interface UpdateCategoryBody {
 export const GET: RequestHandler = async ({ params, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
 	const categoryId = params.id;
 
 	if (!categoryId) {
-		return json({ error: 'ID kategori diperlukan' }, { status: 400 });
+		return Response.json({ error: 'ID kategori diperlukan' }, { status: 400 });
 	}
 
 	const db = getDb();
@@ -28,10 +27,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const cat = await categoryQueries.findById(db, userId, categoryId);
 
 		if (!cat) {
-			return json({ error: 'Kategori tidak ditemukan' }, { status: 404 });
+			return Response.json({ error: 'Kategori tidak ditemukan' }, { status: 404 });
 		}
 
-		return json({
+		return Response.json({
 			category: {
 				id: cat.id,
 				name: cat.name,
@@ -47,7 +46,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch {
 		console.error('Error fetching category:');
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
 
@@ -55,14 +54,14 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
 	const categoryId = params.id;
 
 	if (!categoryId) {
-		return json({ error: 'ID kategori diperlukan' }, { status: 400 });
+		return Response.json({ error: 'ID kategori diperlukan' }, { status: 400 });
 	}
 
 	try {
@@ -73,12 +72,12 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const existingCategory = await categoryQueries.findById(db, userId, categoryId);
 
 		if (!existingCategory) {
-			return json({ error: 'Kategori tidak ditemukan' }, { status: 404 });
+			return Response.json({ error: 'Kategori tidak ditemukan' }, { status: 404 });
 		}
 
 		// System categories cannot be renamed
 		if (existingCategory.isSystem) {
-			return json({ error: 'Kategori sistem tidak dapat diubah' }, { status: 400 });
+			return Response.json({ error: 'Kategori sistem tidak dapat diubah' }, { status: 400 });
 		}
 
 		// Build update data
@@ -89,7 +88,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		if (body.name !== undefined) {
 			const name = validateCategoryName(body.name);
 			if (!name.ok) {
-				return json({ error: name.error }, { status: 400 });
+				return Response.json({ error: name.error }, { status: 400 });
 			}
 			updateData.name = name.value;
 		}
@@ -97,7 +96,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		// Update the category
 		await categoryQueries.update(db, userId, categoryId, updateData);
 
-		return json({
+		return Response.json({
 			message: 'Kategori berhasil diperbarui',
 			category: {
 				id: existingCategory.id,
@@ -114,7 +113,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		});
 	} catch {
 		console.error('Error updating category:');
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
 
@@ -122,14 +121,14 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
 	const categoryId = params.id;
 
 	if (!categoryId) {
-		return json({ error: 'ID kategori diperlukan' }, { status: 400 });
+		return Response.json({ error: 'ID kategori diperlukan' }, { status: 400 });
 	}
 
 	try {
@@ -140,18 +139,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const existingCategory = await categoryQueries.findById(db, userId, categoryId);
 
 		if (!existingCategory) {
-			return json({ error: 'Kategori tidak ditemukan' }, { status: 404 });
+			return Response.json({ error: 'Kategori tidak ditemukan' }, { status: 404 });
 		}
 
 		// Validate isActive
 		if (typeof body.isActive !== 'boolean') {
-			return json({ error: 'Status isActive diperlukan' }, { status: 400 });
+			return Response.json({ error: 'Status isActive diperlukan' }, { status: 400 });
 		}
 
 		// Update the category status
 		await categoryQueries.update(db, userId, categoryId, { isActive: body.isActive });
 
-		return json({
+		return Response.json({
 			message: body.isActive ? 'Kategori berhasil diaktifkan' : 'Kategori berhasil dinonaktifkan',
 			category: {
 				id: existingCategory.id,
@@ -168,7 +167,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		});
 	} catch {
 		console.error('Error toggling category status:');
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
 
@@ -176,14 +175,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 export const DELETE: RequestHandler = async ({ params, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
 	const categoryId = params.id;
 
 	if (!categoryId) {
-		return json({ error: 'ID kategori diperlukan' }, { status: 400 });
+		return Response.json({ error: 'ID kategori diperlukan' }, { status: 400 });
 	}
 
 	const db = getDb();
@@ -193,12 +192,12 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		const existingCategory = await categoryQueries.findById(db, userId, categoryId);
 
 		if (!existingCategory) {
-			return json({ error: 'Kategori tidak ditemukan' }, { status: 404 });
+			return Response.json({ error: 'Kategori tidak ditemukan' }, { status: 404 });
 		}
 
 		// System categories cannot be deleted
 		if (existingCategory.isSystem) {
-			return json({ error: 'Kategori sistem tidak dapat dihapus' }, { status: 400 });
+			return Response.json({ error: 'Kategori sistem tidak dapat dihapus' }, { status: 400 });
 		}
 
 		// Check if category has transactions
@@ -207,7 +206,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		if (hasTxns) {
 			// Categories with referenced transactions cannot be deleted, only deactivated
 			await categoryQueries.update(db, userId, categoryId, { isActive: false });
-			return json({
+			return Response.json({
 				message: 'Kategori memiliki transaksi terkait dan telah dinonaktifkan'
 			});
 		}
@@ -215,11 +214,11 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		// Delete the category (hard delete)
 		await categoryQueries.delete(db, userId, categoryId);
 
-		return json({
+		return Response.json({
 			message: 'Kategori berhasil dihapus'
 		});
 	} catch {
 		console.error('Error deleting category:');
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

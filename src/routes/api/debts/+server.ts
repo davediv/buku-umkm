@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { debtQueries } from '#lib/server/db/queries/index.ts';
@@ -10,7 +9,7 @@ import { presentDebt } from '#lib/server/finance/presenters.ts';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	try {
@@ -27,7 +26,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			status,
 			includeInactive: url.searchParams.get('include_inactive') === 'true'
 		});
-		return json({ debts: debts.map(presentDebt) });
+		return Response.json({ debts: debts.map(presentDebt) });
 	} catch (error) {
 		return financeErrorResponse(error, 'list debts');
 	}
@@ -35,14 +34,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	try {
 		const service = createFinancialMutationService(createD1FinanceRepository(getDb()));
 		const input = parseCreateDebt(await request.json());
 		const result = await service.createDebt(locals.user.id, requireIdempotencyKey(request), input);
-		return json(
+		return Response.json(
 			{
 				message: result.replayed
 					? 'Hutang/piutang sudah tersimpan sebelumnya'

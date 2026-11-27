@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { taxRecord } from '#lib/server/db/schema.ts';
@@ -23,7 +22,7 @@ import { isIsoCalendarDate } from '#lib/shared/dates.ts';
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
@@ -36,10 +35,10 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 
 		// Validate year and month
 		if (isNaN(year) || year < 2000 || year > 2100) {
-			return json({ error: 'Invalid year parameter' }, { status: 400 });
+			return Response.json({ error: 'Invalid year parameter' }, { status: 400 });
 		}
 		if (isNaN(month) || month < 1 || month > 12) {
-			return json({ error: 'Invalid month parameter' }, { status: 400 });
+			return Response.json({ error: 'Invalid month parameter' }, { status: 400 });
 		}
 
 		let body: Record<string, unknown>;
@@ -48,11 +47,11 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			if (!parsed || typeof parsed !== 'object') throw new Error('not an object');
 			body = parsed as Record<string, unknown>;
 		} catch {
-			return json({ error: 'JSON tidak valid.' }, { status: 400 });
+			return Response.json({ error: 'JSON tidak valid.' }, { status: 400 });
 		}
 
 		if (!isWholeRupiah(body.paidAmount)) {
-			return json(
+			return Response.json(
 				{ error: 'Jumlah yang dibayar harus berupa angka Rupiah utuh, tidak negatif.' },
 				{ status: 400 }
 			);
@@ -63,20 +62,23 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		const today = jakartaToday().date;
 		const paymentDate = body.paymentDate ?? today;
 		if (typeof paymentDate !== 'string' || !isIsoCalendarDate(paymentDate)) {
-			return json({ error: 'Tanggal bayar tidak valid.' }, { status: 400 });
+			return Response.json({ error: 'Tanggal bayar tidak valid.' }, { status: 400 });
 		}
 		if (paymentDate > today) {
-			return json({ error: 'Tanggal bayar tidak boleh setelah hari ini.' }, { status: 400 });
+			return Response.json(
+				{ error: 'Tanggal bayar tidak boleh setelah hari ini.' },
+				{ status: 400 }
+			);
 		}
 
 		const reference = normalizePaymentReference(body.billingCode);
-		if (!reference.ok) return json({ error: reference.error }, { status: 400 });
+		if (!reference.ok) return Response.json({ error: reference.error }, { status: 400 });
 		const billingCode = reference.value;
 
 		const context = await getTaxYearContext(db, userId, year, month);
 		const taxpayerType = context.eligibility.taxpayerType;
 		if (context.eligibility.status !== 'eligible' || !taxpayerType) {
-			return json(
+			return Response.json(
 				{
 					error: context.eligibility.reasons[0] || 'Estimasi pajak tidak tersedia.',
 					eligibility: context.eligibility
@@ -99,7 +101,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			previousCumulativeRevenue
 		});
 		if (taxCalculation.taxAmount <= 0) {
-			return json(
+			return Response.json(
 				{ error: 'Tidak ada estimasi pajak untuk ditandai sebagai dibayar.' },
 				{ status: 409 }
 			);
@@ -138,7 +140,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			})
 			.returning({ id: taxRecord.id });
 
-		return json({
+		return Response.json({
 			message: 'Tax marked as paid',
 			data: {
 				id: saved.id,
@@ -154,6 +156,6 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		});
 	} catch {
 		console.error('Error in POST /api/tax/[year]/[month]/mark-paid:');
-		return json({ error: 'Failed to mark tax as paid' }, { status: 500 });
+		return Response.json({ error: 'Failed to mark tax as paid' }, { status: 500 });
 	}
 };

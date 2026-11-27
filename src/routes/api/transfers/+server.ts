@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { parseCreateTransfer, requireIdempotencyKey } from '#lib/server/finance/contracts.ts';
@@ -9,7 +8,7 @@ import { presentTransfer } from '#lib/server/finance/presenters.ts';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	try {
@@ -19,7 +18,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			requireIdempotencyKey(request),
 			parseCreateTransfer(await request.json())
 		);
-		return json(
+		return Response.json(
 			{
 				message: result.replayed
 					? 'Transfer sudah tersimpan sebelumnya'

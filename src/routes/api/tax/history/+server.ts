@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { calculateAnnualTax, getThresholdInfo } from '#lib/tax/engine.ts';
@@ -18,7 +17,7 @@ import { reconcilePayment } from '#lib/tax/payments.ts';
 export const GET: RequestHandler = async ({ locals, url }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
@@ -31,7 +30,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 		// Validate year
 		if (isNaN(year) || year < 2000 || year > 2100) {
-			return json({ error: 'Invalid year parameter' }, { status: 400 });
+			return Response.json({ error: 'Invalid year parameter' }, { status: 400 });
 		}
 
 		const [context, existingRecords] = await Promise.all([
@@ -134,9 +133,9 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			months: monthlyRecords
 		};
 
-		return json({ data: response });
+		return Response.json({ data: response });
 	} catch {
 		console.error('Error in GET /api/tax/history:');
-		return json({ error: 'Failed to fetch tax history' }, { status: 500 });
+		return Response.json({ error: 'Failed to fetch tax history' }, { status: 500 });
 	}
 };

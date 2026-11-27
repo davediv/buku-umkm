@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { calculateMonthlyTax, getThresholdInfo } from '#lib/tax/engine.ts';
@@ -24,7 +23,7 @@ import { reconcilePayment } from '#lib/tax/payments.ts';
 export const GET: RequestHandler = async ({ locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
@@ -93,9 +92,9 @@ export const GET: RequestHandler = async ({ locals }) => {
 			eligibility: context.eligibility
 		};
 
-		return json({ data: response });
+		return Response.json({ data: response });
 	} catch {
 		console.error('Error in GET /api/tax/summary:');
-		return json({ error: 'Failed to fetch tax summary' }, { status: 500 });
+		return Response.json({ error: 'Failed to fetch tax summary' }, { status: 500 });
 	}
 };

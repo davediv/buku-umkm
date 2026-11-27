@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { transactionTemplateQueries } from '#lib/server/db/queries/index.ts';
@@ -21,14 +20,14 @@ interface UpdateTemplateBody {
 export const GET: RequestHandler = async ({ params, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
 	const templateId = params.id;
 
 	if (!templateId) {
-		return json({ error: 'ID template diperlukan' }, { status: 400 });
+		return Response.json({ error: 'ID template diperlukan' }, { status: 400 });
 	}
 
 	const db = getDb();
@@ -37,10 +36,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const template = await transactionTemplateQueries.findById(db, userId, templateId);
 
 		if (!template) {
-			return json({ error: 'Template tidak ditemukan' }, { status: 404 });
+			return Response.json({ error: 'Template tidak ditemukan' }, { status: 404 });
 		}
 
-		return json({
+		return Response.json({
 			template: {
 				id: template.id,
 				name: template.name,
@@ -55,7 +54,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch {
 		console.error('Error fetching template:');
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
 
@@ -63,14 +62,14 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
 	const templateId = params.id;
 
 	if (!templateId) {
-		return json({ error: 'ID template diperlukan' }, { status: 400 });
+		return Response.json({ error: 'ID template diperlukan' }, { status: 400 });
 	}
 
 	try {
@@ -81,12 +80,12 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const existingTemplate = await transactionTemplateQueries.findById(db, userId, templateId);
 
 		if (!existingTemplate) {
-			return json({ error: 'Template tidak ditemukan' }, { status: 404 });
+			return Response.json({ error: 'Template tidak ditemukan' }, { status: 404 });
 		}
 
 		// System templates cannot be modified
 		if (existingTemplate.isSystem) {
-			return json({ error: 'Template sistem tidak dapat diubah' }, { status: 400 });
+			return Response.json({ error: 'Template sistem tidak dapat diubah' }, { status: 400 });
 		}
 
 		// Validate and build update data
@@ -101,32 +100,35 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		if (body.name !== undefined) {
 			const name = validateTemplateName(body.name);
 			if (!name.ok) {
-				return json({ error: name.error }, { status: 400 });
+				return Response.json({ error: name.error }, { status: 400 });
 			}
 			updateData.name = name.value;
 		}
 		if (body.type !== undefined) {
 			if (!isCategoryType(body.type)) {
-				return json({ error: 'Tipe transaksi wajib dipilih (income/expense)' }, { status: 400 });
+				return Response.json(
+					{ error: 'Tipe transaksi wajib dipilih (income/expense)' },
+					{ status: 400 }
+				);
 			}
 			updateData.type = body.type;
 		}
 		if (body.categoryId !== undefined) {
 			if (body.categoryId !== null && typeof body.categoryId !== 'string') {
-				return json({ error: 'Kategori tidak ditemukan' }, { status: 400 });
+				return Response.json({ error: 'Kategori tidak ditemukan' }, { status: 400 });
 			}
 			updateData.categoryId = body.categoryId || null;
 		}
 		const description = validateTemplateDescription(body.description);
 		if (!description.ok) {
-			return json({ error: description.error }, { status: 400 });
+			return Response.json({ error: description.error }, { status: 400 });
 		}
 		if (description.value !== undefined) {
 			updateData.description = description.value;
 		}
 		if (body.isActive !== undefined) {
 			if (typeof body.isActive !== 'boolean') {
-				return json({ error: 'Status isActive harus true atau false' }, { status: 400 });
+				return Response.json({ error: 'Status isActive harus true atau false' }, { status: 400 });
 			}
 			updateData.isActive = body.isActive;
 		}
@@ -139,14 +141,14 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		if (nextType !== existingTemplate.type || nextCategoryId !== existingTemplate.categoryId) {
 			const categoryCheck = await resolveTemplateCategory(db, userId, nextCategoryId, nextType);
 			if (!categoryCheck.ok) {
-				return json({ error: categoryCheck.error }, { status: 400 });
+				return Response.json({ error: categoryCheck.error }, { status: 400 });
 			}
 		}
 
 		// Update the template
 		await transactionTemplateQueries.update(db, userId, templateId, updateData);
 
-		return json({
+		return Response.json({
 			message: 'Template berhasil diperbarui',
 			template: {
 				id: templateId,
@@ -165,7 +167,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		});
 	} catch {
 		console.error('Error updating template:');
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
 
@@ -173,14 +175,14 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 export const DELETE: RequestHandler = async ({ params, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
 	const templateId = params.id;
 
 	if (!templateId) {
-		return json({ error: 'ID template diperlukan' }, { status: 400 });
+		return Response.json({ error: 'ID template diperlukan' }, { status: 400 });
 	}
 
 	const db = getDb();
@@ -190,22 +192,22 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		const existingTemplate = await transactionTemplateQueries.findById(db, userId, templateId);
 
 		if (!existingTemplate) {
-			return json({ error: 'Template tidak ditemukan' }, { status: 404 });
+			return Response.json({ error: 'Template tidak ditemukan' }, { status: 404 });
 		}
 
 		// System templates cannot be deleted
 		if (existingTemplate.isSystem) {
-			return json({ error: 'Template sistem tidak dapat dihapus' }, { status: 400 });
+			return Response.json({ error: 'Template sistem tidak dapat dihapus' }, { status: 400 });
 		}
 
 		// Delete the template (hard delete)
 		await transactionTemplateQueries.delete(db, userId, templateId);
 
-		return json({
+		return Response.json({
 			message: 'Template berhasil dihapus'
 		});
 	} catch {
 		console.error('Error deleting template:');
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

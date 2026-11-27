@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { parseCreateTransaction, requireIdempotencyKey } from '#lib/server/finance/contracts.ts';
@@ -11,11 +10,11 @@ import { parseTransactionQuery } from '#lib/transactions/query.ts';
 
 export const GET: RequestHandler = async ({ locals, url }) => {
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	try {
-		return json(
+		return Response.json(
 			await getTransactionPage(getDb(), locals.user.id, parseTransactionQuery(url.searchParams))
 		);
 	} catch (error) {
@@ -25,7 +24,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	try {
@@ -34,7 +33,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const service = createFinancialMutationService(createD1FinanceRepository(getDb()));
 		const result = await service.createTransaction(locals.user.id, commandKey, input);
 
-		return json(
+		return Response.json(
 			{
 				message: result.replayed
 					? 'Transaksi sudah tersimpan sebelumnya'

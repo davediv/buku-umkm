@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { businessProfileQueries } from '#lib/server/db/queries/index.ts';
@@ -60,7 +59,7 @@ async function serializeProfile(
 export const GET: RequestHandler = async ({ locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
@@ -70,15 +69,15 @@ export const GET: RequestHandler = async ({ locals }) => {
 		const profile = await businessProfileQueries.findByUserId(db, userId);
 
 		if (!profile) {
-			return json({ error: 'Profil usaha tidak ditemukan' }, { status: 404 });
+			return Response.json({ error: 'Profil usaha tidak ditemukan' }, { status: 404 });
 		}
 
 		const serializedProfile = await serializeProfile(profile);
 
-		return json({ profile: serializedProfile });
+		return Response.json({ profile: serializedProfile });
 	} catch {
 		console.error('Error fetching profile:');
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
 
@@ -86,7 +85,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 export const PUT: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
@@ -100,29 +99,29 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 		const existingProfile = await businessProfileQueries.findByUserId(db, userId);
 
 		if (!existingProfile) {
-			return json({ error: 'Profil usaha tidak ditemukan' }, { status: 404 });
+			return Response.json({ error: 'Profil usaha tidak ditemukan' }, { status: 404 });
 		}
 
 		// Validate name (required if being updated)
 		if (body.name !== undefined && (!body.name || body.name.trim() === '')) {
-			return json({ error: 'Nama usaha wajib diisi' }, { status: 400 });
+			return Response.json({ error: 'Nama usaha wajib diisi' }, { status: 400 });
 		}
 
 		// Validate string lengths
 		if (body.name && body.name.length > 200) {
-			return json({ error: 'Nama usaha maksimal 200 karakter' }, { status: 400 });
+			return Response.json({ error: 'Nama usaha maksimal 200 karakter' }, { status: 400 });
 		}
 		if (body.address && body.address.length > 500) {
-			return json({ error: 'Alamat maksimal 500 karakter' }, { status: 400 });
+			return Response.json({ error: 'Alamat maksimal 500 karakter' }, { status: 400 });
 		}
 		if (body.phone && body.phone.length > 20) {
-			return json({ error: 'Nomor telepon maksimal 20 karakter' }, { status: 400 });
+			return Response.json({ error: 'Nomor telepon maksimal 20 karakter' }, { status: 400 });
 		}
 		if (body.ownerName && body.ownerName.length > 200) {
-			return json({ error: 'Nama pemilik maksimal 200 karakter' }, { status: 400 });
+			return Response.json({ error: 'Nama pemilik maksimal 200 karakter' }, { status: 400 });
 		}
 		if (body.industry && body.industry.length > 100) {
-			return json({ error: 'Industri maksimal 100 karakter' }, { status: 400 });
+			return Response.json({ error: 'Industri maksimal 100 karakter' }, { status: 400 });
 		}
 
 		// Validate business type
@@ -130,7 +129,7 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 			if (
 				!VALID_BUSINESS_TYPES.includes(body.businessType as (typeof VALID_BUSINESS_TYPES)[number])
 			) {
-				return json(
+				return Response.json(
 					{
 						error: `Jenis usaha tidak valid. Jenis yang diperbolehkan: ${VALID_BUSINESS_TYPES.join(', ')}`
 					},
@@ -143,7 +142,7 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 		if (body.npwp !== undefined && body.npwp !== '') {
 			const npwpValidation = validateNPWP(body.npwp);
 			if (!npwpValidation.valid) {
-				return json({ error: npwpValidation.error }, { status: 400 });
+				return Response.json({ error: npwpValidation.error }, { status: 400 });
 			}
 		}
 
@@ -197,12 +196,12 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 
 		const serializedProfile = await serializeProfile(updatedProfile);
 
-		return json({
+		return Response.json({
 			message: 'Profil berhasil diperbarui',
 			profile: serializedProfile
 		});
 	} catch {
 		console.error('Error updating profile:');
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

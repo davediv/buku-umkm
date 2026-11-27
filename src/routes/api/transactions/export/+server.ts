@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { financeErrorResponse } from '#lib/server/finance/http.ts';
@@ -7,7 +6,7 @@ import { parseTransactionQuery } from '#lib/transactions/query.ts';
 
 export const GET: RequestHandler = async ({ locals, url }) => {
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	try {
@@ -16,7 +15,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			locals.user.id,
 			parseTransactionQuery(url.searchParams)
 		);
-		return json({ transactions, total: transactions.length });
+		return Response.json({ transactions, total: transactions.length });
 	} catch (error) {
 		return financeErrorResponse(error, 'export transactions');
 	}

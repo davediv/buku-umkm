@@ -1,5 +1,4 @@
 import { env } from 'cloudflare:workers';
-import { json } from '@sveltejs/kit';
 import { and, eq, sql } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
@@ -26,22 +25,28 @@ const MAX_UPLOAD_BYTES = MAX_RECEIPT_BYTES + 16 * 1024;
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
 
 const tooLarge = () =>
-	json({ error: `Ukuran file maksimal adalah ${MAX_RECEIPT_BYTES / 1024}KB` }, { status: 413 });
+	Response.json(
+		{ error: `Ukuran file maksimal adalah ${MAX_RECEIPT_BYTES / 1024}KB` },
+		{ status: 413 }
+	);
 const tooMany = () =>
-	json({ error: `Maksimal ${MAX_PHOTOS_PER_TRANSACTION} foto per transaksi` }, { status: 400 });
+	Response.json(
+		{ error: `Maksimal ${MAX_PHOTOS_PER_TRANSACTION} foto per transaksi` },
+		{ status: 400 }
+	);
 
 // GET /api/transactions/[id]/photos - Get all photos for a transaction
 export const GET: RequestHandler = async ({ params, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
 	const transactionId = params.id;
 
 	if (!transactionId) {
-		return json({ error: 'ID transaksi diperlukan' }, { status: 400 });
+		return Response.json({ error: 'ID transaksi diperlukan' }, { status: 400 });
 	}
 
 	const db = getDb();
@@ -51,13 +56,13 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const txn = await transactionQueries.findById(db, userId, transactionId, true);
 
 		if (!txn) {
-			return json({ error: 'Transaksi tidak ditemukan' }, { status: 404 });
+			return Response.json({ error: 'Transaksi tidak ditemukan' }, { status: 404 });
 		}
 
 		// Get photos
 		const photos = await transactionPhotoQueries.findByTransactionId(db, userId, transactionId);
 
-		return json({
+		return Response.json({
 			photos: photos.map((photo) => ({
 				id: photo.id,
 				fileName: photo.fileName,
@@ -70,7 +75,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch {
 		console.error('Error fetching transaction photos');
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };
 
@@ -78,14 +83,14 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	// Check authentication
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	const userId = locals.user.id;
 	const transactionId = params.id;
 
 	if (!transactionId) {
-		return json({ error: 'ID transaksi diperlukan' }, { status: 400 });
+		return Response.json({ error: 'ID transaksi diperlukan' }, { status: 400 });
 	}
 
 	// Before any other work: an oversized upload is refused without reading it.
@@ -99,7 +104,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		const txn = await transactionQueries.findById(db, userId, transactionId, true);
 
 		if (!txn) {
-			return json({ error: 'Transaksi tidak ditemukan' }, { status: 404 });
+			return Response.json({ error: 'Transaksi tidak ditemukan' }, { status: 404 });
 		}
 
 		// Saves uploading a file that cannot be kept; the batch guard below is what
@@ -122,12 +127,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		const file = form?.get('file');
 
 		if (!(file instanceof File)) {
-			return json({ error: 'File foto diperlukan' }, { status: 400 });
+			return Response.json({ error: 'File foto diperlukan' }, { status: 400 });
 		}
 
 		// Validate file type
 		if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-			return json({ error: 'Format file harus JPEG atau PNG' }, { status: 400 });
+			return Response.json({ error: 'Format file harus JPEG atau PNG' }, { status: 400 });
 		}
 
 		if (file.size > MAX_RECEIPT_BYTES) return tooLarge();
@@ -136,13 +141,16 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		const bytes = new Uint8Array(await file.arrayBuffer());
 		const extension = imageExtension(bytes);
 		if (!extension) {
-			return json({ error: 'File bukan gambar JPEG atau PNG yang valid' }, { status: 400 });
+			return Response.json(
+				{ error: 'File bukan gambar JPEG atau PNG yang valid' },
+				{ status: 400 }
+			);
 		}
 
 		const r2 = env.R2;
 		if (!r2) {
 			console.error('R2 bucket not configured');
-			return json({ error: 'Konfigurasi penyimpanan tidak tersedia' }, { status: 500 });
+			return Response.json({ error: 'Konfigurasi penyimpanan tidak tersedia' }, { status: 500 });
 		}
 
 		const photoId = crypto.randomUUID();
@@ -188,10 +196,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			});
 			if (!isGuardFailure(error)) throw error;
 			const stillThere = await transactionQueries.findById(db, userId, transactionId, true);
-			return stillThere ? tooMany() : json({ error: 'Transaksi tidak ditemukan' }, { status: 404 });
+			return stillThere
+				? tooMany()
+				: Response.json({ error: 'Transaksi tidak ditemukan' }, { status: 404 });
 		}
 
-		return json(
+		return Response.json(
 			{
 				message: 'Foto berhasil diunggah',
 				photo: {
@@ -207,6 +217,6 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		);
 	} catch (error) {
 		console.error('Error uploading transaction photo', summarizeError(error));
-		return json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+		return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
 	}
 };

@@ -1,5 +1,4 @@
 import { env, waitUntil } from 'cloudflare:workers';
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { summarizeError } from '#lib/server/error-summary.ts';
@@ -23,7 +22,7 @@ const ZIP_CONTENT_TYPES = ['application/zip', 'application/x-zip-compressed'];
 const RESTORED = 'Data berhasil dipulihkan dari backup';
 
 function failure(error: string, status: number, code = 'INVALID_BACKUP') {
-	return json({ error, code }, { status });
+	return Response.json({ error, code }, { status });
 }
 
 /** The backup file's text from a JSON body or a multipart upload (field `file`), size-capped. */
@@ -51,7 +50,7 @@ async function readBackupText(request: Request): Promise<string | Response> {
 // POST /api/restore - Replace the caller's data with the contents of a backup file
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
 	try {
@@ -67,7 +66,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				receipts: env.R2 ?? null,
 				waitUntil
 			});
-			return json({ success: true, message: RESTORED, summary });
+			return Response.json({ success: true, message: RESTORED, summary });
 		}
 
 		const text = await readBackupText(request);
@@ -83,11 +82,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const summary = await restoreBackup(getDb(), locals.user.id, file, {
 			receipts: env.R2 ?? null
 		});
-		return json({ success: true, message: RESTORED, summary });
+		return Response.json({ success: true, message: RESTORED, summary });
 	} catch (error) {
 		if (error instanceof BackupError) return failure(error.message, error.status, error.code);
 		console.error('Restore failed', summarizeError(error));
-		return json(
+		return Response.json(
 			{ error: 'Terjadi kesalahan saat memulihkan data', code: 'INTERNAL_ERROR' },
 			{ status: 500 }
 		);

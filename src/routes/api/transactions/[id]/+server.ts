@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { transactionQueries } from '#lib/server/db/queries/index.ts';
@@ -10,14 +9,14 @@ import { presentTransaction } from '#lib/server/finance/presenters.ts';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
-	if (!params.id) return json({ error: 'ID transaksi diperlukan' }, { status: 400 });
+	if (!params.id) return Response.json({ error: 'ID transaksi diperlukan' }, { status: 400 });
 
 	try {
 		const item = await transactionQueries.findById(getDb(), locals.user.id, params.id);
-		if (!item) return json({ error: 'Transaksi tidak ditemukan' }, { status: 404 });
-		return json({ transaction: presentTransaction(item) });
+		if (!item) return Response.json({ error: 'Transaksi tidak ditemukan' }, { status: 404 });
+		return Response.json({ transaction: presentTransaction(item) });
 	} catch (error) {
 		return financeErrorResponse(error, 'get transaction');
 	}
@@ -25,9 +24,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
-	if (!params.id) return json({ error: 'ID transaksi diperlukan' }, { status: 400 });
+	if (!params.id) return Response.json({ error: 'ID transaksi diperlukan' }, { status: 400 });
 
 	try {
 		const service = createFinancialMutationService(createD1FinanceRepository(getDb()));
@@ -36,7 +35,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			params.id,
 			parseUpdateTransaction(await request.json())
 		);
-		return json({
+		return Response.json({
 			message: 'Transaksi berhasil diperbarui',
 			transaction: presentTransaction(updated)
 		});
@@ -47,14 +46,14 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 export const DELETE: RequestHandler = async ({ params, locals }) => {
 	if (!locals.user || !locals.session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	}
-	if (!params.id) return json({ error: 'ID transaksi diperlukan' }, { status: 400 });
+	if (!params.id) return Response.json({ error: 'ID transaksi diperlukan' }, { status: 400 });
 
 	try {
 		const service = createFinancialMutationService(createD1FinanceRepository(getDb()));
 		await service.deleteTransaction(locals.user.id, params.id);
-		return json({ message: 'Transaksi berhasil dihapus' });
+		return Response.json({ message: 'Transaksi berhasil dihapus' });
 	} catch (error) {
 		return financeErrorResponse(error, 'delete transaction');
 	}

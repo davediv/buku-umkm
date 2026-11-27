@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db/index.ts';
 import { TAX_LEGAL_FORM, TAX_REGIME_CHOICE } from '#lib/tax/config.ts';
@@ -119,27 +118,29 @@ function parseProfile(value: unknown): { data?: TaxProfileData; error?: string }
 }
 
 export const GET: RequestHandler = async ({ locals, url }) => {
-	if (!locals.user || !locals.session) return json({ error: 'Unauthorized' }, { status: 401 });
+	if (!locals.user || !locals.session)
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 	const taxYear = parseYear(url.searchParams.get('year') ?? String(jakartaToday().year));
-	if (!taxYear) return json({ error: 'Tahun pajak tidak valid.' }, { status: 400 });
+	if (!taxYear) return Response.json({ error: 'Tahun pajak tidak valid.' }, { status: 400 });
 
 	const profile = await getTaxProfile(getDb(), locals.user.id, taxYear);
-	return json({ data: profile });
+	return Response.json({ data: profile });
 };
 
 export const PUT: RequestHandler = async ({ locals, request }) => {
-	if (!locals.user || !locals.session) return json({ error: 'Unauthorized' }, { status: 401 });
+	if (!locals.user || !locals.session)
+		return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
 	let body: unknown;
 	try {
 		body = await request.json();
 	} catch {
-		return json({ error: 'JSON tidak valid.' }, { status: 400 });
+		return Response.json({ error: 'JSON tidak valid.' }, { status: 400 });
 	}
 
 	const parsed = parseProfile(body);
-	if (!parsed.data) return json({ error: parsed.error }, { status: 400 });
+	if (!parsed.data) return Response.json({ error: parsed.error }, { status: 400 });
 
 	const saved = await upsertTaxProfile(getDb(), locals.user.id, parsed.data);
-	return json({ data: saved });
+	return Response.json({ data: saved });
 };
